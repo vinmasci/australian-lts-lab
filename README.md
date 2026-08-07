@@ -22,11 +22,10 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Set the Mapbox public token and PMTiles URLs in `.env.local`. The two generated PMTiles archives are intentionally not stored in Git because they are large. The small build metadata files are included.
+Set the PMTiles URLs in `.env.local`. The two generated PMTiles archives are intentionally not stored in Git because they are large. The small build metadata files are included.
 
 ## Environment variables
 
-- `NEXT_PUBLIC_MAPBOX_TOKEN`: Mapbox browser token.
 - `NEXT_PUBLIC_VICTORIA_PMTILES_URL`: public Victoria PMTiles archive with byte-range and CORS support.
 - `NEXT_PUBLIC_NSW_PMTILES_URL`: public NSW PMTiles archive with byte-range and CORS support.
 - `LTS_BROUTER_URL`: BRouter-compatible endpoint.
@@ -37,11 +36,11 @@ Set the Mapbox public token and PMTiles URLs in `.env.local`. The two generated 
 - Road/path geometry and tags: © OpenStreetMap contributors, available under the ODbL.
 - Victorian government and council sources: see the source links and build-specific counts in the app’s About panel.
 - NSW traffic counts and speed zones: Transport for NSW open data, used under its published Creative Commons Attribution terms.
-- Basemap: Mapbox and its data providers.
+- Basemap: OpenFreeMap and OpenMapTiles data derived from OpenStreetMap, rendered with MapLibre GL JS.
 - PMTiles reader: the official PMTiles JavaScript protocol library (BSD-3-Clause), bundled with the app.
 
 Generated map archives are derivative datasets with their own source and attribution obligations. They are deployed separately from this code repository.
 
 ## Licence
 
-Application code is licensed under Apache-2.0. That licence does not relicense source data, generated map archives, Mapbox content or third-party services.
+Application code is licensed under Apache-2.0. That licence does not relicense source data, generated map archives, basemap content or third-party services.

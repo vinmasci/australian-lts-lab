@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import mapboxgl, { MapMouseEvent, MapboxGeoJSONFeature } from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import * as maplibregl from 'maplibre-gl';
+import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { Bike, ExternalLink, Info, MapPin, Route as RouteIcon, RotateCcw, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
 const DATASET_VERSION = 'au-lts-v0.5-trail-suitability';
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
@@ -152,7 +152,7 @@ function formatRouteTime(milliseconds: number): string {
   return remainder ? `${hours} h ${remainder} min` : `${hours} h`;
 }
 
-function simplifyBaseMap(map: mapboxgl.Map) {
+function simplifyBaseMap(map: maplibregl.Map) {
   for (const layer of map.getStyle()?.layers || []) {
     try {
       if (layer.type === 'line' && /road|street|motorway|trunk|primary|secondary|tertiary/.test(layer.id)) {
@@ -162,12 +162,12 @@ function simplifyBaseMap(map: mapboxgl.Map) {
         map.setLayoutProperty(layer.id, 'visibility', 'none');
       }
     } catch {
-      // Base styles differ slightly between Mapbox releases.
+      // Basemap styles differ slightly between releases.
     }
   }
 }
 
-function selectedGeoJson(feature?: MapboxGeoJSONFeature): GeoJSON.FeatureCollection {
+function selectedGeoJson(feature?: MapGeoJSONFeature): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: feature ? [{
@@ -201,7 +201,7 @@ function trafficFreshness(value: FeatureProperties[string]): { label: string; cl
 
 export default function LtsLabPage() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
   const routeModeRef = useRef(false);
   const routePointsRef = useRef<Coordinate[]>([]);
   const routeClickRef = useRef<(coordinate: Coordinate) => void>(() => undefined);
@@ -226,7 +226,7 @@ export default function LtsLabPage() {
   const activeDataset = DATASETS[datasetKey];
 
   const setRoutePointSource = (points: Coordinate[]) => {
-    const source = mapRef.current?.getSource('lts-route-points') as mapboxgl.GeoJSONSource | undefined;
+    const source = mapRef.current?.getSource('lts-route-points') as maplibregl.GeoJSONSource | undefined;
     source?.setData(routePointsGeoJson(points));
   };
 
@@ -239,7 +239,7 @@ export default function LtsLabPage() {
     setRouteError(null);
     setRouteLoading(false);
     setRoutePointSource(keepPoints);
-    const source = mapRef.current?.getSource('lts-route') as mapboxgl.GeoJSONSource | undefined;
+    const source = mapRef.current?.getSource('lts-route') as maplibregl.GeoJSONSource | undefined;
     source?.setData(emptyFeatureCollection());
   };
 
@@ -258,7 +258,7 @@ export default function LtsLabPage() {
       if (!response.ok || result.error) throw new Error(result.error || `Router returned ${response.status}`);
       if (requestId !== routeRequestIdRef.current) return;
 
-      const source = mapRef.current?.getSource('lts-route') as mapboxgl.GeoJSONSource | undefined;
+      const source = mapRef.current?.getSource('lts-route') as maplibregl.GeoJSONSource | undefined;
       source?.setData(result.segments);
       setRouteSummary(result.summary);
       setRouteClassifier(result.classifier_version);
@@ -266,7 +266,7 @@ export default function LtsLabPage() {
       if (result.route.coordinates.length > 1 && mapRef.current) {
         const bounds = result.route.coordinates.reduce(
           (value, coordinate) => value.extend(coordinate as Coordinate),
-          new mapboxgl.LngLatBounds(result.route.coordinates[0] as Coordinate, result.route.coordinates[0] as Coordinate),
+          new maplibregl.LngLatBounds(result.route.coordinates[0] as Coordinate, result.route.coordinates[0] as Coordinate),
         );
         mapRef.current.fitBounds(bounds, { padding: { top: 100, right: 80, bottom: 80, left: 360 }, maxZoom: 15 });
       }
@@ -301,20 +301,16 @@ export default function LtsLabPage() {
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
     const protocol = new Protocol();
-    const mapboxProtocol = mapboxgl as unknown as {
-      addProtocol: (name: string, handler: typeof protocol.tile) => void;
-      removeProtocol: (name: string) => void;
-    };
-    mapboxProtocol.addProtocol('pmtiles', protocol.tile);
+    addProtocol('pmtiles', protocol.tile);
 
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
         container: mapContainerRef.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: 'https://tiles.openfreemap.org/styles/liberty',
         center: activeDataset.center,
         zoom: activeDataset.zoom,
       });
       mapRef.current = map;
-      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
       map.on('error', (event) => {
         const message = event.error?.message || '';
@@ -333,7 +329,7 @@ export default function LtsLabPage() {
         map.addSource('lts-route', { type: 'geojson', data: emptyFeatureCollection() });
         map.addSource('lts-route-points', { type: 'geojson', data: routePointsGeoJson(routePointsRef.current) });
 
-        const colourExpression: mapboxgl.Expression = [
+        const colourExpression: maplibregl.ExpressionSpecification = [
           'match', ['get', 'lts'],
           1, LTS_COLOURS[1],
           2, LTS_COLOURS[2],
@@ -515,7 +511,7 @@ export default function LtsLabPage() {
           }
           const feature = map.queryRenderedFeatures(event.point, { layers: interactiveLayers })[0];
           setSelected(feature ? feature.properties as FeatureProperties : null);
-          (map.getSource('lts-selected') as mapboxgl.GeoJSONSource)
+          (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
             .setData(selectedGeoJson(feature));
         });
     });
@@ -523,7 +519,7 @@ export default function LtsLabPage() {
     return () => {
       mapRef.current?.remove();
       mapRef.current = null;
-      mapboxProtocol.removeProtocol('pmtiles');
+      removeProtocol('pmtiles');
     };
   }, [activeDataset.center, activeDataset.dataUrl, activeDataset.zoom]);
 
@@ -531,7 +527,7 @@ export default function LtsLabPage() {
     const map = mapRef.current;
     if (!map?.getLayer('lts-segments')) return;
     const levels = [...visibleLts];
-    const baseFilter: mapboxgl.FilterSpecification = [
+    const baseFilter: maplibregl.FilterSpecification = [
       'all',
       ['==', ['get', 'feature_kind'], 'segment'],
       ['in', ['get', 'lts'], ['literal', levels]],
@@ -541,19 +537,19 @@ export default function LtsLabPage() {
       ['!=', ['get', 'is_unsealed'], true],
       ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]],
       ['==', ['get', 'confidence'], 'low'],
-    ] as mapboxgl.FilterSpecification);
+    ] as maplibregl.FilterSpecification);
     map.setFilter('lts-segments', [
       ...baseFilter,
       ['!=', ['get', 'is_unsealed'], true],
       ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]],
       ['!=', ['get', 'confidence'], 'low'],
-    ] as mapboxgl.FilterSpecification);
-    const unsealedFilter: mapboxgl.FilterSpecification = [
+    ] as maplibregl.FilterSpecification);
+    const unsealedFilter: maplibregl.FilterSpecification = [
       ...baseFilter,
       ['==', ['get', 'is_unsealed'], true],
       ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]],
       ...(showLowConfidence ? [] : [['!=', ['get', 'confidence'], 'low']]),
-    ] as mapboxgl.FilterSpecification;
+    ] as maplibregl.FilterSpecification;
     map.setFilter('lts-unsealed-casing', unsealedFilter);
     map.setFilter('lts-unsealed', unsealedFilter);
     map.setLayoutProperty('lts-segments-low-confidence', 'visibility', showLowConfidence ? 'visible' : 'none');
@@ -622,7 +618,7 @@ export default function LtsLabPage() {
             const next = !routeMode;
             setRouteMode(next);
             setSelected(null);
-            (mapRef.current?.getSource('lts-selected') as mapboxgl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
+            (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
             clearRoute();
           }}
           className={`mb-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${routeMode ? 'bg-emerald-400 text-slate-950' : 'bg-white text-slate-950 hover:bg-emerald-100'}`}
@@ -805,7 +801,7 @@ export default function LtsLabPage() {
           <button
             onClick={() => {
               setSelected(null);
-              const source = mapRef.current?.getSource('lts-selected') as mapboxgl.GeoJSONSource | undefined;
+              const source = mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined;
               source?.setData(selectedGeoJson());
             }}
             className="absolute right-3 top-3 rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
@@ -950,7 +946,7 @@ export default function LtsLabPage() {
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">Map delivery</p>
-                    <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered over a simplified Mapbox base map. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Purple dashes identify OSM-tagged MTB trails. Cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
+                    <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered with MapLibre over a simplified OpenFreeMap base map. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Purple dashes identify OSM-tagged MTB trails. Cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">Experimental routing</p>
