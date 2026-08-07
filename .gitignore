@@ -6,5 +6,6 @@ node_modules/
 !.env.example
 public/data/lts/*.pmtiles
 .DS_Store
+*.tsbuildinfo
 
 .vercel
