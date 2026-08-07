@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Bike, ExternalLink, Info, MapPin, Route as RouteIcon, RotateCcw, X } from 'lucide-react';
+import { Bike, ExternalLink, Info, Loader2, MapPin, Route as RouteIcon, RotateCcw, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 
 
@@ -31,6 +31,52 @@ const DATASETS = {
   },
 } as const;
 type DatasetKey = keyof typeof DATASETS;
+const BASEMAP_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+  sources: {
+    openmaptiles: {
+      type: 'vector',
+      url: 'https://tiles.openfreemap.org/planet',
+      attribution: 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap',
+    },
+  },
+  layers: [
+    { id: 'background', type: 'background', paint: { 'background-color': '#f5f2ed' } },
+    { id: 'landcover', type: 'fill', source: 'openmaptiles', 'source-layer': 'landcover', paint: { 'fill-color': '#e8f2df', 'fill-opacity': 0.65 } },
+    { id: 'landuse', type: 'fill', source: 'openmaptiles', 'source-layer': 'landuse', paint: { 'fill-color': '#ece8df', 'fill-opacity': 0.55 } },
+    { id: 'water', type: 'fill', source: 'openmaptiles', 'source-layer': 'water', paint: { 'fill-color': '#b9def0' } },
+    { id: 'boundaries', type: 'line', source: 'openmaptiles', 'source-layer': 'boundary', paint: { 'line-color': '#a8a29e', 'line-width': 0.7, 'line-dasharray': [3, 2] } },
+    { id: 'roads', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation', paint: { 'line-color': '#d6d3d1', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.4, 12, 1.2, 17, 5] } },
+    { id: 'buildings', type: 'fill', source: 'openmaptiles', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': '#ded9d3', 'fill-outline-color': '#cbc5bd' } },
+    {
+      id: 'road-labels',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'transportation_name',
+      minzoom: 12,
+      layout: {
+        'symbol-placement': 'line',
+        'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+        'text-font': ['Noto Sans Regular'],
+        'text-size': 11,
+      },
+      paint: { 'text-color': '#57534e', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'place-labels',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      layout: {
+        'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 12, 15],
+      },
+      paint: { 'text-color': '#44403c', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 },
+    },
+  ],
+};
 const LTS_COLOURS: Record<number, string> = {
   1: '#16a34a',
   2: '#2563eb',
@@ -207,6 +253,7 @@ export default function LtsLabPage() {
   const routeClickRef = useRef<(coordinate: Coordinate) => void>(() => undefined);
   const routeRequestIdRef = useRef(0);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [mapLoading, setMapLoading] = useState(true);
   const [metadata, setMetadata] = useState<LtsMetadata | null>(null);
   const [selected, setSelected] = useState<FeatureProperties | null>(null);
   const [visibleLts, setVisibleLts] = useState<Set<number>>(new Set([1, 2, 3, 4]));
@@ -305,7 +352,7 @@ export default function LtsLabPage() {
 
     const map = new maplibregl.Map({
         container: mapContainerRef.current,
-        style: 'https://tiles.openfreemap.org/styles/liberty',
+        style: BASEMAP_STYLE,
         center: activeDataset.center,
         zoom: activeDataset.zoom,
       });
@@ -314,7 +361,9 @@ export default function LtsLabPage() {
 
       map.on('error', (event) => {
         const message = event.error?.message || '';
+        console.error('[Australian LTS map]', message, event.error);
         if (message.includes(activeDataset.dataUrl) || message.includes('pmtile')) {
+          setMapLoading(false);
           setMapError(`The LTS tile archive could not be loaded: ${message}`);
         }
       });
@@ -514,6 +563,7 @@ export default function LtsLabPage() {
           (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
             .setData(selectedGeoJson(feature));
         });
+        setMapLoading(false);
     });
 
     return () => {
@@ -579,6 +629,14 @@ export default function LtsLabPage() {
   return (
     <main className="relative h-screen overflow-hidden bg-slate-950 text-white">
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
+      {mapLoading && (
+        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/45">
+          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/90 px-5 py-4 text-sm font-semibold text-slate-100 shadow-2xl">
+            <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
+            Loading the full-resolution LTS network…
+          </div>
+        </div>
+      )}
 
       <header className="absolute left-3 right-3 top-3 z-10 flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/95 px-4 py-3 shadow-2xl backdrop-blur md:left-4 md:right-auto md:min-w-[440px]">
         <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-400"><Bike className="h-5 w-5" /></div>
@@ -589,6 +647,7 @@ export default function LtsLabPage() {
         <select
           value={datasetKey}
           onChange={(event) => {
+            setMapLoading(true);
             setMetadata(null);
             setMapError(null);
             setDatasetKey(event.target.value as DatasetKey);

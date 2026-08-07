@@ -9,3 +9,4 @@ public/data/lts/*.pmtiles
 *.tsbuildinfo
 
 .vercel
+.env*.local
