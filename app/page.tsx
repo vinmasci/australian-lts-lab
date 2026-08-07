@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Bike, ExternalLink, Info, Loader2, MapPin, Route as RouteIcon, RotateCcw, X } from 'lucide-react';
+import { Bike, ExternalLink, Info, Loader2, MapPin, Redo2, Route as RouteIcon, Trash2, Undo2, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 
 
@@ -31,6 +31,7 @@ const DATASETS = {
   },
 } as const;
 type DatasetKey = keyof typeof DATASETS;
+const MAX_ROUTE_POINTS = 26;
 const BASEMAP_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -180,7 +181,10 @@ function routePointsGeoJson(points: Coordinate[]): GeoJSON.FeatureCollection<Geo
     type: 'FeatureCollection',
     features: points.map((coordinate, index) => ({
       type: 'Feature',
-      properties: { role: index === 0 ? 'start' : 'finish', label: index === 0 ? 'A' : 'B' },
+      properties: {
+        role: index === 0 ? 'start' : index === points.length - 1 ? 'finish' : 'via',
+        label: String.fromCharCode(65 + index),
+      },
       geometry: { type: 'Point', coordinates: coordinate },
     })),
   };
@@ -252,6 +256,8 @@ export default function LtsLabPage() {
   const routePointsRef = useRef<Coordinate[]>([]);
   const routeClickRef = useRef<(coordinate: Coordinate) => void>(() => undefined);
   const routeRequestIdRef = useRef(0);
+  const routeHistoryRef = useRef<Coordinate[][]>([[]]);
+  const routeHistoryIndexRef = useRef(0);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapLoading, setMapLoading] = useState(true);
   const [metadata, setMetadata] = useState<LtsMetadata | null>(null);
@@ -264,6 +270,8 @@ export default function LtsLabPage() {
   const [allowGravel, setAllowGravel] = useState(true);
   const [routeMode, setRouteMode] = useState(false);
   const [routePoints, setRoutePoints] = useState<Coordinate[]>([]);
+  const [routeHistoryIndex, setRouteHistoryIndex] = useState(0);
+  const [routeHistoryLength, setRouteHistoryLength] = useState(1);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeSummary, setRouteSummary] = useState<LtsRouteSummary | null>(null);
@@ -325,13 +333,53 @@ export default function LtsLabPage() {
     }
   };
 
+  const applyRoutePoints = (points: Coordinate[]) => {
+    clearRoute(points);
+    if (points.length >= 2) void requestRoute(points);
+  };
+
+  const commitRoutePoints = (points: Coordinate[]) => {
+    const nextHistory = routeHistoryRef.current
+      .slice(0, routeHistoryIndexRef.current + 1)
+      .concat([[...points]]);
+    routeHistoryRef.current = nextHistory;
+    routeHistoryIndexRef.current = nextHistory.length - 1;
+    setRouteHistoryIndex(routeHistoryIndexRef.current);
+    setRouteHistoryLength(nextHistory.length);
+    applyRoutePoints(points);
+  };
+
+  const undoRouteEdit = () => {
+    if (routeHistoryIndexRef.current === 0) return;
+    routeHistoryIndexRef.current -= 1;
+    setRouteHistoryIndex(routeHistoryIndexRef.current);
+    applyRoutePoints(routeHistoryRef.current[routeHistoryIndexRef.current]);
+  };
+
+  const redoRouteEdit = () => {
+    if (routeHistoryIndexRef.current >= routeHistoryRef.current.length - 1) return;
+    routeHistoryIndexRef.current += 1;
+    setRouteHistoryIndex(routeHistoryIndexRef.current);
+    applyRoutePoints(routeHistoryRef.current[routeHistoryIndexRef.current]);
+  };
+
+  const resetRouteHistory = () => {
+    routeHistoryRef.current = [[]];
+    routeHistoryIndexRef.current = 0;
+    setRouteHistoryIndex(0);
+    setRouteHistoryLength(1);
+    clearRoute();
+  };
+
   useEffect(() => {
     routeModeRef.current = routeMode;
     routeClickRef.current = (coordinate: Coordinate) => {
       const current = routePointsRef.current;
-      const next = current.length === 1 ? [current[0], coordinate] : [coordinate];
-      clearRoute(next);
-      if (next.length === 2) void requestRoute(next);
+      if (current.length >= MAX_ROUTE_POINTS) {
+        setRouteError(`A route can contain up to ${MAX_ROUTE_POINTS} points.`);
+        return;
+      }
+      commitRoutePoints([...current, coordinate]);
     };
   });
 
@@ -517,7 +565,7 @@ export default function LtsLabPage() {
           type: 'circle',
           source: 'lts-route-points',
           paint: {
-            'circle-color': ['match', ['get', 'role'], 'start', '#16a34a', '#dc2626'],
+            'circle-color': ['match', ['get', 'role'], 'start', '#16a34a', 'finish', '#dc2626', '#2563eb'],
             'circle-radius': 12,
             'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 3,
@@ -652,7 +700,7 @@ export default function LtsLabPage() {
             setMapError(null);
             setDatasetKey(event.target.value as DatasetKey);
             setRouteMode(false);
-            clearRoute();
+            resetRouteHistory();
             setSelected(null);
           }}
           aria-label="LTS dataset"
@@ -678,7 +726,7 @@ export default function LtsLabPage() {
             setRouteMode(next);
             setSelected(null);
             (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
-            clearRoute();
+            resetRouteHistory();
           }}
           className={`mb-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${routeMode ? 'bg-emerald-400 text-slate-950' : 'bg-white text-slate-950 hover:bg-emerald-100'}`}
         >
@@ -695,14 +743,18 @@ export default function LtsLabPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-emerald-300">
-                  {routePoints.length === 0 && 'Click your starting point'}
-                  {routePoints.length === 1 && 'Now click your destination'}
-                  {routePoints.length === 2 && !routeLoading && !routeError && 'Low-stress route calculated'}
+                  {routePoints.length === 0 && 'Click starting point A'}
+                  {routePoints.length === 1 && 'Click destination B'}
+                  {routePoints.length >= 2 && !routeLoading && !routeError && `${routePoints.length}-point route calculated`}
                   {routeLoading && 'Finding the lowest-stress route…'}
                   {routeError && 'Route failed'}
                 </p>
                 <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-                  Higher-stress roads remain available only where needed to keep the journey connected.
+                  {routePoints.length >= 2 && routePoints.length < MAX_ROUTE_POINTS
+                    ? `Click the map to add point ${String.fromCharCode(65 + routePoints.length)}. Points are visited in order.`
+                    : routePoints.length >= MAX_ROUTE_POINTS
+                      ? `Maximum ${MAX_ROUTE_POINTS} points reached.`
+                      : 'Higher-stress roads remain available only where needed to keep the journey connected.'}
                 </p>
                 <p className="mt-1 text-[10px] leading-relaxed text-amber-300/80">
                   {USING_LOCAL_ENRICHED_ROUTER
@@ -716,21 +768,40 @@ export default function LtsLabPage() {
                     onChange={(event) => {
                       const next = event.target.checked;
                       setAllowGravel(next);
-                      if (routePointsRef.current.length === 2) void requestRoute(routePointsRef.current, next);
+                      if (routePointsRef.current.length >= 2) void requestRoute(routePointsRef.current, next);
                     }}
                     className="h-4 w-4"
                   />
                   Gravel / known unsealed surfaces
                 </label>
               </div>
-              {(routePoints.length > 0 || routeSummary) && (
-                <button
-                  type="button"
-                  onClick={() => clearRoute()}
-                  className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white"
-                  aria-label="Reset route"
-                ><RotateCcw className="h-4 w-4" /></button>
-              )}
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={undoRouteEdit}
+                disabled={routeHistoryIndex === 0}
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <Undo2 className="h-3.5 w-3.5" /> Undo
+              </button>
+              <button
+                type="button"
+                onClick={redoRouteEdit}
+                disabled={routeHistoryIndex >= routeHistoryLength - 1}
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <Redo2 className="h-3.5 w-3.5" /> Redo
+              </button>
+              <button
+                type="button"
+                onClick={() => commitRoutePoints([])}
+                disabled={routePoints.length === 0}
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Clear
+              </button>
             </div>
 
             {routeLoading && <div className="mt-3 h-1 overflow-hidden rounded bg-white/10"><div className="h-full w-1/2 animate-pulse rounded bg-emerald-400" /></div>}
@@ -1050,6 +1121,7 @@ export default function LtsLabPage() {
                 <h3 className="text-base font-bold text-white">{activeDataset.routable ? 'How BRouter chooses a route' : 'Routing status'}</h3>
                 {!activeDataset.routable && <p className="mt-2 rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-sky-100">The statewide NSW map is map-only. Its visual classification, traffic matches and speed-zone matches are being audited before any NSW BRouter segment build. It cannot change production navigation.</p>}
                 {activeDataset.routable && <>
+                <p className="mt-2">The planner accepts up to 26 ordered points labelled A–Z. BRouter connects them in sequence, and every edit—including Clear—can be undone or redone.</p>
                 <p className="mt-2">The <code className="text-emerald-300">cyalts</code> profile assigns widely separated routing costs: 1.0 for LTS 1, 1.8 for LTS 2, 5.0 for LTS 3 and 15.0 for LTS 4. This strongly prefers low-stress links while allowing a higher-stress connection when otherwise necessary.</p>
                 {USING_LOCAL_ENRICHED_ROUTER && <p className="mt-2">The local enriched segments carry the map classifier&apos;s forward and backward LTS values directly. BRouter uses the value for the travel direction; it does not independently reinterpret the road&apos;s lane or cycleway tags. The background line deliberately uses the worse direction, so a routed line can be safer—but not more stressful—when the lane or cycleway on the ridden side is better.</p>}
                 {USING_LOCAL_ENRICHED_ROUTER && <p className="mt-2">Crossing dots are classified by the same rules and add point penalties equivalent to a 0 m, 20 m, 80 m or 250 m detour for LTS 1–4. This encourages the router to prefer signals, refuges and calmer crossings without making a difficult crossing an absolute barrier.</p>}
@@ -1058,7 +1130,7 @@ export default function LtsLabPage() {
                 <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-400/10 p-4">
                   <h4 className="font-semibold text-white">Handling unavoidable high-stress gaps</h4>
                   <p className="mt-2 text-xs text-violet-50">The values 1.0, 1.8, 5.0 and 15.0 are deliberately separated experimental preference weights, not measured speeds, crash risks or final calibrated constants. Before other routing costs are considered, one kilometre at LTS 2, 3 or 4 therefore contributes roughly the same route cost as 1.8, 5 or 15 kilometres at LTS 1. The spacing makes the router mildly prefer LTS 1 over LTS 2, strongly avoid LTS 3 and treat LTS 4 as a last resort, while keeping every legal cycling connection available where the network has no practical alternative. These values still need comparison against routes chosen by riders.</p>
-                  <p className="mt-2 text-xs text-violet-50">This model assumes the rider remains on the bicycle when a route uses a high-stress link. It does not silently switch to walking, change travel speed or instruct the rider to dismount. Afshin&apos;s “walking at three times slower” method represents a different behaviour: an uncomfortable but walkable gap is costed approximately like travelling three times its distance by bicycle because the rider is assumed to walk it. Our current LTS 4 weight is intentionally much stronger than that time penalty because it represents reluctance to ride the link, not the time required to walk it. A future hybrid model could offer dismounting as an explicit alternative, but it should not be implied by the present route.</p>
+                  <p className="mt-2 text-xs text-violet-50">The model assumes the rider remains on the bicycle throughout the route. It does not silently switch to walking, change travel speed or instruct the rider to dismount. The LTS 4 weight represents a strong preference against riding a stressful link; it is not an estimate of walking time or travel speed. A future hybrid model could offer dismounting as an explicit alternative, but the present route only models cycling.</p>
                 </div>
                 <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-100">
                   {USING_LOCAL_ENRICHED_ROUTER

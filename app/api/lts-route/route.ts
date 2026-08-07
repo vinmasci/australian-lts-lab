@@ -239,9 +239,9 @@ function buildStressOutput(feature: BRouterFeature) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as { points?: unknown; allow_gravel?: unknown };
-    if (!Array.isArray(body.points) || body.points.length < 2 || body.points.length > 8 || !body.points.every(isCoordinate)) {
+    if (!Array.isArray(body.points) || body.points.length < 2 || body.points.length > 26 || !body.points.every(isCoordinate)) {
       return NextResponse.json(
-        { error: 'Provide between two and eight valid [longitude, latitude] points.' },
+        { error: 'Provide between two and 26 valid [longitude, latitude] points.' },
         { status: 400 },
       );
     }
@@ -299,4 +299,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
