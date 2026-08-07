@@ -38,7 +38,7 @@ Set the Mapbox public token and PMTiles URLs in `.env.local`. The two generated 
 - Victorian government and council sources: see the source links and build-specific counts in the app’s About panel.
 - NSW traffic counts and speed zones: Transport for NSW open data, used under its published Creative Commons Attribution terms.
 - Basemap: Mapbox and its data providers.
-- PMTiles reader: mapbox-pmtiles 1.0.56 (MIT), served locally so the map does not depend on a runtime CDN script.
+- PMTiles reader: the official PMTiles JavaScript protocol library (BSD-3-Clause), bundled with the app.
 
 Generated map archives are derivative datasets with their own source and attribution obligations. They are deployed separately from this code repository.
 

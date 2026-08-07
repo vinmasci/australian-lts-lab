@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { MapMouseEvent, MapboxGeoJSONFeature } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Bike, ExternalLink, Info, MapPin, Route as RouteIcon, RotateCcw, X } from 'lucide-react';
+import { Protocol } from 'pmtiles';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
-const PMTILES_SCRIPT_URL = '/vendor/mapbox-pmtiles.iife.js';
 const DATASET_VERSION = 'au-lts-v0.5-trail-suitability';
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
 const DATASETS = {
@@ -43,11 +43,6 @@ const LTS_LABELS: Record<number, string> = {
   3: 'Higher stress',
   4: 'High stress',
 };
-
-interface MapboxPmTilesGlobal {
-  SOURCE_TYPE: string;
-  PmTilesSource: unknown;
-}
 
 interface LtsMetadata {
   classifier_version: string;
@@ -155,31 +150,6 @@ function formatRouteTime(milliseconds: number): string {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return remainder ? `${hours} h ${remainder} min` : `${hours} h`;
-}
-
-function loadPmTilesPlugin(): Promise<MapboxPmTilesGlobal | null> {
-  if (typeof window === 'undefined') return Promise.resolve(null);
-  (window as unknown as { mapboxgl?: typeof mapboxgl }).mapboxgl = mapboxgl;
-  const existing = (window as unknown as { mapboxPmTiles?: MapboxPmTilesGlobal }).mapboxPmTiles;
-  if (existing) return Promise.resolve(existing);
-  return new Promise((resolve) => {
-    const prior = document.querySelector(`script[src="${PMTILES_SCRIPT_URL}"]`);
-    if (prior) {
-      prior.addEventListener('load', () => resolve(
-        (window as unknown as { mapboxPmTiles?: MapboxPmTilesGlobal }).mapboxPmTiles || null,
-      ));
-      prior.addEventListener('error', () => resolve(null));
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = PMTILES_SCRIPT_URL;
-    script.async = true;
-    script.onload = () => resolve(
-      (window as unknown as { mapboxPmTiles?: MapboxPmTilesGlobal }).mapboxPmTiles || null,
-    );
-    script.onerror = () => resolve(null);
-    document.head.appendChild(script);
-  });
 }
 
 function simplifyBaseMap(map: mapboxgl.Map) {
@@ -330,23 +300,14 @@ export default function LtsLabPage() {
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
-    let cancelled = false;
+    const protocol = new Protocol();
+    const mapboxProtocol = mapboxgl as unknown as {
+      addProtocol: (name: string, handler: typeof protocol.tile) => void;
+      removeProtocol: (name: string) => void;
+    };
+    mapboxProtocol.addProtocol('pmtiles', protocol.tile);
 
-    loadPmTilesPlugin().then((plugin) => {
-      if (cancelled || !mapContainerRef.current) return;
-      if (!plugin) {
-        setMapError('The PMTiles map reader failed to load.');
-        return;
-      }
-
-      try {
-        (mapboxgl as unknown as { Style: { setSourceType: (name: string, ctor: unknown) => void } })
-          .Style.setSourceType(plugin.SOURCE_TYPE, plugin.PmTilesSource);
-      } catch {
-        // The source type can already be registered after hot reload.
-      }
-
-      const map = new mapboxgl.Map({
+    const map = new mapboxgl.Map({
         container: mapContainerRef.current,
         style: 'mapbox://styles/mapbox/streets-v12',
         center: activeDataset.center,
@@ -365,9 +326,9 @@ export default function LtsLabPage() {
       map.on('load', () => {
         simplifyBaseMap(map);
         map.addSource('lts-network', {
-          type: 'pmtile-source',
-          url: activeDataset.dataUrl,
-        } as unknown as mapboxgl.SourceSpecification);
+          type: 'vector',
+          url: `pmtiles://${activeDataset.dataUrl}`,
+        });
         map.addSource('lts-selected', { type: 'geojson', data: selectedGeoJson() });
         map.addSource('lts-route', { type: 'geojson', data: emptyFeatureCollection() });
         map.addSource('lts-route-points', { type: 'geojson', data: routePointsGeoJson(routePointsRef.current) });
@@ -557,13 +518,12 @@ export default function LtsLabPage() {
           (map.getSource('lts-selected') as mapboxgl.GeoJSONSource)
             .setData(selectedGeoJson(feature));
         });
-      });
     });
 
     return () => {
-      cancelled = true;
       mapRef.current?.remove();
       mapRef.current = null;
+      mapboxProtocol.removeProtocol('pmtiles');
     };
   }, [activeDataset.center, activeDataset.dataUrl, activeDataset.zoom]);
 
