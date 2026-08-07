@@ -446,7 +446,7 @@ export default function LtsLabPage() {
           paint: {
             'line-color': colourExpression,
             'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 12, 1.5, 15, 3.5, 18, 7],
-            'line-opacity': 0.92,
+            'line-opacity': 0.8,
           },
         });
         map.addLayer({
@@ -460,7 +460,7 @@ export default function LtsLabPage() {
           paint: {
             'line-color': colourExpression,
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 13, 1.8, 16, 4],
-            'line-opacity': 0.7,
+            'line-opacity': 0.6,
             'line-dasharray': [2, 1.5],
           },
         });
@@ -475,7 +475,7 @@ export default function LtsLabPage() {
           paint: {
             'line-color': '#ffffff',
             'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.8, 12, 3.5, 15, 7, 18, 12],
-            'line-opacity': 0.92,
+            'line-opacity': 0.86,
           },
         });
         map.addLayer({
@@ -489,8 +489,22 @@ export default function LtsLabPage() {
           paint: {
             'line-color': colourExpression,
             'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 12, 1.7, 15, 3.8, 18, 7],
-            'line-opacity': ['case', ['==', ['get', 'confidence'], 'low'], 0.65, 0.95],
+            'line-opacity': ['case', ['==', ['get', 'confidence'], 'low'], 0.55, 0.82],
             'line-dasharray': [2, 1.5],
+          },
+        });
+        map.addLayer({
+          id: 'lts-mtb-trails-casing',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['==', ['get', 'is_mtb'], true],
+          minzoom: 9,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.8, 12, 3.6, 15, 6.4, 18, 10.2],
+            'line-opacity': 0.88,
           },
         });
         map.addLayer({
@@ -503,9 +517,23 @@ export default function LtsLabPage() {
           layout: { 'line-cap': 'butt', 'line-join': 'round' },
           paint: {
             'line-color': '#a855f7',
-            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.3, 12, 2.7, 15, 5.2, 18, 9],
-            'line-opacity': 0.9,
-            'line-dasharray': [2, 1.5],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 12, 1.7, 15, 3.2, 18, 5.5],
+            'line-opacity': 0.84,
+            'line-dasharray': [1.1, 1.25],
+          },
+        });
+        map.addLayer({
+          id: 'lts-unverified-trails-casing',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]],
+          minzoom: 11,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.2, 14, 5, 18, 10],
+            'line-opacity': 0.88,
           },
         });
         map.addLayer({
@@ -518,9 +546,9 @@ export default function LtsLabPage() {
           layout: { 'line-cap': 'butt', 'line-join': 'round' },
           paint: {
             'line-color': '#22d3ee',
-            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 1.6, 14, 4.2, 18, 9],
-            'line-opacity': 0.92,
-            'line-dasharray': [2, 1.5],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 14, 2.4, 18, 5.5],
+            'line-opacity': 0.84,
+            'line-dasharray': [1.1, 1.25],
           },
         });
         map.addLayer({
@@ -657,7 +685,9 @@ export default function LtsLabPage() {
       ['in', ['get', 'lts'], ['literal', levels]],
     ]);
     map.setLayoutProperty('lts-crossings', 'visibility', showCrossings ? 'visible' : 'none');
+    map.setLayoutProperty('lts-mtb-trails-casing', 'visibility', showMtbTrails ? 'visible' : 'none');
     map.setLayoutProperty('lts-mtb-trails', 'visibility', showMtbTrails ? 'visible' : 'none');
+    map.setLayoutProperty('lts-unverified-trails-casing', 'visibility', showUnverifiedTrails ? 'visible' : 'none');
     map.setLayoutProperty('lts-unverified-trails', 'visibility', showUnverifiedTrails ? 'visible' : 'none');
   }, [showCrossings, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
 
@@ -883,7 +913,7 @@ export default function LtsLabPage() {
                 })}
                 className="h-4 w-4"
               />
-              <span className="h-1.5 w-8 rounded-full" style={{ background: LTS_COLOURS[level] }} />
+              <span className="h-1.5 w-8 rounded-full opacity-80" style={{ background: LTS_COLOURS[level] }} />
               <span className="flex-1 text-sm">LTS {level} · {LTS_LABELS[level]}</span>
               {metadata && <span className="text-xs text-slate-500">{metadata.segment_distance_km[String(level)].toLocaleString()} km</span>}
             </label>
@@ -905,12 +935,12 @@ export default function LtsLabPage() {
         </div>
         <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showMtbTrails} onChange={(event) => setShowMtbTrails(event.target.checked)} className="h-4 w-4" />
-          <span className="w-8 border-t-[3px] border-dashed border-purple-500" />
+          <span className="relative h-3 w-8 rounded bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-purple-500 opacity-85" /></span>
           <span>OSM-tagged MTB trail</span>
         </label>
         <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showUnverifiedTrails} onChange={(event) => setShowUnverifiedTrails(event.target.checked)} className="h-4 w-4" />
-          <span className="w-8 border-t-[3px] border-dashed border-cyan-400" />
+          <span className="relative h-3 w-8 rounded bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-cyan-400 opacity-85" /></span>
           <span>Cycling suitability not confirmed</span>
         </label>
         {metadata && (
@@ -1076,7 +1106,7 @@ export default function LtsLabPage() {
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">Map delivery</p>
-                    <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered with MapLibre over a simplified OpenFreeMap base map. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Purple dashes identify OSM-tagged MTB trails. Cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
+                    <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered with MapLibre over a simplified OpenFreeMap base map. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Short white-backed purple dashes identify OSM-tagged MTB trails. Short white-backed cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">Experimental routing</p>
