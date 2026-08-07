@@ -7,7 +7,7 @@ import { Bike, ExternalLink, Info, MapPin, Route as RouteIcon, RotateCcw, X } fr
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
-const PMTILES_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/mapbox-pmtiles@1.0.56/dist/mapbox-pmtiles.iife.js';
+const PMTILES_SCRIPT_URL = '/vendor/mapbox-pmtiles.iife.js';
 const DATASET_VERSION = 'au-lts-v0.5-trail-suitability';
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
 const DATASETS = {
