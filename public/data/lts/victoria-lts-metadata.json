@@ -1,0 +1,411 @@
+{
+  "schema_version": 1,
+  "classifier_version": "au-lts-v0.5-trail-suitability",
+  "generated_at": "2026-08-05T12:23:49.767656+00:00",
+  "source": "OpenStreetMap via local Geofabrik Australia extract",
+  "source_pbf": "victoria-statewide-source.osm.pbf",
+  "source_pbf_modified_at": "2026-07-03T20:20:33Z",
+  "bbox": [
+    140.7,
+    -39.4,
+    150.4,
+    -33.8
+  ],
+  "pilot": "Victoria",
+  "traffic_volume_source": "Combined Victorian historical AADT, current DTP sensors, SCATS, and council surveys",
+  "traffic_volume_source_file": "yearly_aadt_volume_2019.geojson",
+  "traffic_volume_source_url": "https://opendata.transport.vic.gov.au/dataset/26fafd1a-8d59-4da0-93cd-29f371147d8f/resource/425799c9-658c-41cf-b9b0-6c9a145856cf/download/yearly_aadt_volume_2019.geojson",
+  "current_traffic_source_file": "current_traffic_observations.geojson",
+  "supplemental_road_sources": "DTP normal-operation Speed Zones (June 2026), DTP Bicycle Infrastructure Network, and City of Melbourne parking zones",
+  "segments": 617381,
+  "excluded_segments": 307067,
+  "crossings": 215848,
+  "segment_counts": {
+    "1": 262013,
+    "2": 185991,
+    "3": 49539,
+    "4": 119838
+  },
+  "segment_distance_km": {
+    "1": 101980.8,
+    "2": 34285.0,
+    "3": 7079.5,
+    "4": 123793.9
+  },
+  "crossing_counts": {
+    "1": 28753,
+    "2": 159875,
+    "3": 19812,
+    "4": 7408
+  },
+  "confidence_counts": {
+    "high": 207326,
+    "low": 166587,
+    "medium": 243468
+  },
+  "traffic_volume": {
+    "available_directional_records": 21690,
+    "matched_segments": 56084,
+    "matched_distance_km": 18494.2,
+    "uplifted_segments": 1781,
+    "methodology_counts": {
+      "Actual": 17155,
+      "Council classified traffic count": 605,
+      "Council traffic survey": 4884,
+      "Estimated": 30864,
+      "Observed 15-minute sensor average": 179,
+      "SCATS intersection estimate": 2397
+    },
+    "source_counts": {
+      "City of Casey": 4884,
+      "City of Melbourne": 605,
+      "DTP SCATS": 2397,
+      "DTP TIRTL": 36,
+      "DTP Telemetry": 143,
+      "DTP historical AADT": 48019
+    },
+    "volume_band_counts": {
+      "1": 9619,
+      "2": 13778,
+      "3": 19907,
+      "4": 12780
+    },
+    "uplift_samples": [
+      {
+        "osm_id": "w4306021",
+        "name": "Little Collins Street",
+        "highway": "unclassified",
+        "baseline_lts": 1,
+        "traffic_lts": 2,
+        "aadt": 3346,
+        "year": 2017,
+        "methodology": "Council classified traffic count",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w4308557",
+        "name": "Flinders Lane",
+        "highway": "unclassified",
+        "baseline_lts": 1,
+        "traffic_lts": 2,
+        "aadt": 3846,
+        "year": 2017,
+        "methodology": "Council classified traffic count",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w4518187",
+        "name": "Dandenong Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 20114,
+        "year": 2019,
+        "methodology": "Actual",
+        "match_confidence": "high"
+      },
+      {
+        "osm_id": "w4612649",
+        "name": "North Road",
+        "highway": "unclassified",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 19807,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w4619436",
+        "name": "Boundary Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 20386,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w4717974",
+        "name": "High Street Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 23668,
+        "year": 2026,
+        "methodology": "SCATS intersection estimate",
+        "match_confidence": "low"
+      },
+      {
+        "osm_id": "w4744656",
+        "name": "High Street Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 26020,
+        "year": 2026,
+        "methodology": "SCATS intersection estimate",
+        "match_confidence": "low"
+      },
+      {
+        "osm_id": "w4822429",
+        "name": "High Street Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 13010,
+        "year": 2026,
+        "methodology": "SCATS intersection estimate",
+        "match_confidence": "low"
+      },
+      {
+        "osm_id": "w5386541",
+        "name": "Greigs Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 1532,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5386620",
+        "name": "Boundary Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 18738,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5387319",
+        "name": "Leakes Road",
+        "highway": "unclassified",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 11701,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5431724",
+        "name": "Cape Schanck Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 7434,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5638327",
+        "name": "Swanston Street",
+        "highway": "secondary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 4945,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5724640",
+        "name": "Victoria Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 6234,
+        "year": 2016,
+        "methodology": "Council classified traffic count",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5724644",
+        "name": "Victoria Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 12468,
+        "year": 2016,
+        "methodology": "Council classified traffic count",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w6262173",
+        "name": "Harbour Esplanade",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 6212,
+        "year": 2015,
+        "methodology": "Council classified traffic count",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8113357",
+        "name": "Dalrymple Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 7434,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8113373",
+        "name": "Bulla - Diggers Rest Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 250,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8113389",
+        "name": "Bulla - Diggers Rest Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 135,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8113392",
+        "name": "Bulla - Diggers Rest Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 270,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8367258",
+        "name": "Elm Grove",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 10009,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8962148",
+        "name": "Duncan Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 11484,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w10844441",
+        "name": "Grey Street",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 14780,
+        "year": 2019,
+        "methodology": "Actual",
+        "match_confidence": "high"
+      },
+      {
+        "osm_id": "w12096395",
+        "name": "Old Moorooduc Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 327,
+        "year": 2019,
+        "methodology": "Estimated",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w12985474",
+        "name": "Anderson Street",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8802,
+        "year": 2015,
+        "methodology": "Council classified traffic count",
+        "match_confidence": "medium"
+      }
+    ]
+  },
+  "supplemental_roads": {
+    "available_records": {
+      "DTP normal-operation speed-zone parts": 971637,
+      "DTP bicycle OSM ways": 23117,
+      "City of Melbourne parking-zone records": 926,
+      "City of Melbourne pay-stay restriction records": 6270
+    },
+    "bicycle_infrastructure_segments": 574,
+    "official_speed_directions": 332719,
+    "official_speed_segments": 168271,
+    "parking_segments": 1799,
+    "matched_distance_km": {
+      "bicycle_infrastructure": 36.5,
+      "official_speed": 101095.6,
+      "parking": 157.4
+    }
+  },
+  "surface": {
+    "counts": {
+      "sealed": 272890,
+      "unknown": 261265,
+      "unsealed": 83226
+    },
+    "distance_km": {
+      "sealed": 83076.3,
+      "unknown": 75030.6,
+      "unsealed": 109032.3
+    }
+  },
+  "mtb": {
+    "route_relations": 230,
+    "route_member_ways": 1914,
+    "counts": {
+      "routing_avoid": 1296,
+      "routing_caution": 3242,
+      "shown_not_routable": 144,
+      "shown_routable": 4394
+    },
+    "distance_km": {
+      "routing_avoid": 1000.8,
+      "routing_caution": 2361.2,
+      "shown_not_routable": 93.3,
+      "shown_routable": 3362.0
+    }
+  },
+  "trails": {
+    "bicycle_route_relations": 475,
+    "bicycle_route_member_ways": 16200,
+    "hiking_route_relations": 145,
+    "hiking_route_member_ways": 3397,
+    "counts": {
+      "routing_avoid": 454,
+      "routing_caution": 78399
+    },
+    "distance_km": {
+      "routing_avoid": 312.7,
+      "routing_caution": 74275.7
+    }
+  }
+}
+

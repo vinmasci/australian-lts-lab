@@ -1,0 +1,10 @@
+.next/
+node_modules/
+.vercel/
+.env
+.env.*
+!.env.example
+public/data/lts/*.pmtiles
+.DS_Store
+
+.vercel

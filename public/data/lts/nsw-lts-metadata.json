@@ -1,0 +1,1900 @@
+{
+  "schema_version": 1,
+  "classifier_version": "au-lts-v0.5-trail-suitability",
+  "generated_at": "2026-08-07T04:12:38.446503+00:00",
+  "source": "OpenStreetMap via local Geofabrik Australia extract",
+  "source_pbf": "nsw-statewide-source.osm.pbf",
+  "source_pbf_modified_at": "2026-08-06T18:31:42Z",
+  "bbox": [
+    140.8,
+    -37.7,
+    159.3,
+    -28.0
+  ],
+  "pilot": "New South Wales",
+  "traffic_volume_source": [
+    "Transport for NSW Road Traffic Volume Counts"
+  ],
+  "traffic_volume_source_file": "accepted_traffic.geojson",
+  "traffic_volume_source_url": null,
+  "current_traffic_source_file": null,
+  "additional_traffic_source_files": [],
+  "nsw_speed_zone_source_file": "nsw_speed_zones.geojson.gz",
+  "supplemental_road_sources": null,
+  "segments": 605901,
+  "excluded_segments": 300786,
+  "crossings": 129247,
+  "segment_counts": {
+    "1": 283343,
+    "2": 179529,
+    "3": 45070,
+    "4": 97959
+  },
+  "segment_distance_km": {
+    "1": 106015.6,
+    "2": 101946.6,
+    "3": 27934.4,
+    "4": 75493.5
+  },
+  "crossing_counts": {
+    "1": 34460,
+    "2": 79747,
+    "3": 10218,
+    "4": 4822
+  },
+  "confidence_counts": {
+    "high": 216511,
+    "low": 233260,
+    "medium": 156130
+  },
+  "traffic_volume": {
+    "available_directional_records": 1462,
+    "matched_segments": 675,
+    "matched_distance_km": 3629.0,
+    "uplifted_segments": 4,
+    "methodology_counts": {
+      "Published yearly ALL DAYS / ALL VEHICLES summary": 675
+    },
+    "source_counts": {
+      "Transport for NSW Road Traffic Volume Counts": 675
+    },
+    "volume_band_counts": {
+      "1": 335,
+      "2": 168,
+      "3": 83,
+      "4": 89
+    },
+    "uplift_samples": [
+      {
+        "osm_id": "w132310560",
+        "name": "Coolac Road",
+        "highway": "unclassified",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7911,
+        "year": 2006,
+        "methodology": "Published yearly ALL DAYS / ALL VEHICLES summary",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w220411105",
+        "name": "Hawkesbury Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 29113,
+        "year": 2026,
+        "methodology": "Published yearly ALL DAYS / ALL VEHICLES summary",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w227247112",
+        "name": "Dunmore Road",
+        "highway": "unclassified",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8259,
+        "year": 2007,
+        "methodology": "Published yearly ALL DAYS / ALL VEHICLES summary",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w752965953",
+        "name": "Wakehurst Parkway",
+        "highway": "primary",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 23672,
+        "year": 2014,
+        "methodology": "Published yearly ALL DAYS / ALL VEHICLES summary",
+        "match_confidence": "medium"
+      }
+    ]
+  },
+  "supplemental_roads": {
+    "available_records": {},
+    "matched_distance_km": {}
+  },
+  "nsw_speed_zones": {
+    "available_records": 484968,
+    "source_audit": {
+      "source_features": 506937,
+      "accepted_records": 484968,
+      "rejected": {
+        "invalid_or_out_of_bounds_geometry": 21,
+        "not_all_day": 12771,
+        "short_geometry": 9177
+      }
+    },
+    "status_counts": {
+      "ambiguous": 74,
+      "ineligible": 583393,
+      "matched": 52745,
+      "protected_osm": 162312,
+      "unmatched": 108163
+    },
+    "reason_counts": {
+      "explicit_osm_speed_present": 162312,
+      "invalid_or_short_osm_geometry": 1810,
+      "multiple_strong_source_matches": 48,
+      "no_strong_geometry_match": 108163,
+      "one_way_source_without_one_way_osm_scope": 26,
+      "single_strong_match": 52745,
+      "unsupported_road_scope": 581583
+    },
+    "matched_distance_km": 9074.2,
+    "ambiguity_samples": [
+      {
+        "osm_id": "w2654276",
+        "name": "MacArthur Street",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:5",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.12,
+            "alignment": 1.0,
+            "osm_coverage": 0.996
+          }
+        ]
+      },
+      {
+        "osm_id": "w2654277",
+        "name": "Bay Lane",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:6",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.54,
+            "alignment": 1.0,
+            "osm_coverage": 0.9738
+          }
+        ]
+      },
+      {
+        "osm_id": "w2698620",
+        "name": "Smail Street",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:14",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.5,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w2761572",
+        "name": "St Barnabas Street",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:13",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.51,
+            "alignment": 1.0,
+            "osm_coverage": 0.9947
+          }
+        ]
+      },
+      {
+        "osm_id": "w4922631",
+        "name": "Old Pacific Highway",
+        "highway": "tertiary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "6233:8",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.81,
+            "alignment": 0.9997,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "6233:7",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.41,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w5463029",
+        "name": "Alfred Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "121334:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.45,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "11598:7",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.45,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w31093760",
+        "name": "Sir John Young Crescent",
+        "highway": "tertiary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "165448:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.57,
+            "alignment": 0.9992,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "145478:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.67,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w32461545",
+        "name": "King Street",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "6060:4",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.18,
+            "alignment": 1.0,
+            "osm_coverage": 0.993
+          }
+        ]
+      },
+      {
+        "osm_id": "w32461550",
+        "name": "Nathan Street",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "6060:6",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 2.02,
+            "alignment": 0.9991,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w32461551",
+        "name": "Cowdroy Lane",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "6060:0",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.04,
+            "alignment": 1.0,
+            "osm_coverage": 0.9997
+          }
+        ]
+      },
+      {
+        "osm_id": "w39807325",
+        "name": "Cathedral Street",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "3530:1",
+            "speed_kmh": 40,
+            "zone_type": "High Pedestrian",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.41,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w42918180",
+        "name": "Cohen Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "18393:102",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.82,
+            "alignment": 0.9949,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "81582:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.73,
+            "alignment": 0.9987,
+            "osm_coverage": 0.9149
+          }
+        ]
+      },
+      {
+        "osm_id": "w79617054",
+        "name": "Mount Street",
+        "highway": "primary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "164117:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.0,
+            "alignment": 0.9996,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "136273:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.21,
+            "alignment": 0.9638,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w86369531",
+        "name": "Tom Thumb Road",
+        "highway": "unclassified",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "69088:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.9,
+            "alignment": 0.9994,
+            "osm_coverage": 0.9816
+          },
+          {
+            "source_id": "17796:22",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.63,
+            "alignment": 0.9996,
+            "osm_coverage": 0.9834
+          }
+        ]
+      },
+      {
+        "osm_id": "w105698140",
+        "name": "Tom Thumb Road",
+        "highway": "unclassified",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "56088:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.4,
+            "alignment": 0.9998,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "17796:22",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.84,
+            "alignment": 0.9998,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w118893631",
+        "name": "Hoxton Park Road",
+        "highway": "primary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "94239:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.6,
+            "alignment": 0.9961,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "7:2",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.63,
+            "alignment": 0.996,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w133368717",
+        "name": "Survey Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "5423:1",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.64,
+            "alignment": 0.9714,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "244907:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.97,
+            "alignment": 0.9997,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w135210894",
+        "name": "Villiers Road",
+        "highway": "unclassified",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "104654:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.82,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "72434:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.56,
+            "alignment": 0.9798,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w148331266",
+        "name": "Bay Street",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:8",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.87,
+            "alignment": 1.0,
+            "osm_coverage": 0.9971
+          }
+        ]
+      },
+      {
+        "osm_id": "w155778174",
+        "name": "River Street",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "5612:9",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.68,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "5612:21",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.64,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w173160698",
+        "name": "Pyrmont Street",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:7",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.79,
+            "alignment": 0.9998,
+            "osm_coverage": 0.9905
+          }
+        ]
+      },
+      {
+        "osm_id": "w173836395",
+        "name": "Hopewell Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "164785:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.69,
+            "alignment": 0.9997,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "7646:43",
+            "speed_kmh": 40,
+            "zone_type": "High Pedestrian",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.7,
+            "alignment": 0.9997,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w174709503",
+        "name": "Carlene Avenue",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "99165:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.33,
+            "alignment": 0.9996,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "81711:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.89,
+            "alignment": 0.9838,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w175567873",
+        "name": "Wolseley Street",
+        "highway": "unclassified",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "102862:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.54,
+            "alignment": 0.9957,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "112546:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.85,
+            "alignment": 0.9914,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w230066064",
+        "name": "Mountain Street",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:11",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.61,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w230066065",
+        "name": "Smail Street",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:14",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.55,
+            "alignment": 1.0,
+            "osm_coverage": 0.9847
+          }
+        ]
+      },
+      {
+        "osm_id": "w233183038",
+        "name": "Northview Drive",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "6060:7",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.83,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w233183039",
+        "name": "Short Street",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "6060:2",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.04,
+            "alignment": 0.9999,
+            "osm_coverage": 0.9828
+          }
+        ]
+      },
+      {
+        "osm_id": "w238006686",
+        "name": "Bank Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "165754:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.44,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "17363:32",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.97,
+            "alignment": 0.9877,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w252124495",
+        "name": "Wills Crescent",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "3124:0",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.7,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w256688058",
+        "name": "Fairfield Road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "11794:3",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.35,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "114378:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.38,
+            "alignment": 1.0,
+            "osm_coverage": 0.9849
+          },
+          {
+            "source_id": "63268:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.41,
+            "alignment": 1.0,
+            "osm_coverage": 0.9859
+          }
+        ]
+      },
+      {
+        "osm_id": "w270298790",
+        "name": "Premier Lane",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "14282:0",
+            "speed_kmh": 10,
+            "zone_type": "Shared",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.29,
+            "alignment": 0.9936,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w273860247",
+        "name": "Unnamed road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "111509:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.45,
+            "alignment": 0.9985,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "155152:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.43,
+            "alignment": 0.9996,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w282448284",
+        "name": "Fairfield Road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "11794:3",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.92,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "58827:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.14,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w286148001",
+        "name": "Small Lane",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:12",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.66,
+            "alignment": 0.9999,
+            "osm_coverage": 0.9905
+          }
+        ]
+      },
+      {
+        "osm_id": "w286409461",
+        "name": "Unnamed road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "6590:9",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.37,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "69703:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.37,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w289960252",
+        "name": "Darling Drive",
+        "highway": "tertiary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "155767:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.26,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "155373:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.37,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w296449302",
+        "name": "St Andrews Road",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "76120:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.72,
+            "alignment": 0.9982,
+            "osm_coverage": 0.9952
+          },
+          {
+            "source_id": "1707:3",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.72,
+            "alignment": 0.9981,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w316292328",
+        "name": "Carlingford Street",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "4983:10",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.28,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "44184:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.29,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w460430429",
+        "name": "Donovan Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "7397:3",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.86,
+            "alignment": 0.9903,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "118473:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.31,
+            "alignment": 0.9704,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w570071596",
+        "name": "Andrews Road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "6644:2",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.92,
+            "alignment": 0.9879,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "6644:1",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.8,
+            "alignment": 0.9976,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w572176623",
+        "name": "Restwell Road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "17459:47",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.89,
+            "alignment": 0.9996,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "17459:35",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.43,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w573304454",
+        "name": "Unnamed road",
+        "highway": "unclassified",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "9045:0",
+            "speed_kmh": 20,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.37,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "9045:1",
+            "speed_kmh": 20,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.5,
+            "alignment": 0.9673,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w578226339",
+        "name": "River Street",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "5612:9",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.31,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "5612:21",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.61,
+            "alignment": 0.9998,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w580304392",
+        "name": "Bourke Street",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "13412:0",
+            "speed_kmh": 40,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 2.81,
+            "alignment": 0.9998,
+            "osm_coverage": 0.9258
+          }
+        ]
+      },
+      {
+        "osm_id": "w624574874",
+        "name": "Hopewell Lane",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "7646:44",
+            "speed_kmh": 40,
+            "zone_type": "High Pedestrian",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.13,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "163567:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.13,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w639691375",
+        "name": "Wyong Road",
+        "highway": "primary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "163466:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.81,
+            "alignment": 0.9703,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "11519:1",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.97,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w728187514",
+        "name": "Moore Street",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "7548:0",
+            "speed_kmh": 40,
+            "zone_type": "High Pedestrian",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 2.16,
+            "alignment": 1.0,
+            "osm_coverage": 0.9792
+          }
+        ]
+      },
+      {
+        "osm_id": "w734294776",
+        "name": "Cosgrove Road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "17512:0",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.97,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "77794:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.76,
+            "alignment": 0.9589,
+            "osm_coverage": 0.9272
+          }
+        ]
+      },
+      {
+        "osm_id": "w785864921",
+        "name": "Bringelly Road",
+        "highway": "tertiary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "73545:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.42,
+            "alignment": 0.9998,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "8130:0",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.62,
+            "alignment": 0.9998,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w798283759",
+        "name": "The Wool Road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "5098:4",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.85,
+            "alignment": 0.9977,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "5098:5",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.18,
+            "alignment": 0.9906,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w841640904",
+        "name": "Cathedral Street",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "3530:1",
+            "speed_kmh": 40,
+            "zone_type": "High Pedestrian",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.63,
+            "alignment": 0.9911,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w879454599",
+        "name": "Michelle Avenue",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "14593:0",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.01,
+            "alignment": 0.9889,
+            "osm_coverage": 0.9815
+          }
+        ]
+      },
+      {
+        "osm_id": "w912684978",
+        "name": "Blackhill Road",
+        "highway": "tertiary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "754:0",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.47,
+            "alignment": 0.999,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w930624743",
+        "name": "Coopers Road",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "8721:0",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 2.01,
+            "alignment": 0.9998,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1075313312",
+        "name": "Broughton Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "214363:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.58,
+            "alignment": 0.9908,
+            "osm_coverage": 0.9529
+          },
+          {
+            "source_id": "215963:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.39,
+            "alignment": 0.9948,
+            "osm_coverage": 0.9356
+          }
+        ]
+      },
+      {
+        "osm_id": "w1078855409",
+        "name": "Sherwood Road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "80980:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.28,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "885:8",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.56,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1100860043",
+        "name": "Arabella Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "171191:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.52,
+            "alignment": 0.995,
+            "osm_coverage": 0.9742
+          },
+          {
+            "source_id": "164823:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.3,
+            "alignment": 0.9956,
+            "osm_coverage": 0.9566
+          }
+        ]
+      },
+      {
+        "osm_id": "w1101863736",
+        "name": "Hardy Road",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "9839:0",
+            "speed_kmh": 100,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.4,
+            "alignment": 0.9999,
+            "osm_coverage": 0.9509
+          }
+        ]
+      },
+      {
+        "osm_id": "w1130747806",
+        "name": "Eschol Park Drive",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "46776:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.57,
+            "alignment": 0.9996,
+            "osm_coverage": 0.9878
+          },
+          {
+            "source_id": "62052:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.79,
+            "alignment": 0.9983,
+            "osm_coverage": 0.9893
+          }
+        ]
+      },
+      {
+        "osm_id": "w1194299623",
+        "name": "River Street",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "5612:9",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.85,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "5612:21",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.64,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1212506300",
+        "name": "Bay Street",
+        "highway": "unclassified",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:1",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.51,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1248945422",
+        "name": "Unnamed road",
+        "highway": "primary_link",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "155357:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.98,
+            "alignment": 0.9998,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "157053:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.99,
+            "alignment": 0.9967,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1266356519",
+        "name": "Bank Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "17840:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.07,
+            "alignment": 0.9984,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "150633:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.95,
+            "alignment": 0.9801,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1295102404",
+        "name": "Alfred Street",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "121334:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.92,
+            "alignment": 0.9959,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "11598:7",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.92,
+            "alignment": 0.996,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1310813280",
+        "name": "Unnamed road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "6590:10",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.11,
+            "alignment": 0.9985,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "126254:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.45,
+            "alignment": 0.9967,
+            "osm_coverage": 0.9149
+          }
+        ]
+      },
+      {
+        "osm_id": "w1315305544",
+        "name": "Chapman Street",
+        "highway": "tertiary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "200983:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.43,
+            "alignment": 0.9964,
+            "osm_coverage": 0.9862
+          },
+          {
+            "source_id": "179847:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.45,
+            "alignment": 0.9959,
+            "osm_coverage": 0.9864
+          }
+        ]
+      },
+      {
+        "osm_id": "w1316346091",
+        "name": "Fairfield Road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "11794:3",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.14,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "63268:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.36,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "58827:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.4,
+            "alignment": 1.0,
+            "osm_coverage": 0.9909
+          }
+        ]
+      },
+      {
+        "osm_id": "w1323378057",
+        "name": "Old Illawarra Road",
+        "highway": "tertiary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "1034:6",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.93,
+            "alignment": 0.9992,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "1034:0",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.38,
+            "alignment": 0.9828,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1333063424",
+        "name": "Tallawong Road",
+        "highway": "tertiary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "80847:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.03,
+            "alignment": 0.9642,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "3836:0",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.03,
+            "alignment": 0.964,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1359710293",
+        "name": "Tallawong Road",
+        "highway": "tertiary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "3836:0",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.04,
+            "alignment": 0.9891,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "80847:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 1.05,
+            "alignment": 0.989,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1381345113",
+        "name": "Fairfield Road",
+        "highway": "secondary",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "58827:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.14,
+            "alignment": 0.9998,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "11794:3",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 3.36,
+            "alignment": 0.9993,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1524327670",
+        "name": "Womerah Avenue",
+        "highway": "residential",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "10454:49",
+            "speed_kmh": 40,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.95,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "146259:0",
+            "speed_kmh": 50,
+            "zone_type": "Default",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 0.97,
+            "alignment": 0.9999,
+            "osm_coverage": 0.9842
+          }
+        ]
+      },
+      {
+        "osm_id": "w1524332528",
+        "name": "Mountain Street",
+        "highway": "living_street",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "16193:11",
+            "speed_kmh": 40,
+            "zone_type": "Local Traffic",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.15,
+            "alignment": 0.9996,
+            "osm_coverage": 1.0
+          }
+        ]
+      }
+    ]
+  },
+  "surface": {
+    "counts": {
+      "sealed": 343045,
+      "unknown": 167607,
+      "unsealed": 95249
+    },
+    "distance_km": {
+      "sealed": 114275.6,
+      "unknown": 49532.2,
+      "unsealed": 147582.3
+    }
+  },
+  "mtb": {
+    "route_relations": 153,
+    "route_member_ways": 1324,
+    "counts": {
+      "routing_avoid": 695,
+      "routing_caution": 2367,
+      "shown_not_routable": 106,
+      "shown_routable": 2956
+    },
+    "distance_km": {
+      "routing_avoid": 374.6,
+      "routing_caution": 1722.5,
+      "shown_not_routable": 65.9,
+      "shown_routable": 2097.1
+    }
+  },
+  "trails": {
+    "bicycle_route_relations": 757,
+    "bicycle_route_member_ways": 29644,
+    "hiking_route_relations": 154,
+    "hiking_route_member_ways": 4543,
+    "counts": {
+      "routing_avoid": 2260,
+      "routing_caution": 87594
+    },
+    "distance_km": {
+      "routing_avoid": 738.5,
+      "routing_caution": 76119.9
+    }
+  }
+}
+
