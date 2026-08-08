@@ -652,7 +652,7 @@ export default function LtsLabPage() {
         window.setTimeout(() => {
           if (completed || requestId !== routeRequestIdRef.current) return;
           setComparisonScoring(false);
-          setRouteComparisonError('The bike-profile route loaded, but its LTS map tiles were not available for scoring.');
+          setRouteComparisonError('The AusBUG Bike Paths route loaded, but its LTS map tiles were not available for scoring.');
         }, 9_000);
       }
     } catch (error) {
@@ -1205,7 +1205,7 @@ export default function LtsLabPage() {
                       {selectedRouteKind === 'bike-profile'
                         ? <span className="block h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #16a34a, #2563eb, #f59e0b, #dc2626)' }} />
                         : <span className="block border-t-[3px] border-dashed border-slate-400 opacity-75" />}
-                      <span className="mt-1.5 block font-semibold text-slate-100">BRouter bike profile</span>
+                      <span className="mt-1.5 block font-semibold text-slate-100">AusBUG Bike Paths</span>
                       <span className="block text-slate-400">
                         {comparisonScoring ? 'Scoring against map…' : routeComparison ? formatRouteDistance(routeComparison.summary.distance_m) : 'Unavailable'}
                       </span>
@@ -1535,7 +1535,7 @@ export default function LtsLabPage() {
                 {!activeDataset.routable && <p className="mt-2 rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-sky-100">The statewide NSW map is map-only. Its visual classification, traffic matches and speed-zone matches are being audited before any NSW BRouter segment build. It cannot change production navigation.</p>}
                 {activeDataset.routable && <>
                 <p className="mt-2">The planner accepts up to 26 ordered points labelled A–Z. BRouter connects them in sequence, and every edit—including Clear—can be undone or redone.</p>
-                <p className="mt-2">Each plan also requests the existing AusBUG <code className="text-slate-300">cyabalanced</code> BRouter bike profile for the same points and gravel setting. The route-comparison switch colours either result using the loaded directional LTS map while drawing the other as a semi-transparent grey dashed line. The comparison profile&apos;s own routing cost is never presented as stress: its geometry is spatially matched back to the same map classifier, and any section that cannot be matched confidently remains grey and is reported as unscored.</p>
+                <p className="mt-2">Each plan also requests the existing AusBUG <strong>Bike Paths</strong> route using the <code className="text-slate-300">cyabikepath</code> BRouter profile—the conservative profile used by the iOS and Android apps—for the same points and gravel setting. The route-comparison switch colours either result using the loaded directional LTS map while drawing the other as a semi-transparent grey dashed line. The comparison profile&apos;s own routing cost is never presented as stress: its geometry is spatially matched back to the same map classifier, and any section that cannot be matched confidently remains grey and is reported as unscored.</p>
                 <p className="mt-2">The <code className="text-emerald-300">cyalts</code> profile assigns widely separated routing costs: 1.0 for LTS 1, 1.8 for LTS 2, 5.0 for LTS 3 and 15.0 for LTS 4. This strongly prefers low-stress links while allowing a higher-stress connection when otherwise necessary.</p>
                 {USING_LOCAL_ENRICHED_ROUTER && <p className="mt-2">The local enriched segments carry the map classifier&apos;s forward and backward LTS values directly. BRouter uses the value for the travel direction; it does not independently reinterpret the road&apos;s lane or cycleway tags. The background line deliberately uses the worse direction, so a routed line can be safer—but not more stressful—when the lane or cycleway on the ridden side is better.</p>}
                 {USING_LOCAL_ENRICHED_ROUTER && <p className="mt-2">Crossing dots are classified by the same rules and add point penalties equivalent to a 0 m, 20 m, 80 m or 250 m detour for LTS 1–4. This encourages the router to prefer signals, refuges and calmer crossings without making a difficult crossing an absolute barrier.</p>}

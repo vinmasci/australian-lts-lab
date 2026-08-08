@@ -5,7 +5,7 @@ const BROUTER_ROUTE_URL = process.env.LTS_BROUTER_URL
   || (USING_LOCAL_ENRICHED_ROUTER ? 'http://127.0.0.1:17780/brouter' : 'https://valhalla.vicbug.app/brouter');
 const COMPARISON_BROUTER_ROUTE_URL = process.env.BROUTER_COMPARISON_URL
   || 'https://valhalla.vicbug.app/brouter';
-const COMPARISON_PROFILE = 'cyabalanced';
+const COMPARISON_PROFILE = 'cyabikepath';
 const ROUTING_CLASSIFIER_VERSION = process.env.LTS_ROUTER_CLASSIFIER_VERSION
   || (USING_LOCAL_ENRICHED_ROUTER ? 'au-lts-v0.5-trail-suitability-test' : 'au-lts-brouter-v0.1');
 
@@ -279,7 +279,7 @@ async function requestComparisonRoute(
 
     const feature = response.features?.[0];
     if (!upstream.ok || response.error || !feature?.geometry?.coordinates?.length) {
-      return { error: response.error || 'The BRouter bike-profile comparison was unavailable.' };
+      return { error: response.error || 'The AusBUG Bike Paths comparison was unavailable.' };
     }
 
     return {
@@ -292,8 +292,8 @@ async function requestComparisonRoute(
   } catch (error) {
     return {
       error: error instanceof Error && error.name === 'AbortError'
-        ? 'The BRouter bike-profile comparison timed out.'
-        : error instanceof Error ? error.message : 'The BRouter bike-profile comparison failed.',
+        ? 'The AusBUG Bike Paths comparison timed out.'
+        : error instanceof Error ? error.message : 'The AusBUG Bike Paths comparison failed.',
     };
   }
 }
@@ -359,7 +359,7 @@ export async function POST(request: NextRequest) {
       route: feature.geometry,
       instructions: [],
       comparison: comparison.route && comparison.summary ? {
-        label: 'BRouter bike profile',
+        label: 'AusBUG Bike Paths',
         profile: COMPARISON_PROFILE,
         route: comparison.route,
         summary: comparison.summary,
