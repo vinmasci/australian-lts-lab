@@ -28,6 +28,7 @@ Set the PMTiles URLs in `.env.local`. The two generated PMTiles archives are int
 
 - `NEXT_PUBLIC_VICTORIA_PMTILES_URL`: public Victoria PMTiles archive with byte-range and CORS support.
 - `NEXT_PUBLIC_NSW_PMTILES_URL`: public NSW PMTiles archive with byte-range and CORS support.
+- `NEXT_PUBLIC_MAPBOX_TOKEN`: public Mapbox token used only when the optional satellite overlay is enabled.
 - `LTS_BROUTER_URL`: BRouter-compatible endpoint.
 - `BROUTER_COMPARISON_URL`: existing AusBUG BRouter endpoint used for the mobile apps' conservative `cyabikepath` (Bike Paths) comparison route.
 - `LTS_ROUTER_CLASSIFIER_VERSION`: classifier label returned by the route API.

@@ -32,6 +32,9 @@ const DATASETS = {
 } as const;
 type DatasetKey = keyof typeof DATASETS;
 const MAX_ROUTE_POINTS = 26;
+const MAPBOX_PUBLIC_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+const SATELLITE_SOURCE_ID = 'mapbox-satellite';
+const SATELLITE_LAYER_ID = 'mapbox-satellite-layer';
 const BASEMAP_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -90,6 +93,35 @@ const LTS_LABELS: Record<number, string> = {
   3: 'Higher stress',
   4: 'High stress',
 };
+
+function syncSatelliteOverlay(map: maplibregl.Map, enabled: boolean, opacity: number) {
+  if (!enabled || !MAPBOX_PUBLIC_TOKEN) {
+    if (map.getLayer(SATELLITE_LAYER_ID)) map.removeLayer(SATELLITE_LAYER_ID);
+    if (map.getSource(SATELLITE_SOURCE_ID)) map.removeSource(SATELLITE_SOURCE_ID);
+    return;
+  }
+
+  if (!map.getSource(SATELLITE_SOURCE_ID)) {
+    map.addSource(SATELLITE_SOURCE_ID, {
+      type: 'raster',
+      url: `https://api.mapbox.com/v4/mapbox.satellite.json?secure&access_token=${MAPBOX_PUBLIC_TOKEN}`,
+      tileSize: 256,
+    });
+  }
+  if (!map.getLayer(SATELLITE_LAYER_ID)) {
+    map.addLayer({
+      id: SATELLITE_LAYER_ID,
+      type: 'raster',
+      source: SATELLITE_SOURCE_ID,
+      paint: {
+        'raster-opacity': opacity,
+        'raster-fade-duration': 180,
+      },
+    }, map.getLayer('road-labels') ? 'road-labels' : undefined);
+  } else {
+    map.setPaintProperty(SATELLITE_LAYER_ID, 'raster-opacity', opacity);
+  }
+}
 
 interface LtsMetadata {
   classifier_version: string;
@@ -507,6 +539,8 @@ export default function LtsLabPage() {
   const routeRequestIdRef = useRef(0);
   const routeHistoryRef = useRef<Coordinate[][]>([[]]);
   const routeHistoryIndexRef = useRef(0);
+  const satelliteEnabledRef = useRef(false);
+  const satelliteOpacityRef = useRef(0.55);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapLoading, setMapLoading] = useState(true);
   const [metadata, setMetadata] = useState<LtsMetadata | null>(null);
@@ -516,6 +550,8 @@ export default function LtsLabPage() {
   const [showLowConfidence, setShowLowConfidence] = useState(true);
   const [showMtbTrails, setShowMtbTrails] = useState(true);
   const [showUnverifiedTrails, setShowUnverifiedTrails] = useState(true);
+  const [satelliteEnabled, setSatelliteEnabled] = useState(false);
+  const [satelliteOpacity, setSatelliteOpacity] = useState(0.55);
   const [allowGravel, setAllowGravel] = useState(true);
   const [routeMode, setRouteMode] = useState(false);
   const [routePoints, setRoutePoints] = useState<Coordinate[]>([]);
@@ -982,6 +1018,7 @@ export default function LtsLabPage() {
           (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
             .setData(selectedGeoJson(feature));
         });
+        syncSatelliteOverlay(map, satelliteEnabledRef.current, satelliteOpacityRef.current);
         setMapLoading(false);
     });
 
@@ -1035,6 +1072,14 @@ export default function LtsLabPage() {
   }, [showCrossings, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
 
   useEffect(() => {
+    satelliteEnabledRef.current = satelliteEnabled;
+    satelliteOpacityRef.current = satelliteOpacity;
+    const map = mapRef.current;
+    if (!map?.getLayer('road-labels')) return;
+    syncSatelliteOverlay(map, satelliteEnabled, satelliteOpacity);
+  }, [satelliteEnabled, satelliteOpacity]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!map?.getLayer('lts-route-line')) return;
     map.setPaintProperty('lts-route-line', 'line-opacity', transparentRoutes ? 0.48 : 1);
@@ -1063,6 +1108,17 @@ export default function LtsLabPage() {
           <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/90 px-5 py-4 text-sm font-semibold text-slate-100 shadow-2xl">
             <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
             Loading the full-resolution LTS network…
+          </div>
+        </div>
+      )}
+      {satelliteEnabled && MAPBOX_PUBLIC_TOKEN && (
+        <div className="absolute right-3 top-20 z-[9] rounded-lg bg-slate-950/75 px-2 py-1.5 shadow-lg backdrop-blur-sm">
+          <a href="https://www.mapbox.com/about/maps" target="_blank" rel="noreferrer" className="mapbox-attribution-logo" aria-label="Mapbox" />
+          <div className="mt-1 flex max-w-[210px] flex-wrap gap-x-1.5 text-[8px] leading-tight text-white/80">
+            <a href="https://www.mapbox.com/about/maps" target="_blank" rel="noreferrer" className="hover:text-white">© Mapbox</a>
+            <a href="https://www.openstreetmap.org/copyright/" target="_blank" rel="noreferrer" className="hover:text-white">© OpenStreetMap</a>
+            <a href="https://www.mapbox.com/contribute/" target="_blank" rel="noreferrer" className="font-semibold hover:text-white">Improve this map</a>
+            <a href="https://www.maxar.com/" target="_blank" rel="noreferrer" className="hover:text-white">© Maxar</a>
           </div>
         </div>
       )}
@@ -1118,6 +1174,35 @@ export default function LtsLabPage() {
             NSW is map-only while its routing graph is audited. Victoria includes experimental LTS routing.
           </div>
         )}
+
+        <section className="mb-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-200">
+              <input
+                type="checkbox"
+                checked={satelliteEnabled}
+                disabled={!MAPBOX_PUBLIC_TOKEN}
+                onChange={(event) => setSatelliteEnabled(event.target.checked)}
+                className="h-4 w-4"
+              />
+              Satellite imagery
+            </label>
+            <span className="text-[11px] tabular-nums text-slate-400">{Math.round(satelliteOpacity * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={satelliteOpacity}
+            disabled={!satelliteEnabled || !MAPBOX_PUBLIC_TOKEN}
+            onChange={(event) => setSatelliteOpacity(Number(event.target.value))}
+            aria-label="Satellite imagery opacity"
+            className="mt-2 h-1.5 w-full cursor-pointer accent-sky-400 disabled:cursor-not-allowed disabled:opacity-35"
+          />
+          <div className="mt-1 flex justify-between text-[9px] uppercase tracking-wide text-slate-500"><span>Transparent</span><span>Opaque</span></div>
+          {!MAPBOX_PUBLIC_TOKEN && <p className="mt-2 text-[10px] text-amber-300">Satellite imagery is not configured in this environment.</p>}
+        </section>
 
         {routeMode && (
           <section className="mb-4 rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-3">
@@ -1509,7 +1594,7 @@ export default function LtsLabPage() {
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">Map delivery</p>
-                    <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered with MapLibre over a simplified OpenFreeMap base map. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Short white-backed purple dashes identify OSM-tagged MTB trails. Short white-backed cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
+                    <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered with MapLibre over a simplified OpenFreeMap base map. An optional Mapbox Satellite overlay can be faded from transparent to opaque; it changes only the background imagery, never the classification or routing. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Short white-backed purple dashes identify OSM-tagged MTB trails. Short white-backed cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">Experimental routing</p>
