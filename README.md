@@ -29,6 +29,7 @@ Set the PMTiles URLs in `.env.local`. The two generated PMTiles archives are int
 - `NEXT_PUBLIC_VICTORIA_PMTILES_URL`: public Victoria PMTiles archive with byte-range and CORS support.
 - `NEXT_PUBLIC_NSW_PMTILES_URL`: public NSW PMTiles archive with byte-range and CORS support.
 - `LTS_BROUTER_URL`: BRouter-compatible endpoint.
+- `BROUTER_COMPARISON_URL`: existing AusBUG BRouter endpoint used for the `cyabalanced` comparison route.
 - `LTS_ROUTER_CLASSIFIER_VERSION`: classifier label returned by the route API.
 
 ## Data and attribution

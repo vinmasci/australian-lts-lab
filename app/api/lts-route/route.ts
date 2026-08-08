@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
 const BROUTER_ROUTE_URL = process.env.LTS_BROUTER_URL
   || (USING_LOCAL_ENRICHED_ROUTER ? 'http://127.0.0.1:17780/brouter' : 'https://valhalla.vicbug.app/brouter');
+const COMPARISON_BROUTER_ROUTE_URL = process.env.BROUTER_COMPARISON_URL
+  || 'https://valhalla.vicbug.app/brouter';
+const COMPARISON_PROFILE = 'cyabalanced';
 const ROUTING_CLASSIFIER_VERSION = process.env.LTS_ROUTER_CLASSIFIER_VERSION
   || (USING_LOCAL_ENRICHED_ROUTER ? 'au-lts-v0.5-trail-suitability-test' : 'au-lts-brouter-v0.1');
 
@@ -36,6 +39,15 @@ interface ParsedMessage {
   distanceMetres: number;
   costPerKm: number;
   wayTags: string;
+}
+
+interface ComparisonResult {
+  route?: BRouterFeature['geometry'];
+  summary?: {
+    distance_m: number;
+    time_ms: number;
+  };
+  error?: string;
 }
 
 function isCoordinate(value: unknown): value is [number, number] {
@@ -236,6 +248,56 @@ function buildStressOutput(feature: BRouterFeature) {
   };
 }
 
+async function requestComparisonRoute(
+  points: Array<[number, number]>,
+  allowGravel: boolean,
+): Promise<ComparisonResult> {
+  try {
+    const upstreamUrl = new URL(COMPARISON_BROUTER_ROUTE_URL);
+    upstreamUrl.searchParams.set(
+      'lonlats',
+      points.map(([longitude, latitude]) => `${longitude},${latitude}`).join('|'),
+    );
+    upstreamUrl.searchParams.set('profile', COMPARISON_PROFILE);
+    upstreamUrl.searchParams.set('alternativeidx', '0');
+    upstreamUrl.searchParams.set('format', 'geojson');
+    if (!allowGravel) upstreamUrl.searchParams.set('profile:avoid_unpaved', '1');
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25_000);
+    const upstream = await fetch(upstreamUrl, {
+      signal: controller.signal,
+      cache: 'no-store',
+    }).finally(() => clearTimeout(timeout));
+    const raw = await upstream.text();
+    let response: BRouterResponse;
+    try {
+      response = JSON.parse(raw) as BRouterResponse;
+    } catch {
+      return { error: raw.trim() || `BRouter comparison returned HTTP ${upstream.status}.` };
+    }
+
+    const feature = response.features?.[0];
+    if (!upstream.ok || response.error || !feature?.geometry?.coordinates?.length) {
+      return { error: response.error || 'The BRouter bike-profile comparison was unavailable.' };
+    }
+
+    return {
+      route: feature.geometry,
+      summary: {
+        distance_m: asNumber(feature.properties['track-length']),
+        time_ms: asNumber(feature.properties['total-time']) * 1000,
+      },
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error && error.name === 'AbortError'
+        ? 'The BRouter bike-profile comparison timed out.'
+        : error instanceof Error ? error.message : 'The BRouter bike-profile comparison failed.',
+    };
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as { points?: unknown; allow_gravel?: unknown };
@@ -246,15 +308,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const points = body.points as Array<[number, number]>;
+    const allowGravel = body.allow_gravel !== false;
+    const comparisonPromise = requestComparisonRoute(points, allowGravel);
+
     const upstreamUrl = new URL(BROUTER_ROUTE_URL);
     upstreamUrl.searchParams.set(
       'lonlats',
-      (body.points as Array<[number, number]>).map(([longitude, latitude]) => `${longitude},${latitude}`).join('|'),
+      points.map(([longitude, latitude]) => `${longitude},${latitude}`).join('|'),
     );
     upstreamUrl.searchParams.set('profile', 'cyalts');
     upstreamUrl.searchParams.set('alternativeidx', '0');
     upstreamUrl.searchParams.set('format', 'geojson');
-    if (body.allow_gravel === false) {
+    if (!allowGravel) {
       upstreamUrl.searchParams.set('profile:avoid_unpaved', '1');
     }
 
@@ -284,12 +350,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const comparison = await comparisonPromise;
+
     return NextResponse.json({
       classifier_version: ROUTING_CLASSIFIER_VERSION,
       engine: 'BRouter',
       profile: 'cyalts',
       route: feature.geometry,
       instructions: [],
+      comparison: comparison.route && comparison.summary ? {
+        label: 'BRouter bike profile',
+        profile: COMPARISON_PROFILE,
+        route: comparison.route,
+        summary: comparison.summary,
+      } : null,
+      comparison_error: comparison.error,
       ...buildStressOutput(feature),
     });
   } catch (error) {
