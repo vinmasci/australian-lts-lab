@@ -906,7 +906,6 @@ export default function LtsLabPage() {
             'line-color': '#475569',
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 14, 6, 18, 10],
             'line-opacity': 0.62,
-            'line-dasharray': [1.5, 1.2],
           },
         });
         map.addLayer({
@@ -1192,7 +1191,7 @@ export default function LtsLabPage() {
                     >
                       {selectedRouteKind === 'low-stress'
                         ? <span className="block h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #16a34a, #2563eb, #f59e0b, #dc2626)' }} />
-                        : <span className="block border-t-[3px] border-dashed border-slate-400 opacity-75" />}
+                        : <span className="block border-t-[3px] border-slate-400 opacity-75" />}
                       <span className="mt-1.5 block font-semibold text-slate-100">Low-stress</span>
                       <span className="block text-slate-400">{routeSummary ? formatRouteDistance(routeSummary.distance_m) : '—'}</span>
                     </button>
@@ -1204,7 +1203,7 @@ export default function LtsLabPage() {
                     >
                       {selectedRouteKind === 'bike-profile'
                         ? <span className="block h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #16a34a, #2563eb, #f59e0b, #dc2626)' }} />
-                        : <span className="block border-t-[3px] border-dashed border-slate-400 opacity-75" />}
+                        : <span className="block border-t-[3px] border-slate-400 opacity-75" />}
                       <span className="mt-1.5 block font-semibold text-slate-100">AusBUG Bike Paths</span>
                       <span className="block text-slate-400">
                         {comparisonScoring ? 'Scoring against map…' : routeComparison ? formatRouteDistance(routeComparison.summary.distance_m) : 'Unavailable'}
@@ -1296,7 +1295,7 @@ export default function LtsLabPage() {
                 })}
                 className="h-4 w-4"
               />
-              <span className="h-1.5 w-8 rounded-full opacity-[0.45]" style={{ background: LTS_COLOURS[level] }} />
+              <span className="h-1.5 w-8 rounded-full" style={{ background: LTS_COLOURS[level] }} />
               <span className="flex-1 text-sm">LTS {level} · {LTS_LABELS[level]}</span>
               {metadata && <span className="text-xs text-slate-500">{metadata.segment_distance_km[String(level)].toLocaleString()} km</span>}
             </label>
@@ -1313,17 +1312,17 @@ export default function LtsLabPage() {
         </label>
         <div className="grid grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm text-slate-200">
           <span className="h-4 w-4" aria-hidden="true" />
-          <span className="relative h-3 w-8 rounded bg-white opacity-[0.45]"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-blue-500" /></span>
+          <span className="relative h-3 w-8 rounded bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-blue-500" /></span>
           <span>Known unsealed (LTS-coloured dashes)</span>
         </div>
         <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showMtbTrails} onChange={(event) => setShowMtbTrails(event.target.checked)} className="h-4 w-4" />
-          <span className="relative h-3 w-8 rounded bg-white opacity-[0.45]"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-purple-500" /></span>
+          <span className="relative h-3 w-8 rounded bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-purple-500" /></span>
           <span>OSM-tagged MTB trail</span>
         </label>
         <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showUnverifiedTrails} onChange={(event) => setShowUnverifiedTrails(event.target.checked)} className="h-4 w-4" />
-          <span className="relative h-3 w-8 rounded bg-white opacity-[0.45]"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-cyan-400" /></span>
+          <span className="relative h-3 w-8 rounded bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-cyan-400" /></span>
           <span>Cycling suitability not confirmed</span>
         </label>
         {metadata && (
@@ -1535,7 +1534,7 @@ export default function LtsLabPage() {
                 {!activeDataset.routable && <p className="mt-2 rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-sky-100">The statewide NSW map is map-only. Its visual classification, traffic matches and speed-zone matches are being audited before any NSW BRouter segment build. It cannot change production navigation.</p>}
                 {activeDataset.routable && <>
                 <p className="mt-2">The planner accepts up to 26 ordered points labelled A–Z. BRouter connects them in sequence, and every edit—including Clear—can be undone or redone.</p>
-                <p className="mt-2">Each plan also requests the existing AusBUG <strong>Bike Paths</strong> route using the <code className="text-slate-300">cyabikepath</code> BRouter profile—the conservative profile used by the iOS and Android apps—for the same points and gravel setting. The route-comparison switch colours either result using the loaded directional LTS map while drawing the other as a semi-transparent grey dashed line. The comparison profile&apos;s own routing cost is never presented as stress: its geometry is spatially matched back to the same map classifier, and any section that cannot be matched confidently remains grey and is reported as unscored.</p>
+                <p className="mt-2">Each plan also requests the existing AusBUG <strong>Bike Paths</strong> route using the <code className="text-slate-300">cyabikepath</code> BRouter profile—the conservative profile used by the iOS and Android apps—for the same points and gravel setting. The route-comparison switch colours either result using the loaded directional LTS map while drawing the other as a semi-transparent solid grey line. The comparison profile&apos;s own routing cost is never presented as stress: its geometry is spatially matched back to the same map classifier, and any section that cannot be matched confidently remains grey and is reported as unscored.</p>
                 <p className="mt-2">The <code className="text-emerald-300">cyalts</code> profile assigns widely separated routing costs: 1.0 for LTS 1, 1.8 for LTS 2, 5.0 for LTS 3 and 15.0 for LTS 4. This strongly prefers low-stress links while allowing a higher-stress connection when otherwise necessary.</p>
                 {USING_LOCAL_ENRICHED_ROUTER && <p className="mt-2">The local enriched segments carry the map classifier&apos;s forward and backward LTS values directly. BRouter uses the value for the travel direction; it does not independently reinterpret the road&apos;s lane or cycleway tags. The background line deliberately uses the worse direction, so a routed line can be safer—but not more stressful—when the lane or cycleway on the ridden side is better.</p>}
                 {USING_LOCAL_ENRICHED_ROUTER && <p className="mt-2">Crossing dots are classified by the same rules and add point penalties equivalent to a 0 m, 20 m, 80 m or 250 m detour for LTS 1–4. This encourages the router to prefer signals, refuges and calmer crossings without making a difficult crossing an absolute barrier.</p>}
