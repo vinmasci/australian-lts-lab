@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Bike, ExternalLink, Info, Loader2, MapPin, Redo2, Route as RouteIcon, Trash2, Undo2, X } from 'lucide-react';
+import { Bike, ExternalLink, Info, Loader2, Redo2, Route as RouteIcon, Trash2, Undo2, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 
 
@@ -1325,7 +1325,7 @@ export default function LtsLabPage() {
         <div className="my-3 h-px bg-white/10" />
         <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showCrossings} onChange={(event) => setShowCrossings(event.target.checked)} className="h-4 w-4" />
-          <MapPin className="h-4 w-4 text-slate-400" /> Crossings (zoom 14+)
+          <span className="h-4 w-4 shrink-0 rounded-full border-2 border-white bg-blue-500" /> Crossings (LTS-coloured, zoom 14+)
         </label>
         <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showLowConfidence} onChange={(event) => setShowLowConfidence(event.target.checked)} className="h-4 w-4" />
@@ -1333,7 +1333,7 @@ export default function LtsLabPage() {
         </label>
         <div className="grid grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm text-slate-200">
           <span className="h-4 w-4" aria-hidden="true" />
-          <span className="w-8 rounded-full border-t-[6px] border-dashed border-blue-500" />
+          <span className="relative h-1.5 w-8 rounded-full bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-blue-500" /></span>
           <span>Known unsealed (LTS-coloured dashes)</span>
         </div>
         <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
