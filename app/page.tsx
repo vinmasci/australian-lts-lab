@@ -1329,21 +1329,21 @@ export default function LtsLabPage() {
         </label>
         <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showLowConfidence} onChange={(event) => setShowLowConfidence(event.target.checked)} className="h-4 w-4" />
-          <span className="w-4 border-t-2 border-dashed border-slate-400" /> Inferred / low-confidence roads
+          <span className="w-8 shrink-0 rounded-full border-t-[6px] border-dashed border-green-500" /> Inferred / low-confidence roads
         </label>
         <div className="grid grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm text-slate-200">
           <span className="h-4 w-4" aria-hidden="true" />
-          <span className="relative h-3 w-8 rounded bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-blue-500" /></span>
+          <span className="w-8 rounded-full border-t-[6px] border-dashed border-blue-500" />
           <span>Known unsealed (LTS-coloured dashes)</span>
         </div>
         <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showMtbTrails} onChange={(event) => setShowMtbTrails(event.target.checked)} className="h-4 w-4" />
-          <span className="relative h-3 w-8 rounded bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-purple-500" /></span>
+          <span className="w-8 rounded-full border-t-[6px] border-dashed border-purple-500" />
           <span>OSM-tagged MTB trail</span>
         </label>
         <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showUnverifiedTrails} onChange={(event) => setShowUnverifiedTrails(event.target.checked)} className="h-4 w-4" />
-          <span className="relative h-3 w-8 rounded bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-cyan-400" /></span>
+          <span className="w-8 rounded-full border-t-[6px] border-dashed border-cyan-400" />
           <span>Cycling suitability not confirmed</span>
         </label>
         {metadata && (
