@@ -529,6 +529,7 @@ export default function LtsLabPage() {
   const [routeComparisonError, setRouteComparisonError] = useState<string | null>(null);
   const [comparisonScoring, setComparisonScoring] = useState(false);
   const [selectedRouteKind, setSelectedRouteKind] = useState<'low-stress' | 'bike-profile'>('low-stress');
+  const [transparentRoutes, setTransparentRoutes] = useState(false);
   const [routeClassifier, setRouteClassifier] = useState<string | null>(null);
   const [showAbout, setShowAbout] = useState(false);
   const [datasetKey, setDatasetKey] = useState<DatasetKey>('victoria');
@@ -1034,6 +1035,14 @@ export default function LtsLabPage() {
   }, [showCrossings, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
 
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map?.getLayer('lts-route-line')) return;
+    map.setPaintProperty('lts-route-line', 'line-opacity', transparentRoutes ? 0.48 : 1);
+    map.setPaintProperty('lts-route-casing', 'line-opacity', transparentRoutes ? 0.26 : 0.94);
+    map.setPaintProperty('lts-comparison-route-line', 'line-opacity', transparentRoutes ? 0.34 : 0.62);
+  }, [transparentRoutes]);
+
+  useEffect(() => {
     if (!showAbout) return undefined;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setShowAbout(false);
@@ -1210,6 +1219,18 @@ export default function LtsLabPage() {
                       </span>
                     </button>
                   </div>
+                  <label className="mt-2.5 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-slate-200">
+                    <span>
+                      <span className="block font-semibold">Transparent route lines</span>
+                      <span className="block text-[10px] leading-relaxed text-slate-500">Reveal the stress network underneath.</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={transparentRoutes}
+                      onChange={(event) => setTransparentRoutes(event.target.checked)}
+                      className="h-4 w-4 shrink-0"
+                    />
+                  </label>
                   <p className="mt-2 leading-relaxed text-slate-500">Select either route to colour it by LTS and show its stress breakdown. The other route becomes grey; overlapping streets sit underneath the selected route.</p>
                   {selectedRouteKind === 'bike-profile' && routeComparison?.stress && (
                     <p className="mt-2 text-slate-400">Matched to {routeComparison.stress.coverage_pct}% of the visible LTS network.</p>
