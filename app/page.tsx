@@ -1498,7 +1498,7 @@ export default function LtsLabPage() {
                   </div>
                   <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4">
                     <p className="font-semibold text-white">Official road details</p>
-                    <p className="mt-1 text-xs text-slate-300">{datasetKey === 'victoria' ? <>DTP normal-operation speed zones fill missing OSM speeds. DTP bicycle infrastructure fills missing directional lane, buffer and protection details. City of Melbourne parking zones fill otherwise unknown kerbside parking. Explicit OSM tags always win.</> : <>TfNSW fixed, all-day speed-zone lines fill only missing OSM speeds when the geometry strongly covers the same road. Conditional, school and variable zones are excluded; conflicting or one-way-ambiguous matches are quarantined. Explicit OSM speeds always win.</>}</p>
+                    <p className="mt-1 text-xs text-slate-300">{datasetKey === 'victoria' ? <>DTP normal-operation speed zones fill missing OSM speeds. DTP bicycle infrastructure fills missing directional lane, buffer and protection details. City of Melbourne parking zones fill otherwise unknown kerbside parking. Explicit OSM tags always win.</> : <>TfNSW fixed, all-day speed-zone lines fill only missing OSM speeds when the geometry strongly covers the same road. Conditional, school and variable zones are excluded; conflicting or one-way-ambiguous matches are quarantined. Explicit OSM speeds always win. NSW currently has no separate official bicycle-infrastructure or parking supplement in this Lab, so cycling treatments, lane detail, buffers and parking come from OSM.</>}</p>
                     <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
                       {datasetKey === 'victoria' ? <>
                         <a href="https://discover.data.vic.gov.au/en_AU/dataset/speed-zones" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Speed zones <ExternalLink className="h-3 w-3" /></a>
@@ -1522,10 +1522,12 @@ export default function LtsLabPage() {
               <section>
                 <h3 className="text-base font-bold text-white">How a road receives its score</h3>
                 <div className="mt-3 space-y-2 text-slate-300">
+                  <p>Victoria and NSW use the same classifier and the exact rules below. What differs between them is which official datasets can fill gaps in OSM—not the meaning of an LTS level.</p>
                   <p>Each OSM way is assessed separately for the forward and backward cycling directions using Australian left-hand traffic. The map displays the more stressful permitted direction.</p>
-                  <p>Direction matters because the two sides of a road can have different painted or protected cycle lanes, buffers, parking, lane counts and speed tags. For Australian left-hand traffic, the classifier selects the cycling treatment on the side used in each direction.</p>
+                  <p>Direction matters because the two sides of a road can have different painted or protected cycle lanes, buffers, lane counts and speed tags. For Australian left-hand traffic, forward travel uses the left-side cycling treatment and backward travel uses the right-side treatment. Parking is currently a road-level door-zone flag rather than a fully directional input; its exact effect is stated below.</p>
                   <p>The background line deliberately shows the worse of the two permitted directions, while an active route shows the LTS for the direction being ridden. A route may therefore change a yellow background segment to blue when its side is safer, but the same shared classification should never change a blue background segment to yellow.</p>
-                  <p>Traffic-free paths and physically protected facilities are normally LTS 1. Mixed streets, painted lanes, shoulders and roundabouts are assessed using their speed, road class, lane count, parking and cycling treatment. Missing speed and lane values are inferred conservatively and identified through the confidence field.</p>
+                  <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access, bicycle=no/private/dismount/use_sidepath, and footways without explicit bicycle permission are excluded. One-way tags decide which travel directions are scored.</p>
+                  <p>For an included direction, the segment score can be changed by only these inputs: road/path class; directional or general speed limit; directional or total motor-traffic lane count; roundabout status; cycling-facility type and side; whether a painted lane has a mapped buffer; mapped kerbside parking beside a painted lane; and matched all-vehicle daily motor traffic. Each rule is deterministic and is applied in the order shown below.</p>
                   <p>Traffic records are matched to OSM geometry using road name or route reference, projected distance, local direction and line overlap. Directional counts are doubled for a two-way OSM centreline to approximate conventional two-way daily traffic.</p>
                   {datasetKey === 'victoria' ? <>
                     <p>Direct TIRTL, telemetry and recent council observations outrank historical AADT. SCATS is useful where no better count matches, but its public export does not identify road approaches: the Lab conservatively estimates one direction from the intersection total, labels it low confidence, and permits it to raise a road by only one LTS level.</p>
@@ -1535,6 +1537,27 @@ export default function LtsLabPage() {
                     <p>Where OSM is missing a speed, the classifier may use a strongly coincident TfNSW fixed all-day speed zone. Conditional and variable limits are excluded, explicit OSM speed tags are protected, and competing strong matches are left unresolved.</p>
                   </>}
                   <p>Surface, trail suitability and MTB evidence are separate from traffic stress. A road is called unsealed only when OSM has an explicit value such as gravel, dirt, ground or compacted; a missing surface is not guessed. Generic <code>path</code>, <code>track</code> and <code>bridleway</code> links need explicit bicycle access or bicycle-route evidence before they are treated as verified cycling links. Every explicit MTB tag or MTB route membership remains visible, even when routing rules exclude it.</p>
+                </div>
+                <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
+                  <table className="min-w-[720px] w-full text-left text-xs">
+                    <thead className="bg-white/10 text-slate-300"><tr><th className="px-3 py-2">Facility or road context</th><th className="px-3 py-2">Exact base LTS rule</th></tr></thead>
+                    <tbody className="divide-y divide-white/10 align-top">
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Traffic-free path or protected lane</td><td className="px-3 py-2">LTS 1. This includes mapped cycleways/paths and on-road cycling treatments tagged as track, protected, separate or separated.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Slow local street</td><td className="px-3 py-2">A living street, or a local road at 30 km/h or less: LTS 1 with one lane per direction; LTS 2 with more. Roundabouts do not receive this shortcut.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Buffered painted lane</td><td className="px-3 py-2">LTS 2 at no more than 50 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Unbuffered painted lane</td><td className="px-3 py-2">LTS 2 at no more than 40 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4. Any mapped adjacent kerbside parking then adds one LTS level, capped at LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Shoulder</td><td className="px-3 py-2">LTS 2 at no more than 60 km/h and one lane per direction; LTS 3 at no more than 80 km/h; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Local mixed traffic</td><td className="px-3 py-2">LTS 2 at no more than 50 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Tertiary/collector mixed traffic</td><td className="px-3 py-2">LTS 2 at no more than 40 km/h and one lane per direction; LTS 3 at no more than 60 km/h and one lane; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Secondary, primary or trunk mixed traffic</td><td className="px-3 py-2">LTS 3 only when no more than 40 km/h with one lane per direction; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Unprotected roundabout</td><td className="px-3 py-2">Never below LTS 3. It is LTS 3 only at no more than 50 km/h with one circulating lane; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Sharrows</td><td className="px-3 py-2">Do not reduce stress by themselves. The ordinary mixed-traffic road-class, speed and lane rule still applies.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 rounded-xl border border-slate-400/20 bg-slate-400/10 p-4 text-xs text-slate-200">
+                  <h4 className="font-semibold text-white">When speed or lane data is missing</h4>
+                  <p className="mt-2">The classifier marks the result as inferred and uses these explicit fallbacks: 20 km/h for living streets; 30 for service roads; 50 for residential, unclassified and generic roads; 60 for tertiary and secondary roads; 70 for primary roads; and 80 for trunk roads. Missing lanes default to two lanes per direction on primary/trunk roads and one on every other road. These are classification assumptions—not claims about the legal conditions on a particular street.</p>
                 </div>
                 <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
                   <table className="w-full text-left text-xs">
@@ -1547,7 +1570,17 @@ export default function LtsLabPage() {
                     </tbody>
                   </table>
                 </div>
-                <p className="mt-3 text-xs text-slate-400">Traffic volume may only raise a mixed/shared/shoulder score. It never lowers an existing score and never penalises a separated path or protected lane.</p>
+                <p className="mt-3 text-xs text-slate-400">Traffic volume is applied after the base rule. It may only raise a segment with no cycling facility, sharrows or a shoulder. It never lowers a score and currently does not alter a path, protected lane, buffered lane or painted lane. A low-confidence SCATS estimate may raise a segment by no more than one level.</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-xs text-sky-50">
+                    <h4 className="font-semibold text-white">Crossing scores</h4>
+                    <p className="mt-2">Crossings are point scores; they do not change the adjoining road&apos;s segment LTS. Signals are LTS 1 and refuge islands LTS 2. An uncontrolled crossing is at least LTS 2 and otherwise inherits the crossed road&apos;s LTS. A marked crossing is at least LTS 2 and is capped at LTS 3. When the crossed road is unknown, an uncontrolled crossing is LTS 3 and another marked crossing is LTS 2.</p>
+                  </div>
+                  <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-50">
+                    <h4 className="font-semibold text-white">Recorded or used elsewhere—but not in segment LTS</h4>
+                    <p className="mt-2">Heavy-vehicle percentage is retained for inspection but does not yet change LTS. Surface, gravel, MTB difficulty, hiking evidence and elevation affect display, eligibility or routing penalties—not the traffic-stress score. Bicycle volumes, crash history, rider popularity, road width and time-of-day conditions are not currently inputs. Apart from roundabouts and explicit crossing tags, intersection form is not yet modelled.</p>
+                  </div>
+                </div>
               </section>
 
               <section>
