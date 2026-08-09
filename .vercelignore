@@ -1,0 +1,5 @@
+.firebase-tiles/
+.firebase-tiles-vic/
+.firebase/
+firebase-debug.log
+**/*.pmtiles
