@@ -7,6 +7,10 @@ node_modules/
 public/data/lts/*.pmtiles
 .DS_Store
 *.tsbuildinfo
+.firebase-tiles/
+.firebase-tiles-vic/
+.firebase/
+firebase-debug.log
 
 .vercel
 .env*.local

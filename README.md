@@ -33,6 +33,27 @@ Set the PMTiles URLs in `.env.local`. The two generated PMTiles archives are int
 - `BROUTER_COMPARISON_URL`: existing AusBUG BRouter endpoint used for the mobile apps' conservative `cyabikepath` (Bike Paths) comparison route.
 - `LTS_ROUTER_CLASSIFIER_VERSION`: classifier label returned by the route API.
 
+## Firebase tile hosting
+
+The production PMTiles archives are published separately from the application in
+the Melbourne-based `cyaroutes.firebasestorage.app` Firebase Storage bucket under
+`public/lts/`. Use content-versioned filenames because PMTiles responses are
+cached as immutable. Apply the browser range-request policy before publishing:
+
+```bash
+gsutil cors set firebase-storage-cors.json gs://cyaroutes.firebasestorage.app
+gcloud storage cp --cache-control='public,max-age=31536000,immutable' \
+  --content-type='application/octet-stream' FILE.pmtiles \
+  gs://cyaroutes.firebasestorage.app/public/lts/VERSIONED_FILE.pmtiles
+gcloud storage objects update \
+  gs://cyaroutes.firebasestorage.app/public/lts/VERSIONED_FILE.pmtiles \
+  --add-acl-grant=entity=allUsers,role=READER
+```
+
+`firebase.tiles.json` retains a separately deployed Firebase Hosting mirror for
+disaster recovery. The app does not use that mirror because cold range requests
+for these large archives are substantially slower than Firebase Storage.
+
 ## Data and attribution
 
 - Road/path geometry and tags: © OpenStreetMap contributors, available under the ODbL.
