@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
-const BROUTER_ROUTE_URL = process.env.LTS_BROUTER_URL
+const DEFAULT_BROUTER_ROUTE_URL = process.env.LTS_BROUTER_URL
   || (USING_LOCAL_ENRICHED_ROUTER ? 'http://127.0.0.1:17780/brouter' : 'https://valhalla.vicbug.app/brouter');
+const ROUTER_URLS = {
+  victoria: DEFAULT_BROUTER_ROUTE_URL,
+  queensland: DEFAULT_BROUTER_ROUTE_URL,
+  western_australia: process.env.LTS_BROUTER_WA_URL || 'https://valhalla.vicbug.app/lts-brouter-wa',
+  south_australia: process.env.LTS_BROUTER_SA_URL || 'https://valhalla.vicbug.app/lts-brouter-sa',
+  act: process.env.LTS_BROUTER_ACT_URL || 'https://valhalla.vicbug.app/lts-brouter-act',
+  tasmania: process.env.LTS_BROUTER_TAS_URL || 'https://valhalla.vicbug.app/lts-brouter-tas',
+  northern_territory: process.env.LTS_BROUTER_NT_URL || 'https://valhalla.vicbug.app/lts-brouter-nt',
+} as const;
+type RoutableDataset = keyof typeof ROUTER_URLS;
 const COMPARISON_BROUTER_ROUTE_URL = process.env.BROUTER_COMPARISON_URL
   || 'https://valhalla.vicbug.app/brouter';
 const COMPARISON_PROFILE = 'cyabikepath';
@@ -56,6 +66,10 @@ function isCoordinate(value: unknown): value is [number, number] {
     && value.every((part) => typeof part === 'number' && Number.isFinite(part))
     && value[0] >= -180 && value[0] <= 180
     && value[1] >= -90 && value[1] <= 90;
+}
+
+function isRoutableDataset(value: unknown): value is RoutableDataset {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(ROUTER_URLS, value);
 }
 
 function asNumber(value: unknown, fallback = 0): number {
@@ -300,7 +314,7 @@ async function requestComparisonRoute(
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as { points?: unknown; allow_gravel?: unknown };
+    const body = await request.json() as { points?: unknown; allow_gravel?: unknown; dataset?: unknown };
     if (!Array.isArray(body.points) || body.points.length < 2 || body.points.length > 26 || !body.points.every(isCoordinate)) {
       return NextResponse.json(
         { error: 'Provide between two and 26 valid [longitude, latitude] points.' },
@@ -310,9 +324,15 @@ export async function POST(request: NextRequest) {
 
     const points = body.points as Array<[number, number]>;
     const allowGravel = body.allow_gravel !== false;
+    const dataset: RoutableDataset = body.dataset === undefined
+      ? 'victoria'
+      : isRoutableDataset(body.dataset) ? body.dataset : 'victoria';
+    if (body.dataset !== undefined && !isRoutableDataset(body.dataset)) {
+      return NextResponse.json({ error: 'Low-stress routing is not enabled for that dataset.' }, { status: 400 });
+    }
     const comparisonPromise = requestComparisonRoute(points, allowGravel);
 
-    const upstreamUrl = new URL(BROUTER_ROUTE_URL);
+    const upstreamUrl = new URL(ROUTER_URLS[dataset]);
     upstreamUrl.searchParams.set(
       'lonlats',
       points.map(([longitude, latitude]) => `${longitude},${latitude}`).join('|'),
@@ -354,6 +374,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       classifier_version: ROUTING_CLASSIFIER_VERSION,
+      dataset,
       engine: 'BRouter',
       profile: 'cyalts',
       route: feature.geometry,

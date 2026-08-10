@@ -1,16 +1,16 @@
 # Australian Bicycle LTS Lab
 
-A public, experimental Bicycle Level of Traffic Stress (LTS) map for Victoria and New South Wales.
+A public, experimental Bicycle Level of Traffic Stress (LTS) map for Australia.
 
-The Lab classifies each rideable OpenStreetMap road or path separately by travel direction, then displays the more stressful permitted direction on the background map. Victoria also includes an experimental BRouter route planner. The About panel in the app documents the current rules, thresholds, data sources, routing costs, crossing penalties, limitations and freshness information.
+The Lab classifies each rideable OpenStreetMap road or path separately by travel direction, then displays the more stressful permitted direction on the background map. Every published state and territory except the still-audited NSW graph includes an isolated experimental BRouter route planner. The About panel documents the current rules, thresholds, state-specific data sources, routing costs, crossing penalties, limitations and freshness information.
 
 ## Status
 
 This is research and diagnostic software. It is not safety advice, a guarantee that a link is legal or open, or a replacement for checking current conditions.
 
-- Victoria: statewide diagnostic map and experimental routing.
+- Victoria, Queensland, Western Australia, South Australia, ACT, Tasmania and Northern Territory: statewide or territory-wide diagnostic maps and isolated experimental routing.
 - New South Wales: statewide diagnostic map; routing is intentionally disabled while the NSW graph is audited.
-- NSW traffic evidence currently comes from the openly licensed Transport for NSW traffic-count dataset. Additional council datasets are only published after their reuse terms are confirmed.
+- Official traffic evidence is state-specific. WA, SA and Tasmania include suitable reusable traffic observations; ACT and NT currently use OSM and transparent inference because no maintained territory-wide geospatial AADT feed passed the road-level join contract.
 
 ## Run locally
 
@@ -22,14 +22,16 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Set the PMTiles URLs in `.env.local`. The two generated PMTiles archives are intentionally not stored in Git because they are large. The small build metadata files are included.
+Set the PMTiles URLs in `.env.local`. Generated PMTiles archives are intentionally not stored in Git because they are large. The small build metadata files are included.
 
 ## Environment variables
 
 - `NEXT_PUBLIC_VICTORIA_PMTILES_URL`: public Victoria PMTiles archive with byte-range and CORS support.
 - `NEXT_PUBLIC_NSW_PMTILES_URL`: public NSW PMTiles archive with byte-range and CORS support.
+- `NEXT_PUBLIC_QUEENSLAND_PMTILES_URL`, `NEXT_PUBLIC_WA_PMTILES_URL`, `NEXT_PUBLIC_SA_PMTILES_URL`, `NEXT_PUBLIC_ACT_PMTILES_URL`, `NEXT_PUBLIC_TASMANIA_PMTILES_URL`, `NEXT_PUBLIC_NT_PMTILES_URL`: equivalent state/territory PMTiles archives.
 - `NEXT_PUBLIC_MAPBOX_TOKEN`: public Mapbox token used only when the optional satellite overlay is enabled.
-- `LTS_BROUTER_URL`: BRouter-compatible endpoint.
+- `LTS_BROUTER_URL`: isolated Victoria/Queensland BRouter-compatible endpoint.
+- `LTS_BROUTER_WA_URL`, `LTS_BROUTER_SA_URL`, `LTS_BROUTER_ACT_URL`, `LTS_BROUTER_TAS_URL`, `LTS_BROUTER_NT_URL`: isolated state/territory routing endpoints. Separate stores prevent BRouter&apos;s five-degree tiles from overwriting neighbouring state data.
 - `BROUTER_COMPARISON_URL`: existing AusBUG BRouter endpoint used for the mobile apps' conservative `cyabikepath` (Bike Paths) comparison route.
 - `LTS_ROUTER_CLASSIFIER_VERSION`: classifier label returned by the route API.
 
@@ -59,6 +61,7 @@ for these large archives are substantially slower than Firebase Storage.
 - Road/path geometry and tags: © OpenStreetMap contributors, available under the ODbL.
 - Victorian government and council sources: see the source links and build-specific counts in the app’s About panel.
 - NSW traffic counts and speed zones: Transport for NSW open data, used under its published Creative Commons Attribution terms.
+- Queensland TMR, Main Roads WA, South Australian DIT, Tasmanian State Growth and national Harmonised Traffic Counts sources: see the exact source links, methods and accepted-record counts in each state&apos;s About panel.
 - Basemap: OpenFreeMap and OpenMapTiles data derived from OpenStreetMap, rendered with MapLibre GL JS.
 - PMTiles reader: the official PMTiles JavaScript protocol library (BSD-3-Clause), bundled with the app.
 

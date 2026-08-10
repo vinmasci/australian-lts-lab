@@ -1,0 +1,481 @@
+{
+  "schema_version": 1,
+  "classifier_version": "au-lts-v0.5-trail-suitability",
+  "generated_at": "2026-08-10T22:34:05.611351+00:00",
+  "source": "OpenStreetMap via local Geofabrik Australia extract",
+  "source_pbf": "tasmania-statewide-source.osm.pbf",
+  "source_pbf_modified_at": "2026-08-06T13:26:20Z",
+  "bbox": [
+    143.5,
+    -44.0,
+    149.0,
+    -39.0
+  ],
+  "pilot": "Tasmania",
+  "traffic_volume_source": [
+    "State Growth via Harmonised Traffic Counts"
+  ],
+  "traffic_volume_source_file": "tas-traffic.geojson",
+  "traffic_volume_source_url": null,
+  "current_traffic_source_file": null,
+  "additional_traffic_source_files": [],
+  "nsw_speed_zone_source_file": "tas-speed.geojson",
+  "supplemental_road_sources": null,
+  "segments": 70770,
+  "excluded_segments": 43976,
+  "crossings": 4919,
+  "segment_counts": {
+    "1": 41712,
+    "2": 19218,
+    "3": 2168,
+    "4": 7672
+  },
+  "segment_distance_km": {
+    "1": 19050.2,
+    "2": 12798.9,
+    "3": 1470.1,
+    "4": 9380.5
+  },
+  "crossing_counts": {
+    "1": 1040,
+    "2": 3289,
+    "3": 305,
+    "4": 285
+  },
+  "confidence_counts": {
+    "high": 24627,
+    "low": 38506,
+    "medium": 7637
+  },
+  "traffic_volume": {
+    "available_directional_records": 521,
+    "matched_segments": 1001,
+    "matched_distance_km": 1023.6,
+    "uplifted_segments": 9,
+    "methodology_counts": {
+      "Annual station count converted to daily average": 1001
+    },
+    "source_counts": {
+      "State Growth via Harmonised Traffic Counts": 1001
+    },
+    "volume_band_counts": {
+      "1": 204,
+      "2": 199,
+      "3": 203,
+      "4": 395
+    },
+    "uplift_samples": [
+      {
+        "osm_id": "w186489346",
+        "name": "Channel Highway",
+        "highway": "service",
+        "baseline_lts": 1,
+        "traffic_lts": 4,
+        "aadt": 14661,
+        "year": 2023,
+        "methodology": "Annual station count converted to daily average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w242668127",
+        "name": "Channel Highway",
+        "highway": "service",
+        "baseline_lts": 1,
+        "traffic_lts": 3,
+        "aadt": 6864,
+        "year": 2024,
+        "methodology": "Annual station count converted to daily average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w253148611",
+        "name": "Channel Highway",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 16151,
+        "year": 2023,
+        "methodology": "Annual station count converted to daily average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w411528392",
+        "name": "Tasman Highway",
+        "highway": "trunk_link",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 55163,
+        "year": 2024,
+        "methodology": "Annual station count converted to daily average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w609839907",
+        "name": "Channel Highway",
+        "highway": "service",
+        "baseline_lts": 1,
+        "traffic_lts": 3,
+        "aadt": 12793,
+        "year": 2023,
+        "methodology": "Annual station count converted to daily average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w742364587",
+        "name": "Tasman Highway",
+        "highway": "trunk",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 44095,
+        "year": 2024,
+        "methodology": "Annual station count converted to daily average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w861269861",
+        "name": "Channel Highway",
+        "highway": "service",
+        "baseline_lts": 1,
+        "traffic_lts": 3,
+        "aadt": 10834,
+        "year": 2023,
+        "methodology": "Annual station count converted to daily average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w1123810410",
+        "name": "Channel Highway",
+        "highway": "service",
+        "baseline_lts": 1,
+        "traffic_lts": 3,
+        "aadt": 6174,
+        "year": 2024,
+        "methodology": "Annual station count converted to daily average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w1246239749",
+        "name": "Channel Highway",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 16151,
+        "year": 2023,
+        "methodology": "Annual station count converted to daily average",
+        "match_confidence": "medium"
+      }
+    ]
+  },
+  "supplemental_roads": {
+    "available_records": {},
+    "matched_distance_km": {}
+  },
+  "nsw_speed_zones": {
+    "available_records": 1555,
+    "source_audit": {
+      "source_features": 1712,
+      "accepted_records": 1555,
+      "rejected": {
+        "short_geometry": 157
+      }
+    },
+    "status_counts": {
+      "ambiguous": 14,
+      "ineligible": 84946,
+      "matched": 212,
+      "protected_osm": 8711,
+      "unmatched": 20863
+    },
+    "reason_counts": {
+      "explicit_osm_speed_present": 8711,
+      "invalid_or_short_osm_geometry": 27,
+      "no_strong_geometry_match": 20863,
+      "one_way_source_without_one_way_osm_scope": 14,
+      "single_strong_match": 212,
+      "unsupported_road_scope": 84919
+    },
+    "matched_distance_km": 57.9,
+    "ambiguity_samples": [
+      {
+        "osm_id": "w283544630",
+        "name": "Sorell Street",
+        "highway": "primary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "4032:0",
+            "speed_kmh": 60,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.68,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w317079211",
+        "name": "Tasman Highway",
+        "highway": "trunk",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "4080:0",
+            "speed_kmh": 100,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.32,
+            "alignment": 0.9984,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w345832666",
+        "name": "East Derwent Highway",
+        "highway": "primary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "2921:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.66,
+            "alignment": 0.9929,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w345832998",
+        "name": "East Derwent Highway",
+        "highway": "primary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "2921:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.35,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w358875735",
+        "name": "Cambridge Road",
+        "highway": "secondary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "3717:0",
+            "speed_kmh": 80,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.06,
+            "alignment": 0.9989,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w425548542",
+        "name": "Gordon River Road",
+        "highway": "primary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "3048:0",
+            "speed_kmh": 100,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.17,
+            "alignment": 0.9997,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w495121901",
+        "name": "Haggerston Road",
+        "highway": "tertiary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "4512:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.87,
+            "alignment": 0.9967,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w495126703",
+        "name": "Haggerston Road",
+        "highway": "tertiary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "4512:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.77,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w606611007",
+        "name": "Haggerston Road",
+        "highway": "tertiary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "4512:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.51,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w642220835",
+        "name": "Heemskirk Road",
+        "highway": "secondary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "3333:0",
+            "speed_kmh": 100,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 0.82,
+            "alignment": 0.9997,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w681740926",
+        "name": "Haggerston Road",
+        "highway": "tertiary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "4512:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.09,
+            "alignment": 1.0,
+            "osm_coverage": 0.9868
+          }
+        ]
+      },
+      {
+        "osm_id": "w742118113",
+        "name": "Haggerston Road",
+        "highway": "tertiary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "4512:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 2.69,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w785962682",
+        "name": "East Derwent Highway",
+        "highway": "primary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "2921:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.47,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w914889498",
+        "name": "Liena Road",
+        "highway": "primary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "3687:0",
+            "speed_kmh": 100,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.42,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      }
+    ]
+  },
+  "surface": {
+    "counts": {
+      "sealed": 30844,
+      "unknown": 23441,
+      "unsealed": 16485
+    },
+    "distance_km": {
+      "sealed": 12690.5,
+      "unknown": 10250.3,
+      "unsealed": 19758.9
+    }
+  },
+  "mtb": {
+    "route_relations": 9,
+    "route_member_ways": 65,
+    "counts": {
+      "routing_avoid": 237,
+      "routing_caution": 696,
+      "shown_not_routable": 76,
+      "shown_routable": 857
+    },
+    "distance_km": {
+      "routing_avoid": 353.7,
+      "routing_caution": 467.1,
+      "shown_not_routable": 34.1,
+      "shown_routable": 820.8
+    }
+  },
+  "trails": {
+    "bicycle_route_relations": 67,
+    "bicycle_route_member_ways": 1700,
+    "hiking_route_relations": 37,
+    "hiking_route_member_ways": 273,
+    "counts": {
+      "routing_avoid": 263,
+      "routing_caution": 16594
+    },
+    "distance_km": {
+      "routing_avoid": 254.5,
+      "routing_caution": 14132.6
+    }
+  }
+}

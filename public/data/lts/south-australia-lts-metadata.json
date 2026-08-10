@@ -1,0 +1,399 @@
+{
+  "schema_version": 1,
+  "classifier_version": "au-lts-v0.5-trail-suitability",
+  "generated_at": "2026-08-10T22:22:52.033571+00:00",
+  "source": "OpenStreetMap via local Geofabrik Australia extract",
+  "source_pbf": "south-australia-statewide-source.osm.pbf",
+  "source_pbf_modified_at": "2026-08-06T17:41:17Z",
+  "bbox": [
+    129.0,
+    -39.0,
+    141.0,
+    -25.0
+  ],
+  "pilot": "South Australia",
+  "traffic_volume_source": [
+    "South Australia DIT Traffic Volumes"
+  ],
+  "traffic_volume_source_file": "sa-dit-traffic-current.geojson",
+  "traffic_volume_source_url": null,
+  "current_traffic_source_file": null,
+  "additional_traffic_source_files": [],
+  "nsw_speed_zone_source_file": null,
+  "supplemental_road_sources": null,
+  "segments": 192395,
+  "excluded_segments": 75451,
+  "crossings": 33837,
+  "segment_counts": {
+    "1": 89230,
+    "2": 68099,
+    "3": 11325,
+    "4": 23741
+  },
+  "segment_distance_km": {
+    "1": 59659.4,
+    "2": 59635.4,
+    "3": 6188.3,
+    "4": 36827.7
+  },
+  "crossing_counts": {
+    "1": 5934,
+    "2": 22651,
+    "3": 2997,
+    "4": 2255
+  },
+  "confidence_counts": {
+    "high": 65229,
+    "low": 90064,
+    "medium": 37102
+  },
+  "traffic_volume": {
+    "available_directional_records": 2720,
+    "matched_segments": 10717,
+    "matched_distance_km": 9187.7,
+    "uplifted_segments": 51,
+    "methodology_counts": {
+      "DIT road-section AADT estimate": 10717
+    },
+    "source_counts": {
+      "South Australia DIT Traffic Volumes": 10717
+    },
+    "volume_band_counts": {
+      "1": 2416,
+      "2": 1609,
+      "3": 1670,
+      "4": 5022
+    },
+    "uplift_samples": [
+      {
+        "osm_id": "w10880867",
+        "name": "Churchill Road North",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 14600,
+        "year": 2023,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w10880869",
+        "name": "Churchill Road North",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 14600,
+        "year": 2023,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w10880871",
+        "name": "Churchill Road North",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 14600,
+        "year": 2023,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w14615930",
+        "name": "Dyson Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 25700,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w19011087",
+        "name": "Aldinga Road",
+        "highway": "secondary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7400,
+        "year": 2021,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w23366525",
+        "name": "Norton Summit Road",
+        "highway": "secondary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7200,
+        "year": 2024,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w23409615",
+        "name": "Morphett Road",
+        "highway": "secondary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 26000,
+        "year": 2024,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w23481172",
+        "name": "Mount Barker Road",
+        "highway": "primary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 9600,
+        "year": 2022,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w33440583",
+        "name": "Ocean Boulevard",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 31600,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w53457127",
+        "name": "Unnamed road",
+        "highway": "trunk_link",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 43200,
+        "year": 2024,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w86462898",
+        "name": "Tapleys Hill Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 51200,
+        "year": 2023,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w142855095",
+        "name": "Main Street",
+        "highway": "primary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 10800,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w150739315",
+        "name": "Hindley Street",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 6700,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w173113913",
+        "name": "Nelson Street",
+        "highway": "secondary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 15000,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w173141711",
+        "name": "Churchill Road North",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 14600,
+        "year": 2023,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w173273036",
+        "name": "Main Street",
+        "highway": "secondary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7900,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w182755334",
+        "name": "King William Street",
+        "highway": "secondary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 19700,
+        "year": 2024,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w198993272",
+        "name": "Morphett Road",
+        "highway": "secondary",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 22300,
+        "year": 2024,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w229056100",
+        "name": "King William Street",
+        "highway": "secondary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 19700,
+        "year": 2024,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w230955666",
+        "name": "Norton Summit Road",
+        "highway": "secondary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7200,
+        "year": 2024,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w336161827",
+        "name": "Hindley Street",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7600,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w362206604",
+        "name": "Hindley Street",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7600,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w362206605",
+        "name": "Hindley Street",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7600,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w554328000",
+        "name": "Hindley Street",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7600,
+        "year": 2025,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w569712234",
+        "name": "Adelaide Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 39100,
+        "year": 2026,
+        "methodology": "DIT road-section AADT estimate",
+        "match_confidence": "medium"
+      }
+    ]
+  },
+  "supplemental_roads": {
+    "available_records": {},
+    "matched_distance_km": {}
+  },
+  "nsw_speed_zones": {
+    "available_records": 0,
+    "source_audit": {},
+    "status_counts": {},
+    "reason_counts": {},
+    "matched_distance_km": 0.0,
+    "ambiguity_samples": []
+  },
+  "surface": {
+    "counts": {
+      "sealed": 87074,
+      "unknown": 72876,
+      "unsealed": 32445
+    },
+    "distance_km": {
+      "sealed": 33935.0,
+      "unknown": 46954.2,
+      "unsealed": 81421.7
+    }
+  },
+  "mtb": {
+    "route_relations": 147,
+    "route_member_ways": 2228,
+    "counts": {
+      "routing_avoid": 615,
+      "routing_caution": 2506,
+      "shown_not_routable": 71,
+      "shown_routable": 3050
+    },
+    "distance_km": {
+      "routing_avoid": 294.9,
+      "routing_caution": 1881.7,
+      "shown_not_routable": 41.2,
+      "shown_routable": 2176.6
+    }
+  },
+  "trails": {
+    "bicycle_route_relations": 101,
+    "bicycle_route_member_ways": 3465,
+    "hiking_route_relations": 101,
+    "hiking_route_member_ways": 2141,
+    "counts": {
+      "routing_avoid": 175,
+      "routing_caution": 36173
+    },
+    "distance_km": {
+      "routing_avoid": 181.2,
+      "routing_caution": 50541.0
+    }
+  }
+}

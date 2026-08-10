@@ -1,0 +1,617 @@
+{
+  "schema_version": 1,
+  "classifier_version": "au-lts-v0.5-trail-suitability",
+  "generated_at": "2026-08-10T22:32:40.464200+00:00",
+  "source": "OpenStreetMap via local Geofabrik Australia extract",
+  "source_pbf": "western-australia-statewide-source.osm.pbf",
+  "source_pbf_modified_at": "2026-08-06T17:00:52Z",
+  "bbox": [
+    112.0,
+    -36.0,
+    130.0,
+    -13.0
+  ],
+  "pilot": "Western Australia",
+  "traffic_volume_source": [
+    "Main Roads WA Traffic Digest"
+  ],
+  "traffic_volume_source_file": "wa-traffic-digest.geojson",
+  "traffic_volume_source_url": null,
+  "current_traffic_source_file": null,
+  "additional_traffic_source_files": [],
+  "nsw_speed_zone_source_file": "wa-legal-speed.geojson",
+  "supplemental_road_sources": null,
+  "segments": 308138,
+  "excluded_segments": 107583,
+  "crossings": 73272,
+  "segment_counts": {
+    "1": 149167,
+    "2": 92488,
+    "3": 22084,
+    "4": 44399
+  },
+  "segment_distance_km": {
+    "1": 117118.6,
+    "2": 88787.4,
+    "3": 17204.0,
+    "4": 56340.7
+  },
+  "crossing_counts": {
+    "1": 9694,
+    "2": 44322,
+    "3": 10532,
+    "4": 8724
+  },
+  "confidence_counts": {
+    "high": 113325,
+    "low": 148698,
+    "medium": 46115
+  },
+  "traffic_volume": {
+    "available_directional_records": 2938,
+    "matched_segments": 13285,
+    "matched_distance_km": 11087.2,
+    "uplifted_segments": 220,
+    "methodology_counts": {
+      "Traffic Digest Monday-Friday average": 11201,
+      "Traffic Digest Monday-Sunday average": 2084
+    },
+    "source_counts": {
+      "Main Roads WA Traffic Digest": 13285
+    },
+    "volume_band_counts": {
+      "1": 1192,
+      "2": 1471,
+      "3": 3081,
+      "4": 7541
+    },
+    "uplift_samples": [
+      {
+        "osm_id": "w4953437",
+        "name": "Paris Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8229,
+        "year": 2025,
+        "methodology": "Traffic Digest Monday-Sunday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5086343",
+        "name": "William Street",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 14714,
+        "year": 2025,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w24617686",
+        "name": "Marquis Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 12961,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w24712380",
+        "name": "Jull Street",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 6036,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w24712431",
+        "name": "Commerce Avenue",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 10891,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w24971877",
+        "name": "Malibu Road",
+        "highway": "secondary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 9933,
+        "year": 2020,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25251239",
+        "name": "Lake Monger Drive",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 24554,
+        "year": 2025,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25362263",
+        "name": "Anchorage Drive",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 16446,
+        "year": 2024,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25498218",
+        "name": "Okely Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 10635,
+        "year": 2024,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25521827",
+        "name": "Reynolds Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7019,
+        "year": 2024,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25549594",
+        "name": "Chisham Avenue",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8423,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25568242",
+        "name": "Gilmore Avenue",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 12004,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25568965",
+        "name": "Wellard Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7257,
+        "year": 2020,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25701050",
+        "name": "Dundebar Road",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8793,
+        "year": 2024,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25744253",
+        "name": "Spearwood Avenue",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 12594,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25744263",
+        "name": "Spearwood Avenue",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 12594,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25744752",
+        "name": "Phoenix Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 17747,
+        "year": 2024,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w25744756",
+        "name": "Phoenix Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 17747,
+        "year": 2024,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w31265584",
+        "name": "Mill Point Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 13471,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w32248164",
+        "name": "Huntriss Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 11348,
+        "year": 2025,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w33613004",
+        "name": "Marquis Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 12961,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w37934443",
+        "name": "Johnson Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 20004,
+        "year": 2021,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w37934444",
+        "name": "Johnson Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 20004,
+        "year": 2021,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w38573872",
+        "name": "Northwood Drive",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 15049,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w38573873",
+        "name": "Northwood Drive",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 15049,
+        "year": 2023,
+        "methodology": "Traffic Digest Monday-Friday average",
+        "match_confidence": "medium"
+      }
+    ]
+  },
+  "supplemental_roads": {
+    "available_records": {},
+    "matched_distance_km": {}
+  },
+  "nsw_speed_zones": {
+    "available_records": 16031,
+    "source_audit": {
+      "source_features": 16039,
+      "accepted_records": 16031,
+      "rejected": {
+        "short_geometry": 8
+      }
+    },
+    "status_counts": {
+      "ambiguous": 11,
+      "ineligible": 255351,
+      "matched": 4241,
+      "protected_osm": 56685,
+      "unmatched": 99433
+    },
+    "reason_counts": {
+      "explicit_osm_speed_present": 56685,
+      "invalid_or_short_osm_geometry": 160,
+      "multiple_strong_source_matches": 1,
+      "no_strong_geometry_match": 99433,
+      "one_way_source_without_one_way_osm_scope": 10,
+      "single_strong_match": 4241,
+      "unsupported_road_scope": 255191
+    },
+    "matched_distance_km": 1370.9,
+    "ambiguity_samples": [
+      {
+        "osm_id": "w29975588",
+        "name": "Twine Street",
+        "highway": "secondary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27815227:0",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 2.29,
+            "alignment": 0.9961,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w111592195",
+        "name": "Horwood Quays",
+        "highway": "residential",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27816888:0",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.04,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w181436729",
+        "name": "Andrew Street",
+        "highway": "secondary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27816251:0",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.91,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w250490073",
+        "name": "Andrew Street",
+        "highway": "secondary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27816251:0",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 2.94,
+            "alignment": 0.9997,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w666242689",
+        "name": "Unnamed road",
+        "highway": "primary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27821840:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.58,
+            "alignment": 0.9943,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w723277979",
+        "name": "Unnamed road",
+        "highway": "trunk",
+        "reason": "multiple_strong_source_matches",
+        "candidates": [
+          {
+            "source_id": "27821302:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.45,
+            "alignment": 0.9717,
+            "osm_coverage": 1.0
+          },
+          {
+            "source_id": "27821020:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "Both Directions",
+            "maximum_offset_metres": 2.7,
+            "alignment": 0.9936,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w737464703",
+        "name": "Unnamed road",
+        "highway": "secondary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27822229:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 1.2,
+            "alignment": 0.9998,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w737464715",
+        "name": "Unnamed road",
+        "highway": "secondary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27822231:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 2.39,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1097003225",
+        "name": "Unnamed road",
+        "highway": "primary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27821491:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.3,
+            "alignment": 1.0,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1097003270",
+        "name": "Hannan Street",
+        "highway": "trunk",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27812938:0",
+            "speed_kmh": 50,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 3.27,
+            "alignment": 0.9874,
+            "osm_coverage": 1.0
+          }
+        ]
+      },
+      {
+        "osm_id": "w1195981604",
+        "name": "Unnamed road",
+        "highway": "primary",
+        "reason": "one_way_source_without_one_way_osm_scope",
+        "candidates": [
+          {
+            "source_id": "27821841:0",
+            "speed_kmh": 70,
+            "zone_type": "Ordinary Permanent",
+            "direction_scope": "One Way",
+            "maximum_offset_metres": 2.0,
+            "alignment": 0.9999,
+            "osm_coverage": 1.0
+          }
+        ]
+      }
+    ]
+  },
+  "surface": {
+    "counts": {
+      "sealed": 134232,
+      "unknown": 130522,
+      "unsealed": 43384
+    },
+    "distance_km": {
+      "sealed": 59344.6,
+      "unknown": 87541.2,
+      "unsealed": 132564.9
+    }
+  },
+  "mtb": {
+    "route_relations": 15,
+    "route_member_ways": 1262,
+    "counts": {
+      "routing_avoid": 295,
+      "routing_caution": 1588,
+      "shown_not_routable": 418,
+      "shown_routable": 1465
+    },
+    "distance_km": {
+      "routing_avoid": 50.0,
+      "routing_caution": 1302.0,
+      "shown_not_routable": 402.2,
+      "shown_routable": 1352.0
+    }
+  },
+  "trails": {
+    "bicycle_route_relations": 288,
+    "bicycle_route_member_ways": 4939,
+    "hiking_route_relations": 94,
+    "hiking_route_member_ways": 2058,
+    "counts": {
+      "routing_avoid": 155,
+      "routing_caution": 60067
+    },
+    "distance_km": {
+      "routing_avoid": 83.1,
+      "routing_caution": 100675.4
+    }
+  }
+}

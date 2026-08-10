@@ -38,8 +38,186 @@ const DATASETS = {
     zoom: 8.5,
     routable: true,
   },
+  western_australia: {
+    label: 'Western Australia',
+    title: 'Australian LTS Lab · Western Australia',
+    dataUrl: process.env.NEXT_PUBLIC_WA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/western-australia-lts-c2192900.pmtiles',
+    metadataUrl: `/data/lts/western-australia-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [115.86, -31.95] as [number, number],
+    zoom: 8.5,
+    routable: true,
+  },
+  south_australia: {
+    label: 'South Australia',
+    title: 'Australian LTS Lab · South Australia',
+    dataUrl: process.env.NEXT_PUBLIC_SA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/south-australia-lts-d579551c.pmtiles',
+    metadataUrl: `/data/lts/south-australia-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [138.60, -34.93] as [number, number],
+    zoom: 8.5,
+    routable: true,
+  },
+  act: {
+    label: 'Australian Capital Territory',
+    title: 'Australian LTS Lab · ACT',
+    dataUrl: process.env.NEXT_PUBLIC_ACT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/act-lts-926d777c.pmtiles',
+    metadataUrl: `/data/lts/act-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [149.13, -35.28] as [number, number],
+    zoom: 10.5,
+    routable: true,
+  },
+  tasmania: {
+    label: 'Tasmania',
+    title: 'Australian LTS Lab · Tasmania',
+    dataUrl: process.env.NEXT_PUBLIC_TASMANIA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/tasmania-lts-ee99da23.pmtiles',
+    metadataUrl: `/data/lts/tasmania-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [147.33, -42.88] as [number, number],
+    zoom: 8.5,
+    routable: true,
+  },
+  northern_territory: {
+    label: 'Northern Territory',
+    title: 'Australian LTS Lab · Northern Territory',
+    dataUrl: process.env.NEXT_PUBLIC_NT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/northern-territory-lts-e6f8e235.pmtiles',
+    metadataUrl: `/data/lts/northern-territory-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [130.85, -12.46] as [number, number],
+    zoom: 9,
+    routable: true,
+  },
 } as const;
 type DatasetKey = keyof typeof DATASETS;
+
+interface SourceLink { label: string; href: string }
+interface StateSourceCopy {
+  trafficTitle: string;
+  trafficDescription: string;
+  trafficLinks: SourceLink[];
+  roadDescription: string;
+  roadLinks: SourceLink[];
+  methodology: string[];
+  trafficLimitation: string;
+  speedLimitation: string;
+}
+
+const STATE_SOURCE_COPY: Record<DatasetKey, StateSourceCopy> = {
+  victoria: {
+    trafficTitle: 'Victorian traffic-volume evidence',
+    trafficDescription: 'The historical directional AADT network is supplemented by 2026 TIRTL and telemetry sensor averages, SCATS signal-loop observations, City of Casey surveys, and City of Melbourne’s 2014–17 classified counts. Fresh direct counts take precedence; the older Melbourne counts only fill gaps.',
+    trafficLinks: [
+      { label: 'AADT', href: 'https://discover.data.vic.gov.au/dataset/historical-annual-average-daily-traffic-volume' },
+      { label: 'TIRTL', href: 'https://opendata.transport.vic.gov.au/dataset/tirtl-traffic-counts' },
+      { label: 'Telemetry', href: 'https://discover.data.vic.gov.au/dataset/telemetry-traffic-counts-and-classification' },
+      { label: 'SCATS', href: 'https://opendata.transport.vic.gov.au/dataset/traffic-signal-volume-data' },
+      { label: 'Casey surveys', href: 'https://discover.data.vic.gov.au/en_AU/dataset/traffic-volume-survey' },
+      { label: 'Melbourne counts', href: 'https://discover.data.vic.gov.au/dataset/traffic-count-vehicle-classification-2014-2017' },
+    ],
+    roadDescription: 'DTP normal-operation speed zones fill missing OSM speeds. DTP bicycle infrastructure fills missing directional lane, buffer and protection details. City of Melbourne parking zones fill otherwise unknown kerbside parking. Explicit OSM tags always win.',
+    roadLinks: [
+      { label: 'Speed zones', href: 'https://discover.data.vic.gov.au/en_AU/dataset/speed-zones' },
+      { label: 'Bike infrastructure', href: 'https://opendata.transport.vic.gov.au/dataset/bicycle-infrastructure-network' },
+      { label: 'Parking zones', href: 'https://discover.data.vic.gov.au/dataset/parking-zones-linked-to-street-segments' },
+    ],
+    methodology: [
+      'Direct TIRTL, telemetry and recent council observations outrank historical AADT. SCATS is useful where no better count matches, but its public export does not identify road approaches: the Lab conservatively estimates one direction from the intersection total, labels it low confidence, and permits it to raise a road by only one LTS level.',
+      'Where OSM is missing a speed, the classifier uses DTP’s June 2026 normal-operation speed zone for that direction. School, shopping and other conditional limits are excluded because this all-day map cannot yet know when they apply. Official bicycle and parking layers similarly fill only missing details.',
+    ],
+    trafficLimitation: 'The historical AADT layer mainly covers Victoria’s declared road network. Current sensors and council surveys improve coverage, but local-road traffic evidence remains much stronger in Melbourne and Casey than elsewhere in Victoria.',
+    speedLimitation: 'Only normal-operation speed zones are used. Time-dependent school, shopping and variable limits are not applied until the router can evaluate their active times.',
+  },
+  nsw: {
+    trafficTitle: 'NSW traffic-volume evidence',
+    trafficDescription: 'Published Transport for NSW all-day, all-vehicle station counts are matched conservatively by road identity, projected distance and travel direction. Every accepted count is pinned to one audited OSM way; ambiguous and rejected observations do not enter the map. Dates vary by station and remain visible when a road is inspected.',
+    trafficLinks: [{ label: 'TfNSW traffic counts', href: 'https://data.nsw.gov.au/data/en/dataset/2-nsw-roads-traffic-volume-counts-api' }],
+    roadDescription: 'TfNSW fixed, all-day speed-zone lines fill only missing OSM speeds when the geometry strongly covers the same road. Conditional, school and variable zones are excluded; conflicting or one-way-ambiguous matches are quarantined. Explicit OSM speeds always win. Cycling treatments, lane detail, buffers and parking currently come from OSM.',
+    roadLinks: [{ label: 'TfNSW speed zones', href: 'https://data.nsw.gov.au/data/en/dataset/2-speed-zones' }],
+    methodology: [
+      'The NSW importer keeps the latest published all-day/all-vehicle observation for each exact station direction, but the latest available year varies substantially by station. Counts are never copied along a corridor: the audit accepts one OSM way or rejects the observation.',
+      'Where OSM is missing a speed, the classifier may use a strongly coincident TfNSW fixed all-day speed zone. Conditional and variable limits are excluded, explicit OSM speed tags are protected, and competing strong matches are left unresolved.',
+    ],
+    trafficLimitation: 'TfNSW traffic-count coverage is sparse and uneven. Many stations’ latest published all-day observation is historical; the observation year is retained and shown rather than presented as current traffic.',
+    speedLimitation: 'Only fixed all-day speed zones are used. Time-dependent school and variable limits are not applied until the router can evaluate their active times.',
+  },
+  queensland: {
+    trafficTitle: 'Queensland traffic-volume evidence',
+    trafficDescription: 'Queensland TMR’s 2025 traffic census is joined to the July 2026 road-location spine, preserving the published representative segment, carriageway direction and permanent or coverage count method. The resulting lines are matched conservatively to OSM; the count and method remain visible when a road is inspected.',
+    trafficLinks: [
+      { label: 'TMR traffic census', href: 'https://www.data.qld.gov.au/dataset/traffic-census-for-the-queensland-state-declared-road-network' },
+      { label: 'TMR road-location data', href: 'https://www.data.qld.gov.au/dataset/road-location-and-traffic-data' },
+    ],
+    roadDescription: 'Queensland’s public point-in-time speed-sign surveys are historical observations, not a current statewide speed-zone line layer, so this build does not use them to overwrite or fill OSM speeds. Cycling treatments, lane details, buffers and parking currently come from OSM.',
+    roadLinks: [{ label: 'Historical speed-sign survey (not used)', href: 'https://www.data.qld.gov.au/dataset/speed-limits-for-state-and-local-roads' }],
+    methodology: [
+      'The Queensland importer uses 2025 TMR AADT for each published representative segment. Combined counts are applied to undivided carriageways; directional counts are kept on the matching divided carriageway. Geometry is split at genuine carriageway transitions rather than interpolated across gaps.',
+      'Queensland’s historical speed-sign survey is not treated as a current speed-zone network. Where OSM has no explicit speed, the shared road-class fallback is used and marked as inferred.',
+    ],
+    trafficLimitation: 'TMR traffic counts mainly cover Queensland’s state-declared road network. Local streets without a matched count continue to use OSM road class, speed, lanes and cycling-facility evidence.',
+    speedLimitation: 'Queensland’s historical point-in-time speed-sign survey is not used as if it were a current speed-zone layer. Missing OSM speeds use clearly labelled classifier fallbacks.',
+  },
+  western_australia: {
+    trafficTitle: 'Western Australian traffic-volume evidence',
+    trafficDescription: 'Main Roads WA Traffic Digest observations are matched conservatively to the OSM network. Metropolitan records use the published Monday–Friday volume and regional records use Monday–Sunday volume; permanent-counter records take precedence over sample counts. Source year, method and confidence remain attached to inspected roads.',
+    trafficLinks: [{ label: 'Main Roads WA Traffic Digest', href: 'https://catalogue.data.wa.gov.au/dataset/mrwa-traffic-digest' }],
+    roadDescription: 'Main Roads WA Legal Speed Limit lines fill a missing OSM speed only where the public record contains one explicit numeric all-day value and strongly matches the same road. Ambiguous “50 built-up / 110 outside” records are rejected rather than guessed. Cycling treatments and parking come from OSM.',
+    roadLinks: [{ label: 'Main Roads WA legal speed limits', href: 'https://catalogue.data.wa.gov.au/dataset/mrwa-legal-speed-limits' }],
+    methodology: [
+      'Traffic Digest records preserve their metropolitan or regional averaging period and permanent or sample-count methodology. Geometry, road identity and direction must support a conservative OSM match before volume can raise LTS.',
+      'Only an explicit all-day numeric legal speed can fill a missing OSM value. Ambiguous default records, weak geometry matches and conflicting strong matches remain unresolved and use the labelled classifier fallback.',
+    ],
+    trafficLimitation: 'Traffic Digest coverage is strongest on the Main Roads network and in surveyed metropolitan corridors. Unmatched local roads continue to use OSM and transparent road-class inference.',
+    speedLimitation: 'Many WA legal-speed records describe a context-dependent default rather than one explicit value. Those rows are deliberately excluded instead of assigning a potentially wrong speed.',
+  },
+  south_australia: {
+    trafficTitle: 'South Australian traffic-volume evidence',
+    trafficDescription: 'The Department for Infrastructure and Transport’s current Traffic Volumes layer supplies published AADT estimates. Valid records are matched conservatively by road geometry and identity, with source year, method and confidence retained for inspection.',
+    trafficLinks: [{ label: 'DIT Traffic Volumes', href: 'https://data.sa.gov.au/data/dataset/traffic-volumes' }],
+    roadDescription: 'This build has no separate current statewide speed-line supplement. Explicit OSM speed, lane, cycling-facility and parking tags are used where present; otherwise the shared classifier’s labelled road-class fallbacks apply.',
+    roadLinks: [],
+    methodology: [
+      'The published DIT traffic-volume estimate is accepted only when it can be associated with the same OSM road geometry. Invalid or ambiguous records are rejected rather than spread along a corridor.',
+      'No external speed layer overwrites OSM. A missing speed remains visibly inferred from road class, using the same fallback rules as every other state.',
+    ],
+    trafficLimitation: 'DIT volume coverage is concentrated on monitored roads. Local streets without a match continue to use OSM road class, speed, lanes and cycling-facility evidence.',
+    speedLimitation: 'No current reusable statewide speed-zone line layer is included, so missing OSM speeds use clearly labelled classifier fallbacks.',
+  },
+  act: {
+    trafficTitle: 'ACT traffic-volume evidence',
+    trafficDescription: 'No maintained, reusable territory-wide geospatial AADT feed was suitable for a conservative road-level join. The ACT map therefore uses OSM and transparent road-class inference rather than presenting tabular summaries as exact street counts.',
+    trafficLinks: [],
+    roadDescription: 'The public ACT speed-zone layer located during this audit was dated November 2020, so it is not used as if it represented current legal speeds. Explicit OSM details remain authoritative and missing values use labelled fallbacks.',
+    roadLinks: [],
+    methodology: [
+      'ACT routing uses the same classifier and penalties as the other live states, but no official traffic volume is attached unless a reusable observation can be spatially audited to the road.',
+      'The stale public speed snapshot is deliberately omitted. This avoids creating false precision from a layer that may not reflect subsequent speed-zone changes.',
+    ],
+    trafficLimitation: 'No official territory-wide road-level AADT supplement is included. Results rely more heavily on OSM road class, explicit speed, lanes and cycling facilities.',
+    speedLimitation: 'The located ACT speed dataset is historical and is not used to fill current speeds; missing OSM values use clearly labelled fallbacks.',
+  },
+  tasmania: {
+    trafficTitle: 'Tasmanian traffic-volume evidence',
+    trafficDescription: 'The national Harmonised Traffic Counts calendar-year layer is grouped by station, road and year, with directional or lane totals combined and normalised by observation coverage. The latest available annual record for each station is matched conservatively to OSM and keeps its year visible.',
+    trafficLinks: [{ label: 'Harmonised Traffic Counts', href: 'https://catalogue.data.infrastructure.gov.au/dataset/harmonised-traffic-counts' }],
+    roadDescription: 'State Growth Speed Limits lines fill missing OSM speeds only when the published directions resolve to one safe all-day value. Conflicting directional values that cannot be expressed safely on the OSM way are rejected.',
+    roadLinks: [{ label: 'State Growth speed limits', href: 'https://data.stategrowth.tas.gov.au/ags/rest/services/PUBLIC/SPEEDLIMITS/FeatureServer' }],
+    methodology: [
+      'Annual traffic observations are grouped at the station before matching, so separate lanes or directions are not mistaken for independent whole-road AADT values. The latest available station year is retained rather than labelled current.',
+      'A State Growth speed match must be geometrically strong and directionally unambiguous. Explicit OSM speeds win, while unresolved official records leave the classifier fallback visible.',
+    ],
+    trafficLimitation: 'Harmonised count stations are sparse outside monitored corridors and their latest year varies. Unmatched roads continue to use OSM and transparent inference.',
+    speedLimitation: 'Directional speed records that cannot be represented safely on the matching OSM way are excluded rather than collapsed into one potentially wrong value.',
+  },
+  northern_territory: {
+    trafficTitle: 'Northern Territory traffic-volume evidence',
+    trafficDescription: 'The current public Annual Traffic Report is distributed as workbooks and maps without a reusable territory-wide geospatial station join. This build does not invent coordinates or copy summary values onto roads, so the current map uses OSM and transparent inference.',
+    trafficLinks: [{ label: 'NT Annual Traffic Report 2023', href: 'https://data.nt.gov.au/dataset/annual-traffic-report-2023' }],
+    roadDescription: 'No suitable current territory-wide speed-line source was found for audited gap filling. Explicit OSM speed, lane, cycling-facility and parking tags are used where available; missing values use the common labelled fallbacks.',
+    roadLinks: [],
+    methodology: [
+      'NT routing uses the same directional LTS classifier, crossing penalties and trail rules as the other live states. The absence of a matched count does not block routing, but it leaves traffic confidence lower.',
+      'Workbook summaries will only be added after station locations can be joined reproducibly and audited. Until then, omitting them is more accurate than presenting a territory total as road-level evidence.',
+    ],
+    trafficLimitation: 'No official territory-wide road-level AADT supplement is included. Results rely more heavily on OSM road class, explicit speed, lanes and cycling facilities.',
+    speedLimitation: 'No current reusable territory-wide speed-zone line layer is included, so missing OSM speeds use clearly labelled classifier fallbacks.',
+  },
+};
 const MAX_ROUTE_POINTS = 26;
 const MAPBOX_PUBLIC_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 const SATELLITE_SOURCE_ID = 'mapbox-satellite';
@@ -160,6 +338,7 @@ interface LtsMetadata {
     matched_distance_km: Record<string, number>;
   };
   nsw_speed_zones?: {
+    available_records?: number;
     source_audit: {
       source_features: number;
       accepted_records: number;
@@ -580,6 +759,7 @@ export default function LtsLabPage() {
   const [mobilePanelExpanded, setMobilePanelExpanded] = useState(false);
   const [datasetKey, setDatasetKey] = useState<DatasetKey>('victoria');
   const activeDataset = DATASETS[datasetKey];
+  const stateSourceCopy = STATE_SOURCE_COPY[datasetKey];
   const displayedRouteSummary = selectedRouteKind === 'bike-profile'
     ? routeComparison?.stress?.summary || null
     : routeSummary;
@@ -641,7 +821,7 @@ export default function LtsLabPage() {
       const response = await fetch('/api/lts-route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ points, allow_gravel: gravelAllowed }),
+        body: JSON.stringify({ points, allow_gravel: gravelAllowed, dataset: datasetKey }),
       });
       const result = await response.json() as LtsRouteResponse;
       if (!response.ok || result.error) throw new Error(result.error || `Router returned ${response.status}`);
@@ -1631,31 +1811,17 @@ export default function LtsLabPage() {
                     <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">OpenStreetMap attribution <ExternalLink className="h-3 w-3" /></a>
                   </div>
                   <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-4">
-                    <p className="font-semibold text-white">{datasetKey === 'victoria' ? 'Victorian traffic-volume evidence' : datasetKey === 'nsw' ? 'NSW traffic-volume evidence' : 'Queensland traffic-volume evidence'}</p>
-                    <p className="mt-1 text-xs text-slate-300">{datasetKey === 'victoria' ? <>The historical directional AADT network is supplemented by 2026 TIRTL and telemetry sensor averages, SCATS signal-loop observations, City of Casey surveys, and City of Melbourne&apos;s 2014–17 classified counts. Fresh direct counts take precedence; the older Melbourne counts only fill gaps.</> : datasetKey === 'nsw' ? <>Published Transport for NSW all-day, all-vehicle station counts are matched conservatively by road identity, projected distance and travel direction. Every accepted count is pinned to one audited OSM way; ambiguous and rejected observations do not enter the map. Dates vary by station and remain visible when a road is inspected.</> : <>Queensland TMR&apos;s 2025 traffic census is joined to the July 2026 road-location spine, preserving the published representative segment, carriageway direction and permanent or coverage count method. The resulting lines are matched conservatively to OSM; the count and method remain visible when a road is inspected.</>}</p>
+                    <p className="font-semibold text-white">{stateSourceCopy.trafficTitle}</p>
+                    <p className="mt-1 text-xs text-slate-300">{stateSourceCopy.trafficDescription}</p>
                     <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
-                      {datasetKey === 'victoria' ? <>
-                        <a href="https://discover.data.vic.gov.au/dataset/historical-annual-average-daily-traffic-volume" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">AADT <ExternalLink className="h-3 w-3" /></a>
-                        <a href="https://opendata.transport.vic.gov.au/dataset/tirtl-traffic-counts" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">TIRTL <ExternalLink className="h-3 w-3" /></a>
-                        <a href="https://discover.data.vic.gov.au/dataset/telemetry-traffic-counts-and-classification" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">Telemetry <ExternalLink className="h-3 w-3" /></a>
-                        <a href="https://opendata.transport.vic.gov.au/dataset/traffic-signal-volume-data" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">SCATS <ExternalLink className="h-3 w-3" /></a>
-                        <a href="https://discover.data.vic.gov.au/en_AU/dataset/traffic-volume-survey" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">Casey surveys <ExternalLink className="h-3 w-3" /></a>
-                        <a href="https://discover.data.vic.gov.au/dataset/traffic-count-vehicle-classification-2014-2017" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">Melbourne counts <ExternalLink className="h-3 w-3" /></a>
-                      </> : datasetKey === 'nsw' ? <a href="https://data.nsw.gov.au/data/en/dataset/2-nsw-roads-traffic-volume-counts-api" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">TfNSW traffic counts <ExternalLink className="h-3 w-3" /></a> : <>
-                        <a href="https://www.data.qld.gov.au/dataset/traffic-census-for-the-queensland-state-declared-road-network" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">TMR traffic census <ExternalLink className="h-3 w-3" /></a>
-                        <a href="https://www.data.qld.gov.au/dataset/road-location-and-traffic-data" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">TMR road-location data <ExternalLink className="h-3 w-3" /></a>
-                      </>}
+                      {stateSourceCopy.trafficLinks.map((link) => <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">{link.label} <ExternalLink className="h-3 w-3" /></a>)}
                     </div>
                   </div>
                   <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4">
                     <p className="font-semibold text-white">Official road details</p>
-                    <p className="mt-1 text-xs text-slate-300">{datasetKey === 'victoria' ? <>DTP normal-operation speed zones fill missing OSM speeds. DTP bicycle infrastructure fills missing directional lane, buffer and protection details. City of Melbourne parking zones fill otherwise unknown kerbside parking. Explicit OSM tags always win.</> : datasetKey === 'nsw' ? <>TfNSW fixed, all-day speed-zone lines fill only missing OSM speeds when the geometry strongly covers the same road. Conditional, school and variable zones are excluded; conflicting or one-way-ambiguous matches are quarantined. Explicit OSM speeds always win. NSW currently has no separate official bicycle-infrastructure or parking supplement in this Lab, so cycling treatments, lane detail, buffers and parking come from OSM.</> : <>Queensland&apos;s public point-in-time speed-sign surveys are historical observations, not a current statewide speed-zone line layer, so this build does not use them to overwrite or fill OSM speeds. Cycling treatments, lane details, buffers and parking currently come from OSM.</>}</p>
+                    <p className="mt-1 text-xs text-slate-300">{stateSourceCopy.roadDescription}</p>
                     <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
-                      {datasetKey === 'victoria' ? <>
-                        <a href="https://discover.data.vic.gov.au/en_AU/dataset/speed-zones" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Speed zones <ExternalLink className="h-3 w-3" /></a>
-                        <a href="https://opendata.transport.vic.gov.au/dataset/bicycle-infrastructure-network" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Bike infrastructure <ExternalLink className="h-3 w-3" /></a>
-                        <a href="https://discover.data.vic.gov.au/dataset/parking-zones-linked-to-street-segments" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Parking zones <ExternalLink className="h-3 w-3" /></a>
-                      </> : datasetKey === 'nsw' ? <a href="https://data.nsw.gov.au/data/en/dataset/2-speed-zones" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">TfNSW speed zones <ExternalLink className="h-3 w-3" /></a> : <a href="https://www.data.qld.gov.au/dataset/speed-limits-for-state-and-local-roads" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Historical speed-sign survey (not used) <ExternalLink className="h-3 w-3" /></a>}
+                      {stateSourceCopy.roadLinks.map((link) => <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">{link.label} <ExternalLink className="h-3 w-3" /></a>)}
                     </div>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -1673,23 +1839,14 @@ export default function LtsLabPage() {
               <section>
                 <h3 className="text-base font-bold text-white">How a road receives its score</h3>
                 <div className="mt-3 space-y-2 text-slate-300">
-                  <p>Victoria, NSW and Queensland use the same classifier and the exact rules below. What differs between them is which official datasets can fill gaps in OSM—not the meaning of an LTS level.</p>
+                  <p>Every state and territory uses the same classifier and the exact rules below. What differs is which official datasets can fill gaps in OSM—not the meaning of an LTS level.</p>
                   <p>Each OSM way is assessed separately for the forward and backward cycling directions using Australian left-hand traffic. The map displays the more stressful permitted direction.</p>
                   <p>Direction matters because the two sides of a road can have different painted or protected cycle lanes, buffers, lane counts and speed tags. For Australian left-hand traffic, forward travel uses the left-side cycling treatment and backward travel uses the right-side treatment. Parking is currently a road-level door-zone flag rather than a fully directional input; its exact effect is stated below.</p>
                   <p>The background line deliberately shows the worse of the two permitted directions, while an active route shows the LTS for the direction being ridden. A route may therefore change a yellow background segment to blue when its side is safer, but the same shared classification should never change a blue background segment to yellow.</p>
                   <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access, bicycle=no/private/dismount/use_sidepath, and footways without explicit bicycle permission are excluded. One-way tags decide which travel directions are scored.</p>
                   <p>For an included direction, the segment score can be changed by only these inputs: road/path class; directional or general speed limit; directional or total motor-traffic lane count; roundabout status; cycling-facility type and side; whether a painted lane has a mapped buffer; mapped kerbside parking beside a painted lane; and matched all-vehicle daily motor traffic. Each rule is deterministic and is applied in the order shown below.</p>
                   <p>Traffic records are matched to OSM geometry using road name or route reference, projected distance, local direction and line overlap. Directional counts are doubled for a two-way OSM centreline to approximate conventional two-way daily traffic.</p>
-                  {datasetKey === 'victoria' ? <>
-                    <p>Direct TIRTL, telemetry and recent council observations outrank historical AADT. SCATS is useful where no better count matches, but its public export does not identify road approaches: the Lab conservatively estimates one direction from the intersection total, labels it low confidence, and permits it to raise a road by only one LTS level.</p>
-                    <p>Where OSM is missing a speed, the classifier uses DTP&apos;s June 2026 normal-operation speed zone for that direction. School, shopping and other conditional limits are excluded because this all-day map cannot yet know when they apply. Official bicycle and parking layers similarly fill only missing details.</p>
-                  </> : datasetKey === 'nsw' ? <>
-                    <p>The NSW importer keeps the latest published all-day/all-vehicle observation for each exact station direction, but the latest available year varies substantially by station. Counts are never copied along a corridor: the audit accepts one OSM way or rejects the observation.</p>
-                    <p>Where OSM is missing a speed, the classifier may use a strongly coincident TfNSW fixed all-day speed zone. Conditional and variable limits are excluded, explicit OSM speed tags are protected, and competing strong matches are left unresolved.</p>
-                  </> : <>
-                    <p>The Queensland importer uses 2025 TMR AADT for each published representative segment. Combined counts are applied to undivided carriageways; directional counts are kept on the matching divided carriageway. Geometry is split at genuine carriageway transitions rather than interpolated across gaps.</p>
-                    <p>Queensland&apos;s historical speed-sign survey is not treated as a current speed-zone network. Where OSM has no explicit speed, the shared road-class fallback is used and marked as inferred.</p>
-                  </>}
+                  {stateSourceCopy.methodology.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
                   <p>Surface, trail suitability and MTB evidence are separate from traffic stress. A road is called unsealed only when OSM has an explicit value such as gravel, dirt, ground or compacted; a missing surface is not guessed. Generic <code>path</code>, <code>track</code> and <code>bridleway</code> links need explicit bicycle access or bicycle-route evidence before they are treated as verified cycling links. Every explicit MTB tag or MTB route membership remains visible, even when routing rules exclude it.</p>
                 </div>
                 <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
@@ -1756,7 +1913,7 @@ export default function LtsLabPage() {
                 <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-100">
                   {USING_LOCAL_ENRICHED_ROUTER
                     ? 'This local test uses separately built BRouter segments containing matched AADT classes, lane counts, parking, buffers, normalised cycleway tags, crossing scores and real elevation. Each directional road and crossing LTS value is precomputed by the same classifier that paints the map; ways excluded from the visible cycling network are also unavailable to the router. It has not been switched into production.'
-                    : 'Traffic volume currently refines the background map only. The live BRouter segment files do not yet contain the matched AADT fields, parking, buffers, lane counts or every newer OSM cycleway tag. Those inputs will affect route selection after a separately built segment set is validated and switched in without disrupting the current service.'}
+                    : 'This Lab uses isolated, state-specific BRouter segment sets containing the same matched traffic, official road evidence, directional LTS, surface and trail rules, crossing scores and elevation used by the map. The AusBUG iOS and Android BRouter service remains separate and unchanged.'}
                 </div>
                 </>}
               </section>
@@ -1776,9 +1933,9 @@ export default function LtsLabPage() {
                     {metadata.traffic_volume.available_directional_records.toLocaleString()} traffic observations in this build · {metadata.traffic_volume.matched_distance_km.toLocaleString()} matched kilometres · {Object.entries(metadata.traffic_volume.source_counts || {}).map(([source, count]) => `${source.replace('DTP ', '')}: ${count.toLocaleString()}`).join(' · ')}
                   </p>
                 )}
-                {metadata?.nsw_speed_zones && (
+                {metadata?.nsw_speed_zones && (metadata.nsw_speed_zones.available_records || 0) > 0 && (
                   <p className="mt-2 text-xs text-slate-400">
-                    {(metadata.nsw_speed_zones.status_counts.matched || 0).toLocaleString()} segments received TfNSW speed evidence across {metadata.nsw_speed_zones.matched_distance_km.toLocaleString()} km · {(metadata.nsw_speed_zones.status_counts.ambiguous || 0).toLocaleString()} ambiguous matches quarantined
+                    {(metadata.nsw_speed_zones.status_counts.matched || 0).toLocaleString()} segments received official speed evidence across {metadata.nsw_speed_zones.matched_distance_km.toLocaleString()} km · {(metadata.nsw_speed_zones.status_counts.ambiguous || 0).toLocaleString()} ambiguous matches quarantined
                   </p>
                 )}
                 {metadata?.supplemental_roads && (
@@ -1802,19 +1959,19 @@ export default function LtsLabPage() {
                 <h3 className="text-base font-bold text-white">Important limitations</h3>
                 <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-300">
                   <li>This is a diagnostic model, not a guarantee that a road is safe or presently open.</li>
-                  <li>{datasetKey === 'victoria' ? <>The historical AADT layer mainly covers Victoria&apos;s declared road network. Current sensors and council surveys improve coverage, but local-road traffic evidence remains much stronger in Melbourne and Casey than elsewhere in Victoria.</> : datasetKey === 'nsw' ? <>TfNSW traffic-count coverage is sparse and uneven. Many stations&apos; latest published all-day observation is historical; the observation year is retained and shown rather than presented as current traffic.</> : <>TMR traffic counts mainly cover Queensland&apos;s state-declared road network. Local streets without a matched count continue to use OSM road class, speed, lanes and cycling-facility evidence.</>}</li>
+                  <li>{stateSourceCopy.trafficLimitation}</li>
                   <li>Every matched traffic value retains its source, count period, methodology and confidence. Unmatched roads continue to use OSM-based inference.</li>
-                  <li>{datasetKey === 'queensland' ? <>Queensland&apos;s historical point-in-time speed-sign survey is not used as if it were a current speed-zone layer. Missing OSM speeds continue to use clearly labelled classifier fallbacks.</> : <>Only normal-operation speed zones are used. Time-dependent school, shopping and variable limits are not applied until the router can evaluate their active times.</>}</li>
+                  <li>{stateSourceCopy.speedLimitation}</li>
                   {datasetKey === 'victoria' && <li>The DTP bicycle layer is itself OSM-linked and may lag recent edits; it fills missing fields but never overwrites an explicit current OSM value.</li>}
                   <li>Surface, trail and MTB styling reflects OSM tags, which can be incomplete or wrong. Unknown surface stays unknown; unverified trails receive a warning/penalty; visual context is not a claim that a trail is suitable, legal, open or safe.</li>
-                  <li>{USING_LOCAL_ENRICHED_ROUTER ? 'Crossings influence the local test router through experimental point penalties; the values still need rider testing and calibration.' : 'Crossing dots are diagnostic in production until the enriched LTS segment service is switched in.'}</li>
+                  <li>Crossings influence the experimental router through point penalties; the values still need rider testing and calibration.</li>
                   <li>Temporary works, congestion at a particular time, driver behaviour, sight distance and pavement condition may not be represented.</li>
                 </ul>
               </section>
 
               <footer className="flex flex-wrap gap-x-5 gap-y-1 border-t border-white/10 pt-4 text-xs text-slate-500">
                 <span>Map classifier: {metadata?.classifier_version || 'loading'}</span>
-                <span>Router classifier: {activeDataset.routable ? (USING_LOCAL_ENRICHED_ROUTER ? 'au-lts-v0.5-trail-suitability-test' : 'au-lts-brouter-v0.1') : 'not enabled for this pilot'}</span>
+                <span>Router classifier: {activeDataset.routable ? (routeClassifier || DATASET_VERSION) : 'not enabled for this pilot'}</span>
                 {metadata?.source_pbf_modified_at && <span>OSM snapshot: {new Date(metadata.source_pbf_modified_at).toLocaleDateString('en-AU')}</span>}
                 {metadata?.generated_at && <span>Built: {new Date(metadata.generated_at).toLocaleString('en-AU')}</span>}
               </footer>

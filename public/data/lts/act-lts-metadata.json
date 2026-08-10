@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "classifier_version": "au-lts-v0.5-trail-suitability",
+  "generated_at": "2026-08-10T22:35:11.409996+00:00",
+  "source": "OpenStreetMap via local Geofabrik Australia extract",
+  "source_pbf": "act-statewide-source.osm.pbf",
+  "source_pbf_modified_at": "2026-08-06T14:59:00Z",
+  "bbox": [
+    148.75,
+    -35.95,
+    149.45,
+    -35.1
+  ],
+  "pilot": "Australian Capital Territory",
+  "traffic_volume_source": null,
+  "traffic_volume_source_file": null,
+  "traffic_volume_source_url": null,
+  "current_traffic_source_file": null,
+  "additional_traffic_source_files": [],
+  "nsw_speed_zone_source_file": null,
+  "supplemental_road_sources": null,
+  "segments": 82091,
+  "excluded_segments": 17236,
+  "crossings": 24665,
+  "segment_counts": {
+    "1": 54531,
+    "2": 13203,
+    "3": 5840,
+    "4": 8517
+  },
+  "segment_distance_km": {
+    "1": 7139.2,
+    "2": 2237.1,
+    "3": 699.8,
+    "4": 900.1
+  },
+  "crossing_counts": {
+    "1": 2561,
+    "2": 17213,
+    "3": 3521,
+    "4": 1370
+  },
+  "confidence_counts": {
+    "high": 53593,
+    "low": 21333,
+    "medium": 7165
+  },
+  "traffic_volume": {
+    "available_directional_records": 0,
+    "matched_segments": 0,
+    "matched_distance_km": 0.0,
+    "uplifted_segments": 0,
+    "methodology_counts": {},
+    "source_counts": {},
+    "volume_band_counts": {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0
+    },
+    "uplift_samples": []
+  },
+  "supplemental_roads": {
+    "available_records": {},
+    "matched_distance_km": {}
+  },
+  "nsw_speed_zones": {
+    "available_records": 0,
+    "source_audit": {},
+    "status_counts": {},
+    "reason_counts": {},
+    "matched_distance_km": 0.0,
+    "ambiguity_samples": []
+  },
+  "surface": {
+    "counts": {
+      "sealed": 66128,
+      "unknown": 11829,
+      "unsealed": 4134
+    },
+    "distance_km": {
+      "sealed": 7367.3,
+      "unknown": 1950.2,
+      "unsealed": 1658.8
+    }
+  },
+  "mtb": {
+    "route_relations": 100,
+    "route_member_ways": 739,
+    "counts": {
+      "routing_avoid": 167,
+      "routing_caution": 1460,
+      "shown_not_routable": 94,
+      "shown_routable": 1533
+    },
+    "distance_km": {
+      "routing_avoid": 59.3,
+      "routing_caution": 500.1,
+      "shown_not_routable": 52.6,
+      "shown_routable": 559.4
+    }
+  },
+  "trails": {
+    "bicycle_route_relations": 43,
+    "bicycle_route_member_ways": 1991,
+    "hiking_route_relations": 40,
+    "hiking_route_member_ways": 1166,
+    "counts": {
+      "routing_avoid": 4,
+      "routing_caution": 4414
+    },
+    "distance_km": {
+      "routing_avoid": 3.2,
+      "routing_caution": 1623.4
+    }
+  }
+}
