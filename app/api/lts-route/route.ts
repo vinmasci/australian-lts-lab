@@ -16,7 +16,7 @@ type RoutableDataset = keyof typeof ROUTER_URLS;
 const COMPARISON_BROUTER_ROUTE_URL = process.env.BROUTER_COMPARISON_URL
   || 'https://valhalla.vicbug.app/brouter';
 const COMPARISON_PROFILE = 'cyabikepath';
-const ROUTING_CLASSIFIER_VERSION = process.env.LTS_ROUTER_CLASSIFIER_VERSION
+const ROUTING_CLASSIFIER_VERSION = process.env.LTS_ROUTER_CLASSIFIER_VERSION?.trim()
   || (USING_LOCAL_ENRICHED_ROUTER ? 'au-lts-v0.5-trail-suitability-test' : 'au-lts-brouter-v0.1');
 
 type Coordinate = [number, number] | [number, number, number];
