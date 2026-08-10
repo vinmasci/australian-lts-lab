@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Bike, ExternalLink, Info, Loader2, Redo2, Route as RouteIcon, Trash2, Undo2, X } from 'lucide-react';
+import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, Redo2, Route as RouteIcon, Trash2, Undo2, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 
 
@@ -568,6 +568,7 @@ export default function LtsLabPage() {
   const [transparentRoutes, setTransparentRoutes] = useState(false);
   const [routeClassifier, setRouteClassifier] = useState<string | null>(null);
   const [showAbout, setShowAbout] = useState(false);
+  const [mobilePanelExpanded, setMobilePanelExpanded] = useState(false);
   const [datasetKey, setDatasetKey] = useState<DatasetKey>('victoria');
   const activeDataset = DATASETS[datasetKey];
   const displayedRouteSummary = selectedRouteKind === 'bike-profile'
@@ -772,7 +773,7 @@ export default function LtsLabPage() {
         zoom: activeDataset.zoom,
       });
       mapRef.current = map;
-      map.addControl(new maplibregl.NavigationControl(), 'top-right');
+      map.addControl(new maplibregl.NavigationControl({ showZoom: window.innerWidth >= 768 }), 'top-right');
 
       map.on('error', (event) => {
         const message = event.error?.message || '';
@@ -1099,9 +1100,29 @@ export default function LtsLabPage() {
   const selectedLts = selected ? Number(selected.lts) : null;
   const selectedOsmUrl = selected ? osmUrl(selected) : null;
   const selectedTrafficFreshness = selected ? trafficFreshness(selected.traffic_year) : null;
+  const mobileRouteStatus = routeLoading
+    ? 'Finding the lowest-stress route…'
+    : routeError
+      ? 'Route failed — open controls for details'
+      : routePoints.length === 0
+        ? 'Tap the map to place starting point A'
+        : routePoints.length === 1
+          ? 'Tap the map to place destination B'
+          : displayedRouteSummary
+            ? `${formatRouteDistance(displayedRouteSummary.distance_m)} · ${formatRouteTime(displayedRouteSummary.time_ms)}`
+            : `${routePoints.length}-point route calculated`;
+
+  const toggleRoutePlanning = () => {
+    const next = !routeMode;
+    setRouteMode(next);
+    setMobilePanelExpanded(false);
+    setSelected(null);
+    (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
+    resetRouteHistory();
+  };
 
   return (
-    <main className="relative h-screen overflow-hidden bg-slate-950 text-white">
+    <main className="relative h-[100dvh] overflow-hidden bg-slate-950 text-white">
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
       {mapLoading && (
         <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/45">
@@ -1112,7 +1133,7 @@ export default function LtsLabPage() {
         </div>
       )}
       {satelliteEnabled && MAPBOX_PUBLIC_TOKEN && (
-        <div className="absolute right-3 top-20 z-[9] rounded-lg bg-slate-950/75 px-2 py-1.5 shadow-lg backdrop-blur-sm">
+        <div className="absolute right-14 top-28 z-[9] rounded-lg bg-slate-950/75 px-2 py-1.5 shadow-lg backdrop-blur-sm md:right-3 md:top-20">
           <a href="https://www.mapbox.com/about/maps" target="_blank" rel="noreferrer" className="mapbox-attribution-logo" aria-label="Mapbox" />
           <div className="mt-1 flex max-w-[210px] flex-wrap gap-x-1.5 text-[8px] leading-tight text-white/80">
             <a href="https://www.mapbox.com/about/maps" target="_blank" rel="noreferrer" className="hover:text-white">© Mapbox</a>
@@ -1123,11 +1144,11 @@ export default function LtsLabPage() {
         </div>
       )}
 
-      <header className="absolute left-3 right-3 top-3 z-10 flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/95 px-4 py-3 shadow-2xl backdrop-blur md:left-4 md:right-auto md:min-w-[440px]">
-        <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-400"><Bike className="h-5 w-5" /></div>
-        <div>
-          <h1 className="font-bold">{activeDataset.title}</h1>
-          <p className="text-xs text-slate-400">{activeDataset.routable ? 'Experimental low-stress map and routing' : 'Experimental statewide diagnostic map'}</p>
+      <header className="mobile-map-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2.5 shadow-2xl backdrop-blur md:left-4 md:right-auto md:min-w-[440px] md:flex-nowrap md:gap-3 md:px-4 md:py-3">
+        <div className="shrink-0 rounded-lg bg-emerald-500/15 p-2 text-emerald-400"><Bike className="h-5 w-5" /></div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-sm font-bold md:text-base">{activeDataset.title}</h1>
+          <p className="hidden text-xs text-slate-400 sm:block">{activeDataset.routable ? 'Experimental low-stress map and routing' : 'Experimental statewide diagnostic map'}</p>
         </div>
         <select
           value={datasetKey}
@@ -1137,40 +1158,72 @@ export default function LtsLabPage() {
             setMapError(null);
             setDatasetKey(event.target.value as DatasetKey);
             setRouteMode(false);
+            setMobilePanelExpanded(false);
             resetRouteHistory();
             setSelected(null);
           }}
           aria-label="LTS dataset"
-          className="ml-auto rounded-lg border border-white/10 bg-slate-900 px-2.5 py-2 text-xs font-semibold text-slate-100"
+          className="order-last w-full rounded-lg border border-white/10 bg-slate-900 px-2.5 py-2 text-xs font-semibold text-slate-100 md:order-none md:ml-auto md:w-auto"
         >
           {Object.entries(DATASETS).map(([key, dataset]) => <option key={key} value={key}>{dataset.label}</option>)}
         </select>
         <button
           type="button"
           onClick={() => setShowAbout(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10"
+          aria-label="About this LTS map"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-200 hover:bg-white/10 sm:w-auto sm:gap-1.5 sm:px-2.5"
         >
           <Info className="h-4 w-4" />
           <span className="hidden sm:inline">About</span>
         </button>
       </header>
 
-      <aside className="absolute bottom-3 left-3 z-10 max-h-[calc(100vh-7rem)] w-[calc(100%-1.5rem)] max-w-sm overflow-y-auto rounded-xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur md:bottom-auto md:left-4 md:top-24 md:w-80">
+      <aside className="mobile-map-panel absolute left-3 z-10 max-h-[calc(100dvh-8rem)] w-[calc(100%-1.5rem)] max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl backdrop-blur md:bottom-auto md:left-4 md:top-24 md:w-80 md:overflow-y-auto md:rounded-xl md:p-4">
+        <div className="md:hidden">
+          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-600" aria-hidden="true" />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            {activeDataset.routable ? (
+              <button
+                type="button"
+                onClick={toggleRoutePlanning}
+                className={`flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition ${routeMode ? 'bg-emerald-400 text-slate-950' : 'bg-white text-slate-950 hover:bg-emerald-100'}`}
+              >
+                <RouteIcon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{routeMode ? 'Exit routing' : 'Plan a low-stress route'}</span>
+              </button>
+            ) : (
+              <div className="flex min-h-11 items-center rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 text-xs font-semibold text-sky-100">NSW map only</div>
+            )}
+            <button
+              type="button"
+              onClick={() => setMobilePanelExpanded((expanded) => !expanded)}
+              aria-expanded={mobilePanelExpanded}
+              aria-controls="mobile-map-controls"
+              className="flex min-h-11 items-center gap-1.5 rounded-xl border border-white/10 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10"
+            >
+              <Layers3 className="h-4 w-4" />
+              {routeMode ? 'Controls' : 'Layers'}
+              {mobilePanelExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </button>
+          </div>
+          {routeMode && !mobilePanelExpanded && (
+            <div className={`mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${routeError ? 'bg-red-500/15 text-red-200' : 'bg-emerald-400/10 text-emerald-200'}`}>
+              {routeLoading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />}
+              <span className="truncate">{mobileRouteStatus}</span>
+            </div>
+          )}
+        </div>
+
+        <div id="mobile-map-controls" className={`${mobilePanelExpanded ? 'mt-2 block' : 'hidden'} max-h-[calc(100dvh-15rem)] overflow-y-auto px-1 pb-1 md:mt-0 md:block md:max-h-none md:overflow-visible md:px-0 md:pb-0`}>
         {activeDataset.routable ? <button
           type="button"
-          onClick={() => {
-            const next = !routeMode;
-            setRouteMode(next);
-            setSelected(null);
-            (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
-            resetRouteHistory();
-          }}
-          className={`mb-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${routeMode ? 'bg-emerald-400 text-slate-950' : 'bg-white text-slate-950 hover:bg-emerald-100'}`}
+          onClick={toggleRoutePlanning}
+          className={`mb-4 hidden w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition md:flex ${routeMode ? 'bg-emerald-400 text-slate-950' : 'bg-white text-slate-950 hover:bg-emerald-100'}`}
         >
           <RouteIcon className="h-4 w-4" />
           {routeMode ? 'LTS routing active' : 'Plan a low-stress route'}
         </button> : (
-          <div className="mb-4 rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 py-2.5 text-xs leading-relaxed text-sky-100">
+          <div className="mb-4 hidden rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 py-2.5 text-xs leading-relaxed text-sky-100 md:block">
             NSW is map-only while its routing graph is audited. Victoria includes experimental LTS routing.
           </div>
         )}
@@ -1442,6 +1495,7 @@ export default function LtsLabPage() {
           </div>
         )}
         {mapError && <p className="mt-3 rounded-lg bg-red-500/15 p-2 text-xs text-red-300">{mapError}</p>}
+        </div>
       </aside>
 
       {!routeMode && selected && (selectedLts || propertyIsTrue(selected.is_mtb)) && (
@@ -1452,7 +1506,7 @@ export default function LtsLabPage() {
               const source = mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined;
               source?.setData(selectedGeoJson());
             }}
-            className="absolute right-3 top-3 rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+            className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
             aria-label="Close details"
           ><X className="h-5 w-5" /></button>
           <div className="mb-4 flex items-center gap-3 pr-8">
@@ -1520,7 +1574,7 @@ export default function LtsLabPage() {
 
       {showAbout && (
         <div
-          className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm md:p-8"
+          className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-0 backdrop-blur-sm sm:p-3 md:p-8"
           role="dialog"
           aria-modal="true"
           aria-labelledby="lts-about-title"
@@ -1528,22 +1582,22 @@ export default function LtsLabPage() {
             if (event.currentTarget === event.target) setShowAbout(false);
           }}
         >
-          <section className="relative max-h-full w-full max-w-4xl overflow-y-auto rounded-2xl border border-white/10 bg-slate-950 shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-white/10 bg-slate-950/95 px-5 py-4 backdrop-blur md:px-7">
-              <div className="rounded-xl bg-emerald-400/15 p-2.5 text-emerald-300"><Info className="h-5 w-5" /></div>
+          <section className="relative h-full max-h-full w-full max-w-4xl overflow-y-auto border border-white/10 bg-slate-950 shadow-2xl sm:h-auto sm:rounded-2xl">
+            <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur sm:px-5 sm:py-4 md:px-7">
+              <div className="hidden rounded-xl bg-emerald-400/15 p-2.5 text-emerald-300 sm:block"><Info className="h-5 w-5" /></div>
               <div className="pr-10">
-                <h2 id="lts-about-title" className="text-xl font-bold">About the {activeDataset.title}</h2>
-                <p className="mt-1 text-sm text-slate-400">How the stress map and experimental router are built, what data they use, and what they cannot claim yet.</p>
+                <h2 id="lts-about-title" className="text-lg font-bold sm:text-xl">About the {activeDataset.title}</h2>
+                <p className="mt-1 text-xs text-slate-400 sm:text-sm">How the stress map and experimental router are built, what data they use, and what they cannot claim yet.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAbout(false)}
-                className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white"
+                className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white sm:right-4 sm:top-4"
                 aria-label="Close about panel"
               ><X className="h-5 w-5" /></button>
             </div>
 
-            <div className="space-y-8 px-5 py-6 text-sm leading-relaxed text-slate-300 md:px-7 md:py-7">
+            <div className="space-y-6 px-4 py-5 text-sm leading-relaxed text-slate-300 sm:space-y-8 sm:px-5 sm:py-6 md:px-7 md:py-7">
               <section>
                 <h3 className="text-base font-bold text-white">What this map is</h3>
                 <p className="mt-2">
