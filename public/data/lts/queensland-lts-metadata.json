@@ -1,0 +1,400 @@
+{
+  "schema_version": 1,
+  "classifier_version": "au-lts-v0.5-trail-suitability",
+  "generated_at": "2026-08-10T09:39:39.149465+00:00",
+  "source": "OpenStreetMap via local Geofabrik Australia extract",
+  "source_pbf": "queensland-statewide-source.osm.pbf",
+  "source_pbf_modified_at": "2026-08-06T14:02:26Z",
+  "bbox": [
+    137.8,
+    -29.3,
+    153.7,
+    -9.0
+  ],
+  "pilot": "Queensland",
+  "traffic_volume_source": [
+    "Queensland TMR traffic census"
+  ],
+  "traffic_volume_source_file": "queensland_tmr_traffic_2025.geojson",
+  "traffic_volume_source_url": null,
+  "current_traffic_source_file": null,
+  "additional_traffic_source_files": [],
+  "nsw_speed_zone_source_file": null,
+  "supplemental_road_sources": null,
+  "segments": 503691,
+  "excluded_segments": 163165,
+  "crossings": 88816,
+  "segment_counts": {
+    "1": 238589,
+    "2": 154715,
+    "3": 40213,
+    "4": 70174
+  },
+  "segment_distance_km": {
+    "1": 95434.9,
+    "2": 95481.2,
+    "3": 30879.6,
+    "4": 63145.6
+  },
+  "crossing_counts": {
+    "1": 28718,
+    "2": 49137,
+    "3": 7192,
+    "4": 3769
+  },
+  "confidence_counts": {
+    "high": 178990,
+    "low": 239731,
+    "medium": 84970
+  },
+  "traffic_volume": {
+    "available_directional_records": 4502,
+    "matched_segments": 6948,
+    "matched_distance_km": 8171.5,
+    "uplifted_segments": 47,
+    "methodology_counts": {
+      "TMR coverage traffic census": 6538,
+      "TMR permanent traffic census": 410
+    },
+    "source_counts": {
+      "Queensland TMR traffic census": 6948
+    },
+    "volume_band_counts": {
+      "1": 3112,
+      "2": 1068,
+      "3": 1409,
+      "4": 1359
+    },
+    "uplift_samples": [
+      {
+        "osm_id": "w18622145",
+        "name": "Stapylton Jacobs Well Road",
+        "highway": "secondary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 12584,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w41235005",
+        "name": "Laidley Plainland Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 6181,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w91391709",
+        "name": "Beenleigh-Redland Bay Road",
+        "highway": "trunk",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 19183,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w113958595",
+        "name": "Beaudesert Beenleigh Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 20712,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w121865069",
+        "name": "Beaudesert Beenleigh Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 20712,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w121865076",
+        "name": "Beaudesert Beenleigh Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 20712,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w121865079",
+        "name": "Beaudesert Beenleigh Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 20712,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w156743590",
+        "name": "Beaudesert Beenleigh Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 20712,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w157653314",
+        "name": "Beenleigh-Redland Bay Road",
+        "highway": "trunk",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 19183,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w174419710",
+        "name": "Beenleigh-Redland Bay Road",
+        "highway": "trunk",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 21600,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w185709778",
+        "name": "Caloundra Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 16573,
+        "year": 2025,
+        "methodology": "TMR permanent traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w185709782",
+        "name": "Caloundra Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 16573,
+        "year": 2025,
+        "methodology": "TMR permanent traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w188180380",
+        "name": "Beaudesert Beenleigh Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 20712,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w252422161",
+        "name": "Caloundra Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 34164,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w338241743",
+        "name": "Beenleigh-Redland Bay Road",
+        "highway": "trunk",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 19504,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w395524732",
+        "name": "Mount Cotton Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 19734,
+        "year": 2025,
+        "methodology": "TMR permanent traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w395524733",
+        "name": "Mount Cotton Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 19734,
+        "year": 2025,
+        "methodology": "TMR permanent traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w576087343",
+        "name": "Mount Cotton Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 19734,
+        "year": 2025,
+        "methodology": "TMR permanent traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w582069948",
+        "name": "Beaudesert Beenleigh Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 20712,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w705624874",
+        "name": "Mulgrave Road",
+        "highway": "service",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 19696,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w725979295",
+        "name": "Unnamed road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 38444,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w739670318",
+        "name": "Mount Cotton Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 16036,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w739670319",
+        "name": "Mount Cotton Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 16036,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w740024786",
+        "name": "Mount Cotton Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 16036,
+        "year": 2025,
+        "methodology": "TMR coverage traffic census",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w740517903",
+        "name": "Mount Cotton Road",
+        "highway": "primary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 19734,
+        "year": 2025,
+        "methodology": "TMR permanent traffic census",
+        "match_confidence": "medium"
+      }
+    ]
+  },
+  "supplemental_roads": {
+    "available_records": {},
+    "matched_distance_km": {}
+  },
+  "nsw_speed_zones": {
+    "available_records": 0,
+    "source_audit": {},
+    "status_counts": {},
+    "reason_counts": {},
+    "matched_distance_km": 0.0,
+    "ambiguity_samples": []
+  },
+  "surface": {
+    "counts": {
+      "sealed": 304887,
+      "unknown": 144818,
+      "unsealed": 53986
+    },
+    "distance_km": {
+      "sealed": 97575.8,
+      "unknown": 71982.7,
+      "unsealed": 115382.8
+    }
+  },
+  "mtb": {
+    "route_relations": 158,
+    "route_member_ways": 566,
+    "counts": {
+      "routing_avoid": 530,
+      "routing_caution": 1056,
+      "shown_not_routable": 95,
+      "shown_routable": 1491
+    },
+    "distance_km": {
+      "routing_avoid": 443.5,
+      "routing_caution": 780.0,
+      "shown_not_routable": 68.2,
+      "shown_routable": 1223.6
+    }
+  },
+  "trails": {
+    "bicycle_route_relations": 143,
+    "bicycle_route_member_ways": 6245,
+    "hiking_route_relations": 128,
+    "hiking_route_member_ways": 972,
+    "counts": {
+      "routing_avoid": 357,
+      "routing_caution": 47840
+    },
+    "distance_km": {
+      "routing_avoid": 337.1,
+      "routing_caution": 65249.3
+    }
+  }
+}

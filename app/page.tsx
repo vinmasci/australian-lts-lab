@@ -29,6 +29,15 @@ const DATASETS = {
     zoom: 7,
     routable: false,
   },
+  queensland: {
+    label: 'Queensland',
+    title: 'Australian LTS Lab · Queensland',
+    dataUrl: process.env.NEXT_PUBLIC_QUEENSLAND_PMTILES_URL || '/data/lts/queensland-lts.pmtiles',
+    metadataUrl: `/data/lts/queensland-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [153.03, -27.47] as [number, number],
+    zoom: 8.5,
+    routable: false,
+  },
 } as const;
 type DatasetKey = keyof typeof DATASETS;
 const MAX_ROUTE_POINTS = 26;
@@ -1192,7 +1201,7 @@ export default function LtsLabPage() {
                 <span className="truncate">{routeMode ? 'Exit routing' : 'Plan a low-stress route'}</span>
               </button>
             ) : (
-              <div className="flex min-h-11 items-center rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 text-xs font-semibold text-sky-100">NSW map only</div>
+              <div className="flex min-h-11 items-center rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 text-xs font-semibold text-sky-100">{activeDataset.label} map only</div>
             )}
             <button
               type="button"
@@ -1224,7 +1233,7 @@ export default function LtsLabPage() {
           {routeMode ? 'LTS routing active' : 'Plan a low-stress route'}
         </button> : (
           <div className="mb-4 hidden rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 py-2.5 text-xs leading-relaxed text-sky-100 md:block">
-            NSW is map-only while its routing graph is audited. Victoria includes experimental LTS routing.
+            {activeDataset.label} is map-only while its classification is audited. Victoria includes experimental LTS routing.
           </div>
         )}
 
@@ -1622,8 +1631,8 @@ export default function LtsLabPage() {
                     <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">OpenStreetMap attribution <ExternalLink className="h-3 w-3" /></a>
                   </div>
                   <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-4">
-                    <p className="font-semibold text-white">{datasetKey === 'victoria' ? 'Victorian traffic-volume evidence' : 'NSW traffic-volume evidence'}</p>
-                    <p className="mt-1 text-xs text-slate-300">{datasetKey === 'victoria' ? <>The historical directional AADT network is supplemented by 2026 TIRTL and telemetry sensor averages, SCATS signal-loop observations, City of Casey surveys, and City of Melbourne&apos;s 2014–17 classified counts. Fresh direct counts take precedence; the older Melbourne counts only fill gaps.</> : <>Published Transport for NSW all-day, all-vehicle station counts are matched conservatively by road identity, projected distance and travel direction. Every accepted count is pinned to one audited OSM way; ambiguous and rejected observations do not enter the map. Dates vary by station and remain visible when a road is inspected.</>}</p>
+                    <p className="font-semibold text-white">{datasetKey === 'victoria' ? 'Victorian traffic-volume evidence' : datasetKey === 'nsw' ? 'NSW traffic-volume evidence' : 'Queensland traffic-volume evidence'}</p>
+                    <p className="mt-1 text-xs text-slate-300">{datasetKey === 'victoria' ? <>The historical directional AADT network is supplemented by 2026 TIRTL and telemetry sensor averages, SCATS signal-loop observations, City of Casey surveys, and City of Melbourne&apos;s 2014–17 classified counts. Fresh direct counts take precedence; the older Melbourne counts only fill gaps.</> : datasetKey === 'nsw' ? <>Published Transport for NSW all-day, all-vehicle station counts are matched conservatively by road identity, projected distance and travel direction. Every accepted count is pinned to one audited OSM way; ambiguous and rejected observations do not enter the map. Dates vary by station and remain visible when a road is inspected.</> : <>Queensland TMR&apos;s 2025 traffic census is joined to the July 2026 road-location spine, preserving the published representative segment, carriageway direction and permanent or coverage count method. The resulting lines are matched conservatively to OSM; the count and method remain visible when a road is inspected.</>}</p>
                     <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
                       {datasetKey === 'victoria' ? <>
                         <a href="https://discover.data.vic.gov.au/dataset/historical-annual-average-daily-traffic-volume" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">AADT <ExternalLink className="h-3 w-3" /></a>
@@ -1632,18 +1641,21 @@ export default function LtsLabPage() {
                         <a href="https://opendata.transport.vic.gov.au/dataset/traffic-signal-volume-data" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">SCATS <ExternalLink className="h-3 w-3" /></a>
                         <a href="https://discover.data.vic.gov.au/en_AU/dataset/traffic-volume-survey" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">Casey surveys <ExternalLink className="h-3 w-3" /></a>
                         <a href="https://discover.data.vic.gov.au/dataset/traffic-count-vehicle-classification-2014-2017" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">Melbourne counts <ExternalLink className="h-3 w-3" /></a>
-                      </> : <a href="https://data.nsw.gov.au/data/en/dataset/2-nsw-roads-traffic-volume-counts-api" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">TfNSW traffic counts <ExternalLink className="h-3 w-3" /></a>}
+                      </> : datasetKey === 'nsw' ? <a href="https://data.nsw.gov.au/data/en/dataset/2-nsw-roads-traffic-volume-counts-api" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">TfNSW traffic counts <ExternalLink className="h-3 w-3" /></a> : <>
+                        <a href="https://www.data.qld.gov.au/dataset/traffic-census-for-the-queensland-state-declared-road-network" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">TMR traffic census <ExternalLink className="h-3 w-3" /></a>
+                        <a href="https://www.data.qld.gov.au/dataset/road-location-and-traffic-data" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">TMR road-location data <ExternalLink className="h-3 w-3" /></a>
+                      </>}
                     </div>
                   </div>
                   <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4">
                     <p className="font-semibold text-white">Official road details</p>
-                    <p className="mt-1 text-xs text-slate-300">{datasetKey === 'victoria' ? <>DTP normal-operation speed zones fill missing OSM speeds. DTP bicycle infrastructure fills missing directional lane, buffer and protection details. City of Melbourne parking zones fill otherwise unknown kerbside parking. Explicit OSM tags always win.</> : <>TfNSW fixed, all-day speed-zone lines fill only missing OSM speeds when the geometry strongly covers the same road. Conditional, school and variable zones are excluded; conflicting or one-way-ambiguous matches are quarantined. Explicit OSM speeds always win. NSW currently has no separate official bicycle-infrastructure or parking supplement in this Lab, so cycling treatments, lane detail, buffers and parking come from OSM.</>}</p>
+                    <p className="mt-1 text-xs text-slate-300">{datasetKey === 'victoria' ? <>DTP normal-operation speed zones fill missing OSM speeds. DTP bicycle infrastructure fills missing directional lane, buffer and protection details. City of Melbourne parking zones fill otherwise unknown kerbside parking. Explicit OSM tags always win.</> : datasetKey === 'nsw' ? <>TfNSW fixed, all-day speed-zone lines fill only missing OSM speeds when the geometry strongly covers the same road. Conditional, school and variable zones are excluded; conflicting or one-way-ambiguous matches are quarantined. Explicit OSM speeds always win. NSW currently has no separate official bicycle-infrastructure or parking supplement in this Lab, so cycling treatments, lane detail, buffers and parking come from OSM.</> : <>Queensland&apos;s public point-in-time speed-sign surveys are historical observations, not a current statewide speed-zone line layer, so this build does not use them to overwrite or fill OSM speeds. Cycling treatments, lane details, buffers and parking currently come from OSM.</>}</p>
                     <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
                       {datasetKey === 'victoria' ? <>
                         <a href="https://discover.data.vic.gov.au/en_AU/dataset/speed-zones" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Speed zones <ExternalLink className="h-3 w-3" /></a>
                         <a href="https://opendata.transport.vic.gov.au/dataset/bicycle-infrastructure-network" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Bike infrastructure <ExternalLink className="h-3 w-3" /></a>
                         <a href="https://discover.data.vic.gov.au/dataset/parking-zones-linked-to-street-segments" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Parking zones <ExternalLink className="h-3 w-3" /></a>
-                      </> : <a href="https://data.nsw.gov.au/data/en/dataset/2-speed-zones" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">TfNSW speed zones <ExternalLink className="h-3 w-3" /></a>}
+                      </> : datasetKey === 'nsw' ? <a href="https://data.nsw.gov.au/data/en/dataset/2-speed-zones" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">TfNSW speed zones <ExternalLink className="h-3 w-3" /></a> : <a href="https://www.data.qld.gov.au/dataset/speed-limits-for-state-and-local-roads" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Historical speed-sign survey (not used) <ExternalLink className="h-3 w-3" /></a>}
                     </div>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -1652,7 +1664,7 @@ export default function LtsLabPage() {
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">Experimental routing</p>
-                    <p className="mt-1 text-xs text-slate-400">{USING_LOCAL_ENRICHED_ROUTER ? <>Routes in this local Lab come from a separate traffic-enriched BRouter test instance using <code className="text-emerald-300">cyalts</code>. The production router and existing iOS and Android profiles remain unchanged.</> : <>Routes come from the live BRouter service using the additive <code className="text-emerald-300">cyalts</code> profile. Existing iOS and Android profiles remain unchanged.</>}</p>
+                    <p className="mt-1 text-xs text-slate-400">{activeDataset.routable ? (USING_LOCAL_ENRICHED_ROUTER ? <>Routes in this local Lab come from a separate traffic-enriched BRouter test instance using <code className="text-emerald-300">cyalts</code>. The production router and existing iOS and Android profiles remain unchanged.</> : <>Routes come from the live BRouter service using the additive <code className="text-emerald-300">cyalts</code> profile. Existing iOS and Android profiles remain unchanged.</>) : <>This statewide layer is map-only. It uses the shared classifier for inspection and comparison but has no LTS BRouter graph, cannot plan routes, and cannot change AusBUG navigation.</>}</p>
                     <a href="https://brouter.de/" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">About BRouter <ExternalLink className="h-3 w-3" /></a>
                   </div>
                 </div>
@@ -1661,7 +1673,7 @@ export default function LtsLabPage() {
               <section>
                 <h3 className="text-base font-bold text-white">How a road receives its score</h3>
                 <div className="mt-3 space-y-2 text-slate-300">
-                  <p>Victoria and NSW use the same classifier and the exact rules below. What differs between them is which official datasets can fill gaps in OSM—not the meaning of an LTS level.</p>
+                  <p>Victoria, NSW and Queensland use the same classifier and the exact rules below. What differs between them is which official datasets can fill gaps in OSM—not the meaning of an LTS level.</p>
                   <p>Each OSM way is assessed separately for the forward and backward cycling directions using Australian left-hand traffic. The map displays the more stressful permitted direction.</p>
                   <p>Direction matters because the two sides of a road can have different painted or protected cycle lanes, buffers, lane counts and speed tags. For Australian left-hand traffic, forward travel uses the left-side cycling treatment and backward travel uses the right-side treatment. Parking is currently a road-level door-zone flag rather than a fully directional input; its exact effect is stated below.</p>
                   <p>The background line deliberately shows the worse of the two permitted directions, while an active route shows the LTS for the direction being ridden. A route may therefore change a yellow background segment to blue when its side is safer, but the same shared classification should never change a blue background segment to yellow.</p>
@@ -1671,9 +1683,12 @@ export default function LtsLabPage() {
                   {datasetKey === 'victoria' ? <>
                     <p>Direct TIRTL, telemetry and recent council observations outrank historical AADT. SCATS is useful where no better count matches, but its public export does not identify road approaches: the Lab conservatively estimates one direction from the intersection total, labels it low confidence, and permits it to raise a road by only one LTS level.</p>
                     <p>Where OSM is missing a speed, the classifier uses DTP&apos;s June 2026 normal-operation speed zone for that direction. School, shopping and other conditional limits are excluded because this all-day map cannot yet know when they apply. Official bicycle and parking layers similarly fill only missing details.</p>
-                  </> : <>
+                  </> : datasetKey === 'nsw' ? <>
                     <p>The NSW importer keeps the latest published all-day/all-vehicle observation for each exact station direction, but the latest available year varies substantially by station. Counts are never copied along a corridor: the audit accepts one OSM way or rejects the observation.</p>
                     <p>Where OSM is missing a speed, the classifier may use a strongly coincident TfNSW fixed all-day speed zone. Conditional and variable limits are excluded, explicit OSM speed tags are protected, and competing strong matches are left unresolved.</p>
+                  </> : <>
+                    <p>The Queensland importer uses 2025 TMR AADT for each published representative segment. Combined counts are applied to undivided carriageways; directional counts are kept on the matching divided carriageway. Geometry is split at genuine carriageway transitions rather than interpolated across gaps.</p>
+                    <p>Queensland&apos;s historical speed-sign survey is not treated as a current speed-zone network. Where OSM has no explicit speed, the shared road-class fallback is used and marked as inferred.</p>
                   </>}
                   <p>Surface, trail suitability and MTB evidence are separate from traffic stress. A road is called unsealed only when OSM has an explicit value such as gravel, dirt, ground or compacted; a missing surface is not guessed. Generic <code>path</code>, <code>track</code> and <code>bridleway</code> links need explicit bicycle access or bicycle-route evidence before they are treated as verified cycling links. Every explicit MTB tag or MTB route membership remains visible, even when routing rules exclude it.</p>
                 </div>
@@ -1724,7 +1739,7 @@ export default function LtsLabPage() {
 
               <section>
                 <h3 className="text-base font-bold text-white">{activeDataset.routable ? 'How BRouter chooses a route' : 'Routing status'}</h3>
-                {!activeDataset.routable && <p className="mt-2 rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-sky-100">The statewide NSW map is map-only. Its visual classification, traffic matches and speed-zone matches are being audited before any NSW BRouter segment build. It cannot change production navigation.</p>}
+                {!activeDataset.routable && <p className="mt-2 rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-sky-100">The statewide {activeDataset.label} map is map-only. Its visual classification and official-data matches are being audited before any BRouter segment build. It cannot plan routes or change production navigation.</p>}
                 {activeDataset.routable && <>
                 <p className="mt-2">The planner accepts up to 26 ordered points labelled A–Z. BRouter connects them in sequence, and every edit—including Clear—can be undone or redone.</p>
                 <p className="mt-2">Each plan also requests the existing AusBUG <strong>Bike Paths</strong> route using the <code className="text-slate-300">cyabikepath</code> BRouter profile—the conservative profile used by the iOS and Android apps—for the same points and gravel setting. The route-comparison switch colours either result using the loaded directional LTS map while drawing the other as a semi-transparent solid grey line. The comparison profile&apos;s own routing cost is never presented as stress: its geometry is spatially matched back to the same map classifier, and any section that cannot be matched confidently remains grey and is reported as unscored.</p>
@@ -1787,9 +1802,9 @@ export default function LtsLabPage() {
                 <h3 className="text-base font-bold text-white">Important limitations</h3>
                 <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-300">
                   <li>This is a diagnostic model, not a guarantee that a road is safe or presently open.</li>
-                  <li>{datasetKey === 'victoria' ? <>The historical AADT layer mainly covers Victoria&apos;s declared road network. Current sensors and council surveys improve coverage, but local-road traffic evidence remains much stronger in Melbourne and Casey than elsewhere in Victoria.</> : <>TfNSW traffic-count coverage is sparse and uneven. Many stations&apos; latest published all-day observation is historical; the observation year is retained and shown rather than presented as current traffic.</>}</li>
-                  <li>Sensor, survey, historical and derived SCATS values are distinguished by source, period and confidence. Unmatched roads continue to use OSM-based inference.</li>
-                  <li>Only normal-operation speed zones are used. Time-dependent school, shopping and variable limits are not applied until the router can evaluate their active times.</li>
+                  <li>{datasetKey === 'victoria' ? <>The historical AADT layer mainly covers Victoria&apos;s declared road network. Current sensors and council surveys improve coverage, but local-road traffic evidence remains much stronger in Melbourne and Casey than elsewhere in Victoria.</> : datasetKey === 'nsw' ? <>TfNSW traffic-count coverage is sparse and uneven. Many stations&apos; latest published all-day observation is historical; the observation year is retained and shown rather than presented as current traffic.</> : <>TMR traffic counts mainly cover Queensland&apos;s state-declared road network. Local streets without a matched count continue to use OSM road class, speed, lanes and cycling-facility evidence.</>}</li>
+                  <li>Every matched traffic value retains its source, count period, methodology and confidence. Unmatched roads continue to use OSM-based inference.</li>
+                  <li>{datasetKey === 'queensland' ? <>Queensland&apos;s historical point-in-time speed-sign survey is not used as if it were a current speed-zone layer. Missing OSM speeds continue to use clearly labelled classifier fallbacks.</> : <>Only normal-operation speed zones are used. Time-dependent school, shopping and variable limits are not applied until the router can evaluate their active times.</>}</li>
                   {datasetKey === 'victoria' && <li>The DTP bicycle layer is itself OSM-linked and may lag recent edits; it fills missing fields but never overwrites an explicit current OSM value.</li>}
                   <li>Surface, trail and MTB styling reflects OSM tags, which can be incomplete or wrong. Unknown surface stays unknown; unverified trails receive a warning/penalty; visual context is not a claim that a trail is suitable, legal, open or safe.</li>
                   <li>{USING_LOCAL_ENRICHED_ROUTER ? 'Crossings influence the local test router through experimental point penalties; the values still need rider testing and calibration.' : 'Crossing dots are diagnostic in production until the enriched LTS segment service is switched in.'}</li>
