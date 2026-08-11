@@ -27,7 +27,7 @@ const DATASETS = {
     metadataUrl: `/data/lts/nsw-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [147.2, -32.7] as [number, number],
     zoom: 7,
-    routable: false,
+    routable: true,
   },
   queensland: {
     label: 'Queensland',

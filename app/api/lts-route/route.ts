@@ -5,6 +5,7 @@ const DEFAULT_BROUTER_ROUTE_URL = process.env.LTS_BROUTER_URL
   || (USING_LOCAL_ENRICHED_ROUTER ? 'http://127.0.0.1:17780/brouter' : 'https://valhalla.vicbug.app/brouter');
 const ROUTER_URLS = {
   victoria: DEFAULT_BROUTER_ROUTE_URL,
+  nsw: process.env.LTS_BROUTER_NSW_URL || 'https://valhalla.vicbug.app/lts-brouter-nsw',
   queensland: DEFAULT_BROUTER_ROUTE_URL,
   western_australia: process.env.LTS_BROUTER_WA_URL || 'https://valhalla.vicbug.app/lts-brouter-wa',
   south_australia: process.env.LTS_BROUTER_SA_URL || 'https://valhalla.vicbug.app/lts-brouter-sa',
