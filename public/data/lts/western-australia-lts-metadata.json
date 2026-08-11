@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "classifier_version": "au-lts-v0.5-trail-suitability",
-  "generated_at": "2026-08-10T22:32:40.464200+00:00",
+  "generated_at": "2026-08-11T10:12:58.842579+00:00",
   "source": "OpenStreetMap via local Geofabrik Australia extract",
   "source_pbf": "western-australia-statewide-source.osm.pbf",
   "source_pbf_modified_at": "2026-08-06T17:00:52Z",
@@ -12,13 +12,17 @@
     -13.0
   ],
   "pilot": "Western Australia",
+  "implicit_footway_cycling": false,
   "traffic_volume_source": [
+    "City of Perth Traffic Counts",
     "Main Roads WA Traffic Digest"
   ],
   "traffic_volume_source_file": "wa-traffic-digest.geojson",
   "traffic_volume_source_url": null,
   "current_traffic_source_file": null,
-  "additional_traffic_source_files": [],
+  "additional_traffic_source_files": [
+    "city-of-perth-traffic.geojson"
+  ],
   "nsw_speed_zone_source_file": "wa-legal-speed.geojson",
   "supplemental_road_sources": null,
   "segments": 308138,
@@ -26,15 +30,15 @@
   "crossings": 73272,
   "segment_counts": {
     "1": 149167,
-    "2": 92488,
-    "3": 22084,
-    "4": 44399
+    "2": 92482,
+    "3": 22089,
+    "4": 44400
   },
   "segment_distance_km": {
     "1": 117118.6,
-    "2": 88787.4,
-    "3": 17204.0,
-    "4": 56340.7
+    "2": 88786.2,
+    "3": 17205.2,
+    "4": 56340.6
   },
   "crossing_counts": {
     "1": 9694,
@@ -43,27 +47,29 @@
     "4": 8724
   },
   "confidence_counts": {
-    "high": 113325,
+    "high": 113320,
     "low": 148698,
-    "medium": 46115
+    "medium": 46120
   },
   "traffic_volume": {
-    "available_directional_records": 2938,
-    "matched_segments": 13285,
-    "matched_distance_km": 11087.2,
-    "uplifted_segments": 220,
+    "available_directional_records": 3064,
+    "matched_segments": 13565,
+    "matched_distance_km": 11113.1,
+    "uplifted_segments": 227,
     "methodology_counts": {
-      "Traffic Digest Monday-Friday average": 11201,
+      "Council average weekday traffic count": 424,
+      "Traffic Digest Monday-Friday average": 11057,
       "Traffic Digest Monday-Sunday average": 2084
     },
     "source_counts": {
-      "Main Roads WA Traffic Digest": 13285
+      "City of Perth Traffic Counts": 424,
+      "Main Roads WA Traffic Digest": 13141
     },
     "volume_band_counts": {
-      "1": 1192,
-      "2": 1471,
-      "3": 3081,
-      "4": 7541
+      "1": 1218,
+      "2": 1576,
+      "3": 3235,
+      "4": 7536
     },
     "uplift_samples": [
       {
@@ -75,6 +81,28 @@
         "aadt": 8229,
         "year": 2025,
         "methodology": "Traffic Digest Monday-Sunday average",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w4960397",
+        "name": "Terrace Road",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 6088,
+        "year": 2023,
+        "methodology": "Council average weekday traffic count",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5013682",
+        "name": "Terrace Road",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 10596,
+        "year": 2023,
+        "methodology": "Council average weekday traffic count",
         "match_confidence": "medium"
       },
       {
@@ -316,28 +344,6 @@
         "traffic_lts": 4,
         "aadt": 20004,
         "year": 2021,
-        "methodology": "Traffic Digest Monday-Friday average",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w38573872",
-        "name": "Northwood Drive",
-        "highway": "tertiary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 15049,
-        "year": 2023,
-        "methodology": "Traffic Digest Monday-Friday average",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w38573873",
-        "name": "Northwood Drive",
-        "highway": "tertiary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 15049,
-        "year": 2023,
         "methodology": "Traffic Digest Monday-Friday average",
         "match_confidence": "medium"
       }

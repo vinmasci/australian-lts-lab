@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "classifier_version": "au-lts-v0.5-trail-suitability",
-  "generated_at": "2026-08-10T09:39:39.149465+00:00",
+  "generated_at": "2026-08-11T10:14:11.838832+00:00",
   "source": "OpenStreetMap via local Geofabrik Australia extract",
   "source_pbf": "queensland-statewide-source.osm.pbf",
   "source_pbf_modified_at": "2026-08-06T14:02:26Z",
@@ -12,60 +12,327 @@
     -9.0
   ],
   "pilot": "Queensland",
+  "implicit_footway_cycling": false,
   "traffic_volume_source": [
+    "Brisbane City Council Key Corridor Performance",
+    "City of Gold Coast Traffic Counts",
+    "Logan City Council Traffic Counts",
     "Queensland TMR traffic census"
   ],
   "traffic_volume_source_file": "queensland_tmr_traffic_2025.geojson",
   "traffic_volume_source_url": null,
   "current_traffic_source_file": null,
-  "additional_traffic_source_files": [],
+  "additional_traffic_source_files": [
+    "gold-coast-traffic.geojson",
+    "logan-traffic.geojson",
+    "brisbane-key-corridors.geojson"
+  ],
   "nsw_speed_zone_source_file": null,
   "supplemental_road_sources": null,
   "segments": 503691,
   "excluded_segments": 163165,
   "crossings": 88816,
   "segment_counts": {
-    "1": 238589,
-    "2": 154715,
-    "3": 40213,
-    "4": 70174
+    "1": 238532,
+    "2": 154466,
+    "3": 40330,
+    "4": 70363
   },
   "segment_distance_km": {
-    "1": 95434.9,
-    "2": 95481.2,
-    "3": 30879.6,
-    "4": 63145.6
+    "1": 95429.7,
+    "2": 95433.9,
+    "3": 30908.0,
+    "4": 63169.7
   },
   "crossing_counts": {
     "1": 28718,
-    "2": 49137,
-    "3": 7192,
-    "4": 3769
+    "2": 49033,
+    "3": 7275,
+    "4": 3790
   },
   "confidence_counts": {
-    "high": 178990,
-    "low": 239731,
-    "medium": 84970
+    "high": 178841,
+    "low": 239554,
+    "medium": 85296
   },
   "traffic_volume": {
-    "available_directional_records": 4502,
-    "matched_segments": 6948,
-    "matched_distance_km": 8171.5,
-    "uplifted_segments": 47,
+    "available_directional_records": 14793,
+    "matched_segments": 17770,
+    "matched_distance_km": 10769.4,
+    "uplifted_segments": 522,
     "methodology_counts": {
-      "TMR coverage traffic census": 6538,
+      "Council AADT traffic count": 2897,
+      "Council classified traffic count (vehicles per day)": 7343,
+      "Monthly key-corridor average weekday traffic": 583,
+      "TMR coverage traffic census": 6537,
       "TMR permanent traffic census": 410
     },
     "source_counts": {
-      "Queensland TMR traffic census": 6948
+      "Brisbane City Council Key Corridor Performance": 583,
+      "City of Gold Coast Traffic Counts": 7343,
+      "Logan City Council Traffic Counts": 2897,
+      "Queensland TMR traffic census": 6947
     },
     "volume_band_counts": {
-      "1": 3112,
-      "2": 1068,
-      "3": 1409,
-      "4": 1359
+      "1": 6063,
+      "2": 3522,
+      "3": 4233,
+      "4": 3952
     },
     "uplift_samples": [
+      {
+        "osm_id": "w2729955",
+        "name": "Peninsular Drive",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7566,
+        "year": 2025,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w2730962",
+        "name": "Orchid Avenue",
+        "highway": "residential",
+        "baseline_lts": 1,
+        "traffic_lts": 2,
+        "aadt": 4715,
+        "year": 2023,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5135960",
+        "name": "Tillyroen Road",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 16731,
+        "year": 2025,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5455850",
+        "name": "Thomas Drive",
+        "highway": "secondary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 18511,
+        "year": 2022,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5541921",
+        "name": "Surf Parade",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8307,
+        "year": 2026,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w5541957",
+        "name": "Armrick Avenue",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7847,
+        "year": 2022,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8390989",
+        "name": "Tweed Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 16455,
+        "year": 2024,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8391031",
+        "name": "Coolangatta Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 16094,
+        "year": 2023,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8391089",
+        "name": "Dixon Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7581,
+        "year": 2023,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w8391105",
+        "name": "Lanham Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 9579,
+        "year": 2024,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w14267938",
+        "name": "Drews Road",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8914,
+        "year": 2023,
+        "methodology": "Council AADT traffic count",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w14268866",
+        "name": "Jalan Street",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 6684,
+        "year": 2023,
+        "methodology": "Council AADT traffic count",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w14603184",
+        "name": "Hillcrest Parade",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 6521,
+        "year": 2025,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w15873902",
+        "name": "Robina Town Centre Drive",
+        "highway": "tertiary",
+        "baseline_lts": 3,
+        "traffic_lts": 4,
+        "aadt": 24364,
+        "year": 2023,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w17142052",
+        "name": "Priestdale Road",
+        "highway": "tertiary",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7263,
+        "year": 2020,
+        "methodology": "Council AADT traffic count",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w17651819",
+        "name": "Tedder Avenue",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 9709,
+        "year": 2026,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w17955729",
+        "name": "Old Burleigh Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8292,
+        "year": 2023,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w17956046",
+        "name": "Surf Parade",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8307,
+        "year": 2026,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w17960353",
+        "name": "Gold Coast Highway",
+        "highway": "unclassified",
+        "baseline_lts": 2,
+        "traffic_lts": 4,
+        "aadt": 25313,
+        "year": 2024,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w18102469",
+        "name": "Tabilban Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 7824,
+        "year": 2026,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w18103838",
+        "name": "Reserve Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8711,
+        "year": 2026,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w18103898",
+        "name": "Tabilban Street",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 9899,
+        "year": 2023,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
+      {
+        "osm_id": "w18104453",
+        "name": "Ikkina Road",
+        "highway": "residential",
+        "baseline_lts": 2,
+        "traffic_lts": 3,
+        "aadt": 8110,
+        "year": 2026,
+        "methodology": "Council classified traffic count (vehicles per day)",
+        "match_confidence": "medium"
+      },
       {
         "osm_id": "w18622145",
         "name": "Stapylton Jacobs Well Road",
@@ -78,267 +345,14 @@
         "match_confidence": "medium"
       },
       {
-        "osm_id": "w41235005",
-        "name": "Laidley Plainland Road",
-        "highway": "residential",
-        "baseline_lts": 2,
-        "traffic_lts": 3,
-        "aadt": 6181,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w91391709",
-        "name": "Beenleigh-Redland Bay Road",
-        "highway": "trunk",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 19183,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w113958595",
-        "name": "Beaudesert Beenleigh Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 20712,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w121865069",
-        "name": "Beaudesert Beenleigh Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 20712,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w121865076",
-        "name": "Beaudesert Beenleigh Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 20712,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w121865079",
-        "name": "Beaudesert Beenleigh Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 20712,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w156743590",
-        "name": "Beaudesert Beenleigh Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 20712,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w157653314",
-        "name": "Beenleigh-Redland Bay Road",
-        "highway": "trunk",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 19183,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w174419710",
-        "name": "Beenleigh-Redland Bay Road",
-        "highway": "trunk",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 21600,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w185709778",
-        "name": "Caloundra Road",
-        "highway": "residential",
-        "baseline_lts": 2,
-        "traffic_lts": 4,
-        "aadt": 16573,
-        "year": 2025,
-        "methodology": "TMR permanent traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w185709782",
-        "name": "Caloundra Road",
-        "highway": "residential",
-        "baseline_lts": 2,
-        "traffic_lts": 4,
-        "aadt": 16573,
-        "year": 2025,
-        "methodology": "TMR permanent traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w188180380",
-        "name": "Beaudesert Beenleigh Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 20712,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w252422161",
-        "name": "Caloundra Road",
-        "highway": "residential",
-        "baseline_lts": 2,
-        "traffic_lts": 4,
-        "aadt": 34164,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w338241743",
-        "name": "Beenleigh-Redland Bay Road",
-        "highway": "trunk",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 19504,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w395524732",
-        "name": "Mount Cotton Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 19734,
-        "year": 2025,
-        "methodology": "TMR permanent traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w395524733",
-        "name": "Mount Cotton Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 19734,
-        "year": 2025,
-        "methodology": "TMR permanent traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w576087343",
-        "name": "Mount Cotton Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 19734,
-        "year": 2025,
-        "methodology": "TMR permanent traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w582069948",
-        "name": "Beaudesert Beenleigh Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 20712,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w705624874",
-        "name": "Mulgrave Road",
+        "osm_id": "w19811472",
+        "name": "Beutel Street",
         "highway": "service",
-        "baseline_lts": 2,
-        "traffic_lts": 4,
-        "aadt": 19696,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w725979295",
-        "name": "Unnamed road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 38444,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w739670318",
-        "name": "Mount Cotton Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 16036,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w739670319",
-        "name": "Mount Cotton Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 16036,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w740024786",
-        "name": "Mount Cotton Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 16036,
-        "year": 2025,
-        "methodology": "TMR coverage traffic census",
-        "match_confidence": "medium"
-      },
-      {
-        "osm_id": "w740517903",
-        "name": "Mount Cotton Road",
-        "highway": "primary",
-        "baseline_lts": 3,
-        "traffic_lts": 4,
-        "aadt": 19734,
-        "year": 2025,
-        "methodology": "TMR permanent traffic census",
+        "baseline_lts": 1,
+        "traffic_lts": 3,
+        "aadt": 10687,
+        "year": 2024,
+        "methodology": "Council AADT traffic count",
         "match_confidence": "medium"
       }
     ]

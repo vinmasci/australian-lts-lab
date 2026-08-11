@@ -8,7 +8,7 @@ import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, Red
 import { Protocol } from 'pmtiles';
 
 
-const DATASET_VERSION = 'au-lts-v0.5-trail-suitability';
+const DATASET_VERSION = 'au-lts-v0.5-council-traffic';
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
 const DATASETS = {
   victoria: {
@@ -32,7 +32,7 @@ const DATASETS = {
   queensland: {
     label: 'Queensland',
     title: 'Australian LTS Lab · Queensland',
-    dataUrl: process.env.NEXT_PUBLIC_QUEENSLAND_PMTILES_URL || '/data/lts/queensland-lts.pmtiles',
+    dataUrl: process.env.NEXT_PUBLIC_QUEENSLAND_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/queensland-lts-c0dd9f26.pmtiles',
     metadataUrl: `/data/lts/queensland-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [153.03, -27.47] as [number, number],
     zoom: 8.5,
@@ -41,7 +41,7 @@ const DATASETS = {
   western_australia: {
     label: 'Western Australia',
     title: 'Australian LTS Lab · Western Australia',
-    dataUrl: process.env.NEXT_PUBLIC_WA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/western-australia-lts-c2192900.pmtiles',
+    dataUrl: process.env.NEXT_PUBLIC_WA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/western-australia-lts-64573cc9.pmtiles',
     metadataUrl: `/data/lts/western-australia-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [115.86, -31.95] as [number, number],
     zoom: 8.5,
@@ -138,31 +138,39 @@ const STATE_SOURCE_COPY: Record<DatasetKey, StateSourceCopy> = {
   },
   queensland: {
     trafficTitle: 'Queensland traffic-volume evidence',
-    trafficDescription: 'Queensland TMR’s 2025 traffic census is joined to the July 2026 road-location spine, preserving the published representative segment, carriageway direction and permanent or coverage count method. The resulting lines are matched conservatively to OSM; the count and method remain visible when a road is inspected.',
+    trafficDescription: 'Queensland TMR’s 2025 traffic census is supplemented by published City of Gold Coast and Logan road counts and Brisbane key-corridor weekday volumes. Every accepted observation retains its source, year, method and direction where supplied; future-dated, incomplete and ambiguous records are rejected rather than guessed.',
     trafficLinks: [
       { label: 'TMR traffic census', href: 'https://www.data.qld.gov.au/dataset/traffic-census-for-the-queensland-state-declared-road-network' },
       { label: 'TMR road-location data', href: 'https://www.data.qld.gov.au/dataset/road-location-and-traffic-data' },
+      { label: 'Gold Coast traffic counts', href: 'https://services.arcgis.com/3vStCH7NDoBOZ5zn/arcgis/rest/services/Traffic_Count/FeatureServer/0' },
+      { label: 'Logan traffic counts', href: 'https://services5.arcgis.com/ZUCWDRj8F77Xo351/arcgis/rest/services/Logan_City_Council_Traffic_Counts/FeatureServer/0' },
+      { label: 'Brisbane key corridors', href: 'https://data.brisbane.qld.gov.au/explore/dataset/traffic-management-key-corridor-monthly-performance-report/' },
     ],
     roadDescription: 'Queensland’s public point-in-time speed-sign surveys are historical observations, not a current statewide speed-zone line layer, so this build does not use them to overwrite or fill OSM speeds. Cycling treatments, lane details, buffers and parking currently come from OSM.',
     roadLinks: [{ label: 'Historical speed-sign survey (not used)', href: 'https://www.data.qld.gov.au/dataset/speed-limits-for-state-and-local-roads' }],
     methodology: [
       'The Queensland importer uses 2025 TMR AADT for each published representative segment. Combined counts are applied to undivided carriageways; directional counts are kept on the matching divided carriageway. Geometry is split at genuine carriageway transitions rather than interpolated across gaps.',
+      'Gold Coast and Logan observations are reduced to the latest valid count at each published site. Brisbane publishes corridor descriptions rather than road geometry, so only corridors that resolve unambiguously along the named OSM road graph and agree with the published corridor length are included; unresolved corridors are quarantined.',
       'Queensland’s historical speed-sign survey is not treated as a current speed-zone network. Where OSM has no explicit speed, the shared road-class fallback is used and marked as inferred.',
     ],
-    trafficLimitation: 'TMR traffic counts mainly cover Queensland’s state-declared road network. Local streets without a matched count continue to use OSM road class, speed, lanes and cycling-facility evidence.',
+    trafficLimitation: 'TMR provides statewide declared-road coverage, while the new local-road evidence is concentrated in Brisbane, Gold Coast and Logan. Roads elsewhere without a matched count continue to use OSM road class, speed, lanes and cycling-facility evidence.',
     speedLimitation: 'Queensland’s historical point-in-time speed-sign survey is not used as if it were a current speed-zone layer. Missing OSM speeds use clearly labelled classifier fallbacks.',
   },
   western_australia: {
     trafficTitle: 'Western Australian traffic-volume evidence',
-    trafficDescription: 'Main Roads WA Traffic Digest observations are matched conservatively to the OSM network. Metropolitan records use the published Monday–Friday volume and regional records use Monday–Sunday volume; permanent-counter records take precedence over sample counts. Source year, method and confidence remain attached to inspected roads.',
-    trafficLinks: [{ label: 'Main Roads WA Traffic Digest', href: 'https://catalogue.data.wa.gov.au/dataset/mrwa-traffic-digest' }],
+    trafficDescription: 'Main Roads WA Traffic Digest observations are supplemented by City of Perth road counts. Metropolitan records use the published Monday–Friday volume and regional records use Monday–Sunday volume; permanent-counter records take precedence over sample counts. Source year, method, direction and confidence remain attached to inspected roads.',
+    trafficLinks: [
+      { label: 'Main Roads WA Traffic Digest', href: 'https://catalogue.data.wa.gov.au/dataset/mrwa-traffic-digest' },
+      { label: 'City of Perth traffic counts', href: 'https://services7.arcgis.com/v8XBa2naYNQGOjlG/arcgis/rest/services/TRN_RD_TRAFFICCOUNT_TVW_PV/FeatureServer/0' },
+    ],
     roadDescription: 'Main Roads WA Legal Speed Limit lines fill a missing OSM speed only where the public record contains one explicit numeric all-day value and strongly matches the same road. Ambiguous “50 built-up / 110 outside” records are rejected rather than guessed. Cycling treatments and parking come from OSM.',
     roadLinks: [{ label: 'Main Roads WA legal speed limits', href: 'https://catalogue.data.wa.gov.au/dataset/mrwa-legal-speed-limits' }],
     methodology: [
       'Traffic Digest records preserve their metropolitan or regional averaging period and permanent or sample-count methodology. Geometry, road identity and direction must support a conservative OSM match before volume can raise LTS.',
+      'City of Perth rows are deduplicated by site and survey period. Complementary directions are combined for a two-way centreline; a lone directional observation remains directional instead of being silently treated as a whole-road total.',
       'Only an explicit all-day numeric legal speed can fill a missing OSM value. Ambiguous default records, weak geometry matches and conflicting strong matches remain unresolved and use the labelled classifier fallback.',
     ],
-    trafficLimitation: 'Traffic Digest coverage is strongest on the Main Roads network and in surveyed metropolitan corridors. Unmatched local roads continue to use OSM and transparent road-class inference.',
+    trafficLimitation: 'Traffic Digest coverage is strongest on the Main Roads network; City of Perth improves central-city local-road coverage but does not represent every metropolitan council. Unmatched local roads continue to use OSM and transparent road-class inference.',
     speedLimitation: 'Many WA legal-speed records describe a context-dependent default rather than one explicit value. Those rows are deliberately excluded instead of assigning a potentially wrong speed.',
   },
   south_australia: {
