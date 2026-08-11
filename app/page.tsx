@@ -434,6 +434,10 @@ function unverifiedTrailFilter(hideAccessOnlyTrails = false): maplibregl.FilterS
     : base;
 }
 
+const ACT_ACCESS_ONLY_TRAIL_FILTER: maplibregl.FilterSpecification = [
+  '==', ['get', 'is_access_only_trail'], true,
+];
+
 function routeLineGeoJson(route?: GeoJSON.LineString): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return route ? {
     type: 'FeatureCollection',
@@ -750,7 +754,7 @@ export default function LtsLabPage() {
   const [showLowConfidence, setShowLowConfidence] = useState(true);
   const [showMtbTrails, setShowMtbTrails] = useState(true);
   const [showUnverifiedTrails, setShowUnverifiedTrails] = useState(true);
-  const [showActFootpaths, setShowActFootpaths] = useState(false);
+  const [showActAccessOnlyTrails, setShowActAccessOnlyTrails] = useState(false);
   const [satelliteEnabled, setSatelliteEnabled] = useState(false);
   const [satelliteOpacity, setSatelliteOpacity] = useState(0.55);
   const [allowGravel, setAllowGravel] = useState(true);
@@ -1123,6 +1127,35 @@ export default function LtsLabPage() {
           },
         });
         map.addLayer({
+          id: 'lts-act-access-only-trails-casing',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ACT_ACCESS_ONLY_TRAIL_FILTER,
+          minzoom: 11,
+          layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.2, 14, 5, 18, 10],
+            'line-opacity': 0.45,
+          },
+        });
+        map.addLayer({
+          id: 'lts-act-access-only-trails',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ACT_ACCESS_ONLY_TRAIL_FILTER,
+          minzoom: 11,
+          layout: { 'line-cap': 'butt', 'line-join': 'round', visibility: 'none' },
+          paint: {
+            'line-color': '#475569',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 14, 2.4, 18, 5.5],
+            'line-opacity': 0.55,
+            'line-dasharray': [1.1, 1.25],
+          },
+        });
+        map.addLayer({
           id: 'lts-crossings',
           type: 'circle',
           source: 'lts-network',
@@ -1205,7 +1238,7 @@ export default function LtsLabPage() {
           paint: { 'circle-color': '#111827', 'circle-radius': 9, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 },
         });
 
-        const interactiveLayers = ['lts-crossings', 'lts-unverified-trails', 'lts-mtb-trails', 'lts-unsealed', 'lts-segments-low-confidence', 'lts-segments'];
+        const interactiveLayers = ['lts-crossings', 'lts-act-access-only-trails', 'lts-unverified-trails', 'lts-mtb-trails', 'lts-unsealed', 'lts-segments-low-confidence', 'lts-segments'];
         map.on('mousemove', (event) => {
           map.getCanvas().style.cursor = routeModeRef.current || map.queryRenderedFeatures(event.point, { layers: interactiveLayers }).length
             ? 'pointer'
@@ -1270,12 +1303,15 @@ export default function LtsLabPage() {
     map.setLayoutProperty('lts-crossings', 'visibility', showCrossings ? 'visible' : 'none');
     map.setLayoutProperty('lts-mtb-trails-casing', 'visibility', showMtbTrails ? 'visible' : 'none');
     map.setLayoutProperty('lts-mtb-trails', 'visibility', showMtbTrails ? 'visible' : 'none');
-    const trailFilter = unverifiedTrailFilter(datasetKey === 'act' && !showActFootpaths);
+    const trailFilter = unverifiedTrailFilter(datasetKey === 'act');
     map.setFilter('lts-unverified-trails-casing', trailFilter);
     map.setFilter('lts-unverified-trails', trailFilter);
     map.setLayoutProperty('lts-unverified-trails-casing', 'visibility', showUnverifiedTrails ? 'visible' : 'none');
     map.setLayoutProperty('lts-unverified-trails', 'visibility', showUnverifiedTrails ? 'visible' : 'none');
-  }, [datasetKey, showActFootpaths, showCrossings, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
+    const showActAccessOnly = datasetKey === 'act' && showActAccessOnlyTrails;
+    map.setLayoutProperty('lts-act-access-only-trails-casing', 'visibility', showActAccessOnly ? 'visible' : 'none');
+    map.setLayoutProperty('lts-act-access-only-trails', 'visibility', showActAccessOnly ? 'visible' : 'none');
+  }, [datasetKey, showActAccessOnlyTrails, showCrossings, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
 
   useEffect(() => {
     satelliteEnabledRef.current = satelliteEnabled;
@@ -1362,7 +1398,7 @@ export default function LtsLabPage() {
             setMetadata(null);
             setMapError(null);
             setDatasetKey(event.target.value as DatasetKey);
-            setShowActFootpaths(false);
+            setShowActAccessOnlyTrails(false);
             setRouteMode(false);
             setMobilePanelExpanded(false);
             resetRouteHistory();
@@ -1694,11 +1730,11 @@ export default function LtsLabPage() {
           <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
             <input
               type="checkbox"
-              checked={showActFootpaths}
-              onChange={(event) => setShowActFootpaths(event.target.checked)}
+              checked={showActAccessOnlyTrails}
+              onChange={(event) => setShowActAccessOnlyTrails(event.target.checked)}
               className="h-4 w-4"
             />
-            <span className="w-8 rounded-full border-t-[6px] border-dashed border-slate-400" />
+            <span className="relative h-1.5 w-8 rounded-full bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-slate-600" /></span>
             <span>Ordinary ACT paths &amp; forestry tracks</span>
           </label>
         )}
