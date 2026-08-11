@@ -59,8 +59,8 @@ const DATASETS = {
   act: {
     label: 'Australian Capital Territory',
     title: 'Australian LTS Lab · ACT',
-    dataUrl: process.env.NEXT_PUBLIC_ACT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/act-lts-312e4208.pmtiles',
-    metadataUrl: `/data/lts/act-lts-metadata.json?v=${DATASET_VERSION}`,
+    dataUrl: process.env.NEXT_PUBLIC_ACT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/act-lts-ff88c4a3.pmtiles',
+    metadataUrl: `/data/lts/act-lts-metadata.json?v=${DATASET_VERSION}-ff88c4a3`,
     center: [149.13, -35.28] as [number, number],
     zoom: 10.5,
     routable: true,
@@ -187,7 +187,7 @@ const STATE_SOURCE_COPY: Record<DatasetKey, StateSourceCopy> = {
     methodology: [
       'ACT routing uses the same classifier and penalties as the other live states, but no official traffic volume is attached unless a reusable observation can be spatially audited to the road.',
       'The stale public speed snapshot is deliberately omitted. This avoids creating false precision from a layer that may not reflect subsequent speed-zone changes.',
-      'An ordinary ACT footpath may remain available to routing where OSM does not prohibit bicycles, but receives the unconfirmed-path penalty. These footpaths are hidden from the map by default; explicitly tagged cycleways and shared paths remain visible.',
+      'An ordinary ACT footpath may remain available to routing where OSM does not prohibit bicycles, but receives the unconfirmed-path penalty. Because bicycle=yes often restates territory-wide legal access, that tag alone does not prove a purpose-built cycling facility in the ACT. These footpaths are hidden by default; designated cycleways, shared paths and bicycle-route links remain visible.',
     ],
     trafficLimitation: 'No official territory-wide road-level AADT supplement is included. Results rely more heavily on OSM road class, explicit speed, lanes and cycling facilities.',
     speedLimitation: 'The located ACT speed dataset is historical and is not used to fill current speeds; missing OSM values use clearly labelled fallbacks.',
@@ -1872,7 +1872,7 @@ export default function LtsLabPage() {
                   <p>Each OSM way is assessed separately for the forward and backward cycling directions using Australian left-hand traffic. The map displays the more stressful permitted direction.</p>
                   <p>Direction matters because the two sides of a road can have different painted or protected cycle lanes, buffers, lane counts and speed tags. For Australian left-hand traffic, forward travel uses the left-side cycling treatment and backward travel uses the right-side treatment. Parking is currently a road-level door-zone flag rather than a fully directional input; its exact effect is stated below.</p>
                   <p>The background line deliberately shows the worse of the two permitted directions, while an active route shows the LTS for the direction being ridden. A route may therefore change a yellow background segment to blue when its side is safer, but the same shared classification should never change a blue background segment to yellow.</p>
-                  <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access and bicycle=no/private/dismount/use_sidepath are excluded. Footways without explicit bicycle permission are normally excluded; in the ACT, where cycling on ordinary paths is legally permitted unless signed otherwise, they remain cautious routing links but are hidden from the map by default. One-way tags decide which travel directions are scored.</p>
+                  <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access and bicycle=no/private/dismount/use_sidepath are excluded. Footways without explicit bicycle permission are normally excluded; in the ACT, where cycling on ordinary paths is legally permitted unless signed otherwise, they remain cautious routing links but are hidden from the map by default. An ACT footway tagged only bicycle=yes is treated as legal access rather than proof of a designated cycling facility; designation or bicycle-route evidence keeps it visible. One-way tags decide which travel directions are scored.</p>
                   <p>For an included direction, the segment score can be changed by only these inputs: road/path class; directional or general speed limit; directional or total motor-traffic lane count; roundabout status; cycling-facility type and side; whether a painted lane has a mapped buffer; mapped kerbside parking beside a painted lane; and matched all-vehicle daily motor traffic. Each rule is deterministic and is applied in the order shown below.</p>
                   <p>Traffic records are matched to OSM geometry using road name or route reference, projected distance, local direction and line overlap. Directional counts are doubled for a two-way OSM centreline to approximate conventional two-way daily traffic.</p>
                   {stateSourceCopy.methodology.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "classifier_version": "au-lts-v0.5-trail-suitability",
-  "generated_at": "2026-08-11T06:52:37.332085+00:00",
+  "generated_at": "2026-08-11T07:10:13.078546+00:00",
   "source": "OpenStreetMap via local Geofabrik Australia extract",
   "source_pbf": "act-statewide-source.osm.pbf",
   "source_pbf_modified_at": "2026-08-06T14:59:00Z",
@@ -108,11 +108,11 @@
     "hiking_route_member_ways": 1166,
     "counts": {
       "routing_avoid": 8,
-      "routing_caution": 11580
+      "routing_caution": 38764
     },
     "distance_km": {
       "routing_avoid": 3.5,
-      "routing_caution": 2045.5
+      "routing_caution": 4550.8
     }
   }
 }
