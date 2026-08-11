@@ -59,7 +59,7 @@ const DATASETS = {
   act: {
     label: 'Australian Capital Territory',
     title: 'Australian LTS Lab · ACT',
-    dataUrl: process.env.NEXT_PUBLIC_ACT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/act-lts-926d777c.pmtiles',
+    dataUrl: process.env.NEXT_PUBLIC_ACT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/act-lts-312e4208.pmtiles',
     metadataUrl: `/data/lts/act-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [149.13, -35.28] as [number, number],
     zoom: 10.5,
@@ -182,11 +182,12 @@ const STATE_SOURCE_COPY: Record<DatasetKey, StateSourceCopy> = {
     trafficTitle: 'ACT traffic-volume evidence',
     trafficDescription: 'No maintained, reusable territory-wide geospatial AADT feed was suitable for a conservative road-level join. The ACT map therefore uses OSM and transparent road-class inference rather than presenting tabular summaries as exact street counts.',
     trafficLinks: [],
-    roadDescription: 'The public ACT speed-zone layer located during this audit was dated November 2020, so it is not used as if it represented current legal speeds. Explicit OSM details remain authoritative and missing values use labelled fallbacks.',
-    roadLinks: [],
+    roadDescription: 'The public ACT speed-zone layer located during this audit was dated November 2020, so it is not used as if it represented current legal speeds. Explicit OSM details remain authoritative and missing values use labelled fallbacks. ACT rules permit cycling on ordinary paths unless signed otherwise, but legal access is not treated as evidence that a footpath is purpose-built or comfortable cycling infrastructure.',
+    roadLinks: [{ label: 'ACT active-travel path guidance', href: 'https://www.cityservices.act.gov.au/__data/assets/pdf_file/0010/1382383/Municipal-Infrastructure-Standards-05-Active-Travel-Facilities-Design.pdf' }],
     methodology: [
       'ACT routing uses the same classifier and penalties as the other live states, but no official traffic volume is attached unless a reusable observation can be spatially audited to the road.',
       'The stale public speed snapshot is deliberately omitted. This avoids creating false precision from a layer that may not reflect subsequent speed-zone changes.',
+      'An ordinary ACT footpath may remain available to routing where OSM does not prohibit bicycles, but receives the unconfirmed-path penalty. These footpaths are hidden from the map by default; explicitly tagged cycleways and shared paths remain visible.',
     ],
     trafficLimitation: 'No official territory-wide road-level AADT supplement is included. Results rely more heavily on OSM road class, explicit speed, lanes and cycling facilities.',
     speedLimitation: 'The located ACT speed dataset is historical and is not used to fill current speeds; missing OSM values use clearly labelled fallbacks.',
@@ -320,6 +321,7 @@ interface LtsMetadata {
   segment_distance_km: Record<string, number>;
   crossing_counts: Record<string, number>;
   confidence_counts: Record<string, number>;
+  implicit_footway_cycling?: boolean;
   traffic_volume?: {
     available_directional_records: number;
     matched_segments: number;
@@ -420,6 +422,16 @@ interface LtsRouteResponse {
 
 function emptyFeatureCollection(): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
+}
+
+function unverifiedTrailFilter(hideImplicitFootways = false): maplibregl.FilterSpecification {
+  const base: maplibregl.FilterSpecification = [
+    'all',
+    ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]],
+  ];
+  return hideImplicitFootways
+    ? ['all', base, ['!=', ['get', 'highway'], 'footway']]
+    : base;
 }
 
 function routeLineGeoJson(route?: GeoJSON.LineString): GeoJSON.FeatureCollection<GeoJSON.LineString> {
@@ -738,6 +750,7 @@ export default function LtsLabPage() {
   const [showLowConfidence, setShowLowConfidence] = useState(true);
   const [showMtbTrails, setShowMtbTrails] = useState(true);
   const [showUnverifiedTrails, setShowUnverifiedTrails] = useState(true);
+  const [showActFootpaths, setShowActFootpaths] = useState(false);
   const [satelliteEnabled, setSatelliteEnabled] = useState(false);
   const [satelliteOpacity, setSatelliteOpacity] = useState(0.55);
   const [allowGravel, setAllowGravel] = useState(true);
@@ -1085,7 +1098,7 @@ export default function LtsLabPage() {
           type: 'line',
           source: 'lts-network',
           'source-layer': 'lts',
-          filter: ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]],
+          filter: unverifiedTrailFilter(datasetKey === 'act'),
           minzoom: 11,
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
@@ -1099,7 +1112,7 @@ export default function LtsLabPage() {
           type: 'line',
           source: 'lts-network',
           'source-layer': 'lts',
-          filter: ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]],
+          filter: unverifiedTrailFilter(datasetKey === 'act'),
           minzoom: 11,
           layout: { 'line-cap': 'butt', 'line-join': 'round' },
           paint: {
@@ -1217,7 +1230,7 @@ export default function LtsLabPage() {
       mapRef.current = null;
       removeProtocol('pmtiles');
     };
-  }, [activeDataset.center, activeDataset.dataUrl, activeDataset.zoom]);
+  }, [activeDataset.center, activeDataset.dataUrl, activeDataset.zoom, datasetKey]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1257,9 +1270,12 @@ export default function LtsLabPage() {
     map.setLayoutProperty('lts-crossings', 'visibility', showCrossings ? 'visible' : 'none');
     map.setLayoutProperty('lts-mtb-trails-casing', 'visibility', showMtbTrails ? 'visible' : 'none');
     map.setLayoutProperty('lts-mtb-trails', 'visibility', showMtbTrails ? 'visible' : 'none');
+    const trailFilter = unverifiedTrailFilter(datasetKey === 'act' && !showActFootpaths);
+    map.setFilter('lts-unverified-trails-casing', trailFilter);
+    map.setFilter('lts-unverified-trails', trailFilter);
     map.setLayoutProperty('lts-unverified-trails-casing', 'visibility', showUnverifiedTrails ? 'visible' : 'none');
     map.setLayoutProperty('lts-unverified-trails', 'visibility', showUnverifiedTrails ? 'visible' : 'none');
-  }, [showCrossings, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
+  }, [datasetKey, showActFootpaths, showCrossings, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
 
   useEffect(() => {
     satelliteEnabledRef.current = satelliteEnabled;
@@ -1346,6 +1362,7 @@ export default function LtsLabPage() {
             setMetadata(null);
             setMapError(null);
             setDatasetKey(event.target.value as DatasetKey);
+            setShowActFootpaths(false);
             setRouteMode(false);
             setMobilePanelExpanded(false);
             resetRouteHistory();
@@ -1673,6 +1690,18 @@ export default function LtsLabPage() {
           <span className="w-8 rounded-full border-t-[6px] border-dashed border-cyan-400" />
           <span>Cycling suitability not confirmed</span>
         </label>
+        {datasetKey === 'act' && (
+          <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
+            <input
+              type="checkbox"
+              checked={showActFootpaths}
+              onChange={(event) => setShowActFootpaths(event.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="w-8 rounded-full border-t-[6px] border-dashed border-slate-400" />
+            <span>Ordinary ACT footpaths</span>
+          </label>
+        )}
         {metadata && (
           <div className="mt-3 text-[11px] leading-relaxed text-slate-500">
             <p>{metadata.segments.toLocaleString()} segments · {metadata.crossings.toLocaleString()} crossings · OSM snapshot {new Date(metadata.source_pbf_modified_at).toLocaleDateString('en-AU')}</p>
@@ -1843,7 +1872,7 @@ export default function LtsLabPage() {
                   <p>Each OSM way is assessed separately for the forward and backward cycling directions using Australian left-hand traffic. The map displays the more stressful permitted direction.</p>
                   <p>Direction matters because the two sides of a road can have different painted or protected cycle lanes, buffers, lane counts and speed tags. For Australian left-hand traffic, forward travel uses the left-side cycling treatment and backward travel uses the right-side treatment. Parking is currently a road-level door-zone flag rather than a fully directional input; its exact effect is stated below.</p>
                   <p>The background line deliberately shows the worse of the two permitted directions, while an active route shows the LTS for the direction being ridden. A route may therefore change a yellow background segment to blue when its side is safer, but the same shared classification should never change a blue background segment to yellow.</p>
-                  <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access, bicycle=no/private/dismount/use_sidepath, and footways without explicit bicycle permission are excluded. One-way tags decide which travel directions are scored.</p>
+                  <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access and bicycle=no/private/dismount/use_sidepath are excluded. Footways without explicit bicycle permission are normally excluded; in the ACT, where cycling on ordinary paths is legally permitted unless signed otherwise, they remain cautious routing links but are hidden from the map by default. One-way tags decide which travel directions are scored.</p>
                   <p>For an included direction, the segment score can be changed by only these inputs: road/path class; directional or general speed limit; directional or total motor-traffic lane count; roundabout status; cycling-facility type and side; whether a painted lane has a mapped buffer; mapped kerbside parking beside a painted lane; and matched all-vehicle daily motor traffic. Each rule is deterministic and is applied in the order shown below.</p>
                   <p>Traffic records are matched to OSM geometry using road name or route reference, projected distance, local direction and line overlap. Directional counts are doubled for a two-way OSM centreline to approximate conventional two-way daily traffic.</p>
                   {stateSourceCopy.methodology.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
