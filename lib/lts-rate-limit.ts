@@ -35,7 +35,7 @@ function digest(value: string): string {
 export function requestNetworkKey(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const address = forwarded || request.headers.get('x-real-ip') || 'unknown';
-  const salt = process.env.LTS_VOTE_HASH_SALT?.trim() || process.env.LTS_VOTE_ADMIN_TOKEN?.trim() || 'local-development-only';
+  const salt = process.env.LTS_VOTE_HASH_SALT?.trim() || 'local-development-only';
   return digest(`${salt}\0${address}`);
 }
 

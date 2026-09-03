@@ -14,7 +14,7 @@ import {
   type StoredLtsVote,
 } from '@/lib/lts-voting';
 import { communityReviewItems, communityVotes, rejectCommunitySegment, saveCommunityApproval } from '@/lib/lts-community-store';
-import { reviewerAuthorised } from '@/lib/lts-review-auth';
+import { authenticatedReviewer } from '@/lib/lts-review-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,10 +25,6 @@ const DATASETS = new Set([
 
 function validIdentifier(value: unknown, maximum: number): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= maximum && /^[a-zA-Z0-9:._-]+$/.test(value);
-}
-
-function validReviewerName(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length >= 2 && value.trim().length <= 60 && !/[\u0000-\u001f\u007f]/.test(value.trim());
 }
 
 function latestVotes(votes: StoredLtsVote[]): StoredLtsVote[] {
@@ -76,7 +72,7 @@ function reviewItem(item: Awaited<ReturnType<typeof communityReviewItems>>[numbe
 }
 
 export async function GET(request: NextRequest) {
-  if (!reviewerAuthorised(request)) return NextResponse.json({ error: 'Reviewer authorisation required.' }, { status: 401 });
+  if (!await authenticatedReviewer(request)) return NextResponse.json({ error: 'Reviewer sign-in required.' }, { status: 401 });
   try {
     const requestedStatus = request.nextUrl.searchParams.get('status') || 'pending';
     const status: ModerationStatus = requestedStatus === 'approved' || requestedStatus === 'rejected' ? requestedStatus : 'pending';
@@ -93,7 +89,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!reviewerAuthorised(request)) return NextResponse.json({ error: 'Reviewer authorisation required.' }, { status: 401 });
+  const identity = await authenticatedReviewer(request);
+  if (!identity) return NextResponse.json({ error: 'Reviewer sign-in required.' }, { status: 401 });
   try {
     const body = await request.json() as {
       action?: unknown;
@@ -101,17 +98,15 @@ export async function POST(request: NextRequest) {
       segmentId?: unknown;
       targetLts?: unknown;
       rideability?: unknown;
-      reviewerName?: unknown;
       reviewNote?: unknown;
     };
     if ((body.action !== 'approve' && body.action !== 'reject')
       || typeof body.dataset !== 'string' || !DATASETS.has(body.dataset)
       || !validIdentifier(body.segmentId, 160)
-      || !validReviewerName(body.reviewerName)
       || (body.reviewNote !== undefined && (typeof body.reviewNote !== 'string' || body.reviewNote.length > 500))) {
       return NextResponse.json({ error: 'Valid review details are required.' }, { status: 400 });
     }
-    const reviewer = { name: body.reviewerName.trim(), note: typeof body.reviewNote === 'string' ? body.reviewNote.trim() : '' };
+    const reviewer = { ...identity, note: typeof body.reviewNote === 'string' ? body.reviewNote.trim() : '' };
     if (body.action === 'reject') {
       await rejectCommunitySegment(body.dataset, body.segmentId, reviewer);
       return NextResponse.json({ ok: true, status: 'rejected' });
@@ -137,8 +132,6 @@ export async function POST(request: NextRequest) {
       status: 'current',
       approvedAgainstVersion: representative.segment.datasetVersion,
       currentDatasetVersion: representative.segment.datasetVersion,
-      reviewedBy: reviewer.name,
-      reviewNote: reviewer.note,
     };
     await saveCommunityApproval(approval, reviewer);
     return NextResponse.json({ ok: true, status: 'approved', approval });

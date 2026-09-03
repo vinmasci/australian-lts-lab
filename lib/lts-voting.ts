@@ -71,6 +71,13 @@ export interface VoteSegment {
 export type ReconciliationStatus = 'current' | 'carried_forward' | 'needs_review' | 'orphaned';
 export type ModerationStatus = 'pending' | 'approved' | 'rejected';
 
+export interface ReviewerAudit {
+  uid: string;
+  email: string;
+  name: string;
+  note: string;
+}
+
 export interface StoredLtsVote {
   dataset: string;
   segmentId: string;

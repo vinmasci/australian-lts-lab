@@ -106,6 +106,7 @@ async function summary(dataset: string, segmentId: string, voterId?: string): Pr
   const yourRecord = votes.find((vote) => vote.voterKey === voterKey);
   const ltsTotal = Object.values(counts).reduce((sum, count) => sum + count, 0);
   const rideabilityTotal = Object.values(rideabilityCounts).reduce((sum, count) => sum + count, 0);
+  const publicApproval = approval ? { ...approval, reviewedBy: undefined, reviewNote: undefined } : null;
   return {
     counts,
     total: ltsTotal,
@@ -121,7 +122,7 @@ async function summary(dataset: string, segmentId: string, voterId?: string): Pr
     yourRideabilityIssues: (yourRecord?.rideabilityIssues || []).filter(isRideabilityIssue),
     yourObservation: typeof yourRecord?.note === 'string' ? yourRecord.note : '',
     moderationStatus,
-    approval,
+    approval: publicApproval,
   };
 }
 

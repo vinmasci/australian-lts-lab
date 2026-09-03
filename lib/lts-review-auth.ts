@@ -1,13 +1,18 @@
 import 'server-only';
 
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { getAuth } from 'firebase-admin/auth';
 import type { NextRequest } from 'next/server';
+import { communityFirebaseApp, communityFirestore, firestoreConfigured } from '@/lib/lts-firestore';
 
-export const REVIEW_SESSION_COOKIE = 'ausbug_lts_review';
-const SESSION_SECONDS = 8 * 60 * 60;
+export interface ReviewerIdentity {
+  uid: string;
+  email: string;
+  name: string;
+}
 
-function reviewerSecret(): string | null {
-  return process.env.LTS_VOTE_ADMIN_TOKEN?.trim() || null;
+function digest(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
 }
 
 function equal(left: string, right: string): boolean {
@@ -16,40 +21,46 @@ function equal(left: string, right: string): boolean {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function signature(payload: string, secret: string): string {
-  return createHmac('sha256', secret).update(payload).digest('base64url');
+function bearerToken(request: NextRequest): string | null {
+  const value = request.headers.get('authorization');
+  return value?.startsWith('Bearer ') ? value.slice(7).trim() : null;
 }
 
-export function validReviewerKey(value: unknown): boolean {
-  const secret = reviewerSecret();
-  return Boolean(secret && typeof value === 'string' && equal(value.trim(), secret));
-}
-
-export function createReviewerSession(): { token: string; maxAge: number } {
-  const secret = reviewerSecret();
-  if (!secret) throw new Error('Reviewer access is not configured.');
-  const payload = Buffer.from(JSON.stringify({ expiresAt: Date.now() + SESSION_SECONDS * 1000, nonce: randomBytes(12).toString('hex') })).toString('base64url');
-  return { token: `${payload}.${signature(payload, secret)}`, maxAge: SESSION_SECONDS };
-}
-
-function validSession(token: string | undefined): boolean {
-  const secret = reviewerSecret();
-  if (!secret || !token) return false;
-  const [payload, suppliedSignature, extra] = token.split('.');
-  if (!payload || !suppliedSignature || extra || !equal(suppliedSignature, signature(payload, secret))) return false;
+export async function authenticatedReviewer(request: NextRequest): Promise<ReviewerIdentity | null> {
+  if (!firestoreConfigured()) {
+    return process.env.NODE_ENV !== 'production' && request.headers.get('x-local-review') === 'true'
+      ? { uid: 'local-reviewer', email: 'local@localhost', name: 'Local reviewer' }
+      : null;
+  }
+  const token = bearerToken(request);
+  if (!token) return null;
   try {
-    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { expiresAt?: unknown };
-    return typeof decoded.expiresAt === 'number' && decoded.expiresAt > Date.now();
+    const decoded = await getAuth(communityFirebaseApp()).verifyIdToken(token);
+    const email = decoded.email?.trim().toLowerCase();
+    if (!email || decoded.email_verified !== true) return null;
+    const access = await communityFirestore().collection('ltsReviewers').doc(digest(email)).get();
+    if (!access.exists || access.data()?.active !== true) return null;
+    return {
+      uid: decoded.uid,
+      email,
+      name: typeof access.data()?.displayName === 'string' && access.data()!.displayName.trim()
+        ? access.data()!.displayName.trim()
+        : typeof decoded.name === 'string' && decoded.name.trim()
+          ? decoded.name.trim()
+          : email.split('@')[0],
+    };
   } catch {
-    return false;
+    return null;
   }
 }
 
+export async function reviewerAuthorised(request: NextRequest): Promise<boolean> {
+  return Boolean(await authenticatedReviewer(request));
+}
 
-export function reviewerAuthorised(request: NextRequest): boolean {
-  const secret = reviewerSecret();
-  const bearer = request.headers.get('authorization');
-  if (secret && bearer?.startsWith('Bearer ') && equal(bearer.slice(7).trim(), secret)) return true;
-  if (validSession(request.cookies.get(REVIEW_SESSION_COOKIE)?.value)) return true;
-  return !secret && process.env.NODE_ENV !== 'production' && request.headers.get('x-local-review') === 'true';
+export async function reconciliationAuthorised(request: NextRequest): Promise<boolean> {
+  if (await reviewerAuthorised(request)) return true;
+  const secret = process.env.LTS_RECONCILE_TOKEN?.trim();
+  const token = bearerToken(request);
+  return Boolean(secret && token && equal(secret, token));
 }

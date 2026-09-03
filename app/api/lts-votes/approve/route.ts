@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isLtsVoteLevel, isRideabilityLevel, projectApprovedLts, type LtsApproval, type StoredLtsVote } from '@/lib/lts-voting';
 import { communityVotes, saveCommunityApproval } from '@/lib/lts-community-store';
-import { reviewerAuthorised } from '@/lib/lts-review-auth';
+import { authenticatedReviewer } from '@/lib/lts-review-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,8 @@ const DATASETS = new Set([
 ]);
 
 export async function POST(request: NextRequest) {
-  if (!reviewerAuthorised(request)) return NextResponse.json({ error: 'Reviewer authorisation required.' }, { status: 401 });
+  const reviewer = await authenticatedReviewer(request);
+  if (!reviewer) return NextResponse.json({ error: 'Reviewer sign-in required.' }, { status: 401 });
   try {
     const body = await request.json() as { dataset?: unknown; segmentId?: unknown; targetLts?: unknown; rideability?: unknown };
     if (typeof body.dataset !== 'string' || !DATASETS.has(body.dataset)
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
       approvedAgainstVersion: representative.segment.datasetVersion,
       currentDatasetVersion: representative.segment.datasetVersion,
     };
-    await saveCommunityApproval(approval);
+    await saveCommunityApproval(approval, { ...reviewer, note: '' });
     return NextResponse.json(approval);
   } catch (error) {
     console.error('[LTS vote approval]', error);

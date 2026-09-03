@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { reconcileCommunityDataset, registerCommunityDataset } from '@/lib/lts-community-store';
 import type { VoteSegment } from '@/lib/lts-voting';
-import { reviewerAuthorised } from '@/lib/lts-review-auth';
+import { reconciliationAuthorised } from '@/lib/lts-review-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,7 @@ function validSegment(value: unknown, dataset: string): value is VoteSegment {
 }
 
 export async function POST(request: NextRequest) {
-  if (!reviewerAuthorised(request)) return NextResponse.json({ error: 'Reviewer authorisation required.' }, { status: 401 });
+  if (!await reconciliationAuthorised(request)) return NextResponse.json({ error: 'Reviewer or reconciliation authorisation required.' }, { status: 401 });
   try {
     const body = await request.json() as {
       dataset?: unknown;

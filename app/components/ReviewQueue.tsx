@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Bike, Check, ExternalLink, KeyRound, Loader2, LogOut, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, type User } from 'firebase/auth';
+import { Bike, Check, ExternalLink, Loader2, LogIn, LogOut, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import { reviewAuth } from '@/lib/firebase-review-client';
 import {
   LTS_VOTE_COLOURS,
   LTS_VOTE_LEVELS,
@@ -14,7 +16,6 @@ import {
   type RideabilityLevel,
 } from '@/lib/lts-voting';
 
-const REVIEWER_NAME_KEY = 'ausbug-lts-reviewer-name-v1';
 const DATASETS: Record<string, string> = {
   victoria: 'Victoria',
   nsw: 'New South Wales',
@@ -33,7 +34,9 @@ function osmUrl(osmId?: string): string | null {
   return `https://www.openstreetmap.org/${type}/${match[2]}`;
 }
 
-function ReviewCard({ item, reviewerName, onReviewed }: { item: ReviewQueueItem; reviewerName: string; onReviewed: () => void }) {
+type AuthorisedFetch = (input: string, init?: RequestInit) => Promise<Response>;
+
+function ReviewCard({ item, authorisedFetch, onReviewed }: { item: ReviewQueueItem; authorisedFetch: AuthorisedFetch; onReviewed: () => void }) {
   const [targetLts, setTargetLts] = useState<LtsVoteLevel>(item.leadingTarget || Math.max(1, Math.min(4, item.segment.currentLts)) as LtsVoteLevel);
   const [rideability, setRideability] = useState<RideabilityLevel | null>(item.communityRideability);
   const [reviewNote, setReviewNote] = useState('');
@@ -45,10 +48,10 @@ function ReviewCard({ item, reviewerName, onReviewed }: { item: ReviewQueueItem;
     setSaving(action);
     setError(null);
     try {
-      const response = await fetch('/api/lts-review', {
+      const response = await authorisedFetch('/api/lts-review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, dataset: item.dataset, segmentId: item.segmentId, targetLts, rideability, reviewerName, reviewNote }),
+        body: JSON.stringify({ action, dataset: item.dataset, segmentId: item.segmentId, targetLts, rideability, reviewNote }),
       });
       const result = await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error || 'The review could not be saved.');
@@ -123,15 +126,22 @@ function ReviewCard({ item, reviewerName, onReviewed }: { item: ReviewQueueItem;
 
 export function ReviewQueue() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
-  const [accessKey, setAccessKey] = useState('');
-  const [reviewerName, setReviewerName] = useState(() =>
-    typeof window === 'undefined' ? '' : window.localStorage.getItem(REVIEWER_NAME_KEY) || '',
-  );
+  const [user, setUser] = useState<User | null>(null);
+  const [reviewer, setReviewer] = useState<{ uid: string; email: string; name: string } | null>(null);
   const [status, setStatus] = useState<ModerationStatus>('pending');
   const [dataset, setDataset] = useState('');
   const [items, setItems] = useState<ReviewQueueItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const authorisedFetch = useCallback<AuthorisedFetch>(async (input, init = {}) => {
+    const currentUser = reviewAuth.currentUser;
+    if (!currentUser) throw new Error('Sign in as an approved reviewer first.');
+    const token = await currentUser.getIdToken();
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${token}`);
+    return fetch(input, { ...init, headers });
+  }, []);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -139,10 +149,12 @@ export function ReviewQueue() {
     try {
       const params = new URLSearchParams({ status });
       if (dataset) params.set('dataset', dataset);
-      const response = await fetch(`/api/lts-review?${params}`, { cache: 'no-store' });
+      const response = await authorisedFetch(`/api/lts-review?${params}`, { cache: 'no-store' });
       const result = await response.json() as { items?: ReviewQueueItem[]; error?: string };
       if (response.status === 401) {
         setAuthenticated(false);
+        setReviewer(null);
+        setError('This Google account is signed in but is not an approved LTS reviewer.');
         return;
       }
       if (!response.ok) throw new Error(result.error || 'Review queue is unavailable.');
@@ -153,13 +165,40 @@ export function ReviewQueue() {
     } finally {
       setLoading(false);
     }
-  }, [dataset, status]);
+  }, [authorisedFetch, dataset, status]);
 
   useEffect(() => {
-    void fetch('/api/lts-review/session', { cache: 'no-store' })
-      .then((response) => response.json())
-      .then((result: { authenticated?: boolean }) => setAuthenticated(Boolean(result.authenticated)))
-      .catch(() => setAuthenticated(false));
+    return onAuthStateChanged(reviewAuth, (currentUser) => {
+      setUser(currentUser);
+      setReviewer(null);
+      if (!currentUser) {
+        setAuthenticated(false);
+        setItems([]);
+        return;
+      }
+      void currentUser.getIdToken()
+        .then((token) => fetch('/api/lts-review/session', {
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${token}` },
+        }))
+        .then(async (response) => {
+          const result = await response.json() as {
+            authenticated?: boolean;
+            reviewer?: { uid: string; email: string; name: string };
+            error?: string;
+          };
+          if (!response.ok || !result.authenticated || !result.reviewer) {
+            throw new Error(result.error || 'This account is not an approved LTS reviewer.');
+          }
+          setReviewer(result.reviewer);
+          setAuthenticated(true);
+          setError(null);
+        })
+        .catch((caught) => {
+          setAuthenticated(false);
+          setError(caught instanceof Error ? caught.message : 'Reviewer access could not be verified.');
+        });
+    });
   }, []);
 
   useEffect(() => {
@@ -172,23 +211,20 @@ export function ReviewQueue() {
     setLoading(true);
     setError(null);
     try {
-      if (reviewerName.trim().length < 2) throw new Error('Enter your reviewer name.');
-      const response = await fetch('/api/lts-review/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessKey }) });
-      const result = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(result.error || 'Reviewer access failed.');
-      window.localStorage.setItem(REVIEWER_NAME_KEY, reviewerName.trim());
-      setAccessKey('');
-      setAuthenticated(true);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(reviewAuth, provider);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Reviewer access failed.');
+      setError(caught instanceof Error ? caught.message : 'Google sign-in could not be completed.');
     } finally {
       setLoading(false);
     }
   };
 
   const logout = async () => {
-    await fetch('/api/lts-review/session', { method: 'DELETE' });
+    await signOut(reviewAuth);
     setAuthenticated(false);
+    setReviewer(null);
     setItems([]);
   };
 
@@ -198,16 +234,12 @@ export function ReviewQueue() {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-slate-950 p-4 text-white">
         <section className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-300"><KeyRound className="h-6 w-6" /></div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-300"><LogIn className="h-6 w-6" /></div>
           <h1 className="mt-4 text-2xl font-black">AusBUG LTS review</h1>
-          <p className="mt-2 text-sm leading-relaxed text-slate-400">Voters do not need accounts. Publishing decisions remain protected for AusBUG reviewers.</p>
-          <label className="mt-5 block text-xs font-bold uppercase tracking-wide text-slate-400">Your reviewer name
-            <input value={reviewerName} onChange={(event) => setReviewerName(event.target.value.slice(0, 60))} autoComplete="name" className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-cyan-300/60" />
-          </label>
-          <label className="mt-3 block text-xs font-bold uppercase tracking-wide text-slate-400">Reviewer access key
-            <input type="password" value={accessKey} onChange={(event) => setAccessKey(event.target.value)} autoComplete="current-password" className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-cyan-300/60" />
-          </label>
-          <button type="button" onClick={() => void login()} disabled={loading || reviewerName.trim().length < 2 || !accessKey} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-400 font-bold text-slate-950 hover:bg-cyan-300 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Open review queue</button>
+          <p className="mt-2 text-sm leading-relaxed text-slate-400">Public contributors still do not need accounts. Review and publishing decisions require an individually approved Google account.</p>
+          {user && <p className="mt-4 rounded-lg bg-amber-300/10 p-3 text-sm text-amber-100">Signed in as <strong>{user.email}</strong>, but this account does not have reviewer access.</p>}
+          <button type="button" onClick={() => void login()} disabled={loading} className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-400 font-bold text-slate-950 hover:bg-cyan-300 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} {user ? 'Choose another Google account' : 'Continue with Google'}</button>
+          {user && <button type="button" onClick={() => void logout()} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/10 text-sm font-semibold text-slate-300 hover:bg-white/10"><LogOut className="h-4 w-4" /> Sign out</button>}
           {error && <p className="mt-3 text-sm font-semibold text-rose-300">{error}</p>}
           <Link href="/ltsmap" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 hover:text-cyan-200"><Bike className="h-4 w-4" /> Back to the LTS map</Link>
         </section>
@@ -223,6 +255,7 @@ export function ReviewQueue() {
             <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Protected reviewer workspace</p>
             <h1 className="mt-1 text-3xl font-black">AusBUG LTS review</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-400">Contributor names and reasoning remain private here. Only approved ratings enter the public map layer.</p>
+            {reviewer && <p className="mt-1 text-xs text-slate-500">Signed in as {reviewer.name} · {reviewer.email}</p>}
           </div>
           <div className="flex gap-2">
             <Link href="/ltsmap" className="flex min-h-10 items-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-slate-300 hover:bg-white/10"><Bike className="h-4 w-4" /> Map</Link>
@@ -244,7 +277,7 @@ export function ReviewQueue() {
         {loading && !items.length ? <div className="mt-10 flex items-center justify-center text-slate-400"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading contributions…</div> : (
           <div className="mt-5 space-y-4">
             {!items.length && <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-slate-400"><ShieldCheck className="mx-auto mb-3 h-8 w-8 text-emerald-300" />No {status} contributions.</div>}
-            {items.map((item) => <ReviewCard key={`${item.dataset}-${item.segmentId}`} item={item} reviewerName={reviewerName} onReviewed={() => void loadQueue()} />)}
+            {items.map((item) => <ReviewCard key={`${item.dataset}-${item.segmentId}`} item={item} authorisedFetch={authorisedFetch} onReviewed={() => void loadQueue()} />)}
           </div>
         )}
       </div>

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type DocumentData, type Firestore } from 'firebase-admin/firestore';
 import { bestSegmentMatch, segmentMatch } from '@/lib/lts-reconciliation';
-import type { LtsApproval, ModerationStatus, ReconciliationStatus, StoredLtsVote, VoteSegment } from '@/lib/lts-voting';
+import type { LtsApproval, ModerationStatus, ReconciliationStatus, ReviewerAudit, StoredLtsVote, VoteSegment } from '@/lib/lts-voting';
 
 const COLLECTIONS = {
   datasets: 'ltsDatasets',
@@ -100,7 +100,7 @@ export function firestoreConfigured(): boolean {
   return Boolean(process.env.LTS_FIREBASE_SERVICE_ACCOUNT_BASE64 || process.env.GOOGLE_APPLICATION_CREDENTIALS);
 }
 
-function firebaseApp(): App {
+export function communityFirebaseApp(): App {
   const existing = getApps().find((app) => app.name === 'ausbug-lts-community');
   if (existing) return existing;
   const projectId = (process.env.LTS_FIREBASE_PROJECT_ID || 'cyaroutes').trim();
@@ -114,7 +114,7 @@ function firebaseApp(): App {
 
 export function communityFirestore(): Firestore {
   if (!firestoreConfigured()) throw new Error('Firestore community storage is not configured.');
-  return getFirestore(firebaseApp());
+  return getFirestore(communityFirebaseApp());
 }
 
 async function canonicalDocumentId(db: Firestore, dataset: string, segmentId: string): Promise<string> {
@@ -250,7 +250,7 @@ export async function readFirestoreModerationStatus(dataset: string, segmentId: 
   return value === 'pending' || value === 'approved' || value === 'rejected' ? value : null;
 }
 
-export async function writeFirestoreApproval(approval: LtsApproval, reviewer?: { name: string; note: string }): Promise<void> {
+export async function writeFirestoreApproval(approval: LtsApproval, reviewer?: ReviewerAudit): Promise<void> {
   const { documentId, record } = await observeSegment(approval.segment);
   const now = new Date().toISOString();
   const stored = clean({
@@ -268,6 +268,8 @@ export async function writeFirestoreApproval(approval: LtsApproval, reviewer?: {
     moderationStatus: 'approved',
     lastReviewedAt: now,
     reviewedBy: reviewer?.name || approval.reviewedBy || 'AusBUG reviewer',
+    reviewerUid: reviewer?.uid || null,
+    reviewerEmail: reviewer?.email || null,
     reviewNote: reviewer?.note || approval.reviewNote || '',
   }, { merge: true });
   await db.collection(COLLECTIONS.decisions).add(clean({
@@ -277,13 +279,15 @@ export async function writeFirestoreApproval(approval: LtsApproval, reviewer?: {
     approvedLts: approval.approvedLts,
     approvedRideability: approval.approvedRideability ?? null,
     reviewedBy: reviewer?.name || approval.reviewedBy || 'AusBUG reviewer',
+    reviewerUid: reviewer?.uid || null,
+    reviewerEmail: reviewer?.email || null,
     reviewNote: reviewer?.note || approval.reviewNote || '',
     reviewedAt: now,
   }));
   await publishApproval(db, documentId, stored, record.current, record.status, record.statusReason);
 }
 
-export async function rejectFirestoreSegment(dataset: string, segmentId: string, reviewer: { name: string; note: string }): Promise<void> {
+export async function rejectFirestoreSegment(dataset: string, segmentId: string, reviewer: ReviewerAudit): Promise<void> {
   const db = communityFirestore();
   const documentId = await canonicalDocumentId(db, dataset, segmentId);
   const reference = db.collection(COLLECTIONS.segments).doc(documentId);
@@ -294,6 +298,8 @@ export async function rejectFirestoreSegment(dataset: string, segmentId: string,
     moderationStatus: 'rejected',
     lastReviewedAt: now,
     reviewedBy: reviewer.name,
+    reviewerUid: reviewer.uid,
+    reviewerEmail: reviewer.email,
     reviewNote: reviewer.note,
   }, { merge: true });
   await db.collection(COLLECTIONS.decisions).add(clean({
@@ -301,6 +307,8 @@ export async function rejectFirestoreSegment(dataset: string, segmentId: string,
     segmentId,
     action: 'rejected',
     reviewedBy: reviewer.name,
+    reviewerUid: reviewer.uid,
+    reviewerEmail: reviewer.email,
     reviewNote: reviewer.note,
     reviewedAt: now,
   }));
