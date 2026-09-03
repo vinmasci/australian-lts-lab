@@ -4,6 +4,8 @@ A public, experimental Bicycle Level of Traffic Stress (LTS) map for Australia.
 
 The Lab classifies each rideable OpenStreetMap road or path separately by travel direction, then displays the more stressful permitted direction on the background map. Every published state and territory except the still-audited NSW graph includes an isolated experimental BRouter route planner. The About panel documents the current rules, thresholds, state-specific data sources, routing costs, crossing penalties, limitations and freshness information.
 
+The map includes Australian search-as-you-type and a browser-controlled current-location button. Place suggestions use the OpenStreetMap-based Photon geocoder through a debounced, cached and rate-limited server route. `PHOTON_GEOCODER_URL` can point production at a dedicated Photon instance. Current coordinates remain in the browser and are used only to position the map marker.
+
 ## Status
 
 This is research and diagnostic software. It is not safety advice, a guarantee that a link is legal or open, or a replacement for checking current conditions.
@@ -34,6 +36,17 @@ Set the PMTiles URLs in `.env.local`. Generated PMTiles archives are intentional
 - `LTS_BROUTER_WA_URL`, `LTS_BROUTER_SA_URL`, `LTS_BROUTER_ACT_URL`, `LTS_BROUTER_TAS_URL`, `LTS_BROUTER_NT_URL`: isolated state/territory routing endpoints. Separate stores prevent BRouter&apos;s five-degree tiles from overwriting neighbouring state data.
 - `BROUTER_COMPARISON_URL`: existing AusBUG BRouter endpoint used for the mobile apps' conservative `cyabikepath` (Bike Paths) comparison route.
 - `LTS_ROUTER_CLASSIFIER_VERSION`: classifier label returned by the route API.
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blob store used for one changeable vote per browser and segment. Local development falls back to an in-memory store.
+- `LTS_VOTE_USE_BLOB_LOCALLY`: optional `true` override for testing the shared Blob store during local development.
+- `LTS_VOTE_ADMIN_TOKEN`: reviewer secret required by `POST /api/lts-votes/approve` in production.
+
+## Community segment voting
+
+Selecting a mapped road opens its contribution controls. A contribution may contain an LTS vote, a rideability rating, or both; at least one rating is required, but neither scale is mandatory when submitting the other. LTS 1.5 is the cyan class for a trafficable road above 30 km/h with very little motor traffic. Votes for LTS 1, 1.5 or 2 become that value if approved. An approved LTS 3 or 4 proposal is averaged with the published score and rounded up: for example, a published LTS 2 plus an LTS 3 proposal becomes LTS 3.
+
+Rideability is rated independently as R1 any bike, R2 commuter or hybrid, R3 wider tyres advised, or R4 specialist bike/walking may be required. Voters can optionally explain their LTS choice, flag loose surfaces, corrugations, potholes or ruts, uneven stone, and wet-weather slipperiness, and add a short observation. Rideability does not change the LTS because surface difficulty and motor-traffic stress measure different things. The community result uses the conservative upper median when an even number of ratings is split.
+
+Votes do not directly alter the source network. A reviewer approves a proposed target with an authenticated request to `/api/lts-votes/approve`; approved geometry is returned by `/api/lts-votes?dataset=victoria&approved=1` and drawn over the published network. Tied vote totals lean toward the higher-stress value so that uncertainty is not hidden.
 
 ## Firebase tile hosting
 

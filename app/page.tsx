@@ -1,15 +1,37 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, Redo2, Route as RouteIcon, Trash2, Undo2, X } from 'lucide-react';
+import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, Search, Trash2, Undo2, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
+import { SegmentVote } from '@/app/components/SegmentVote';
+import { LTS_VOTE_COLOURS, type VoteSegment } from '@/lib/lts-voting';
 
 
 const DATASET_VERSION = 'au-lts-v0.5-council-traffic';
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
+
+interface PlaceSearchResult {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  bounds: [number, number, number, number] | null;
+}
+
+function placeSearchUrl(query: string, map: maplibregl.Map | null): string {
+  const params = new URLSearchParams({ q: query });
+  if (map) {
+    const centre = map.getCenter();
+    params.set('lat', centre.lat.toFixed(5));
+    params.set('lon', centre.lng.toFixed(5));
+    params.set('zoom', String(Math.round(map.getZoom())));
+  }
+  return `/api/geocode?${params}`;
+}
+
 const DATASETS = {
   victoria: {
     label: 'Victoria',
@@ -97,7 +119,6 @@ interface StateSourceCopy {
   trafficLimitation: string;
   speedLimitation: string;
 }
-
 const STATE_SOURCE_COPY: Record<DatasetKey, StateSourceCopy> = {
   victoria: {
     trafficTitle: 'Victorian traffic-volume evidence',
@@ -505,6 +526,43 @@ function selectedGeoJson(feature?: MapGeoJSONFeature): GeoJSON.FeatureCollection
   };
 }
 
+function geometryFingerprint(geometry: GeoJSON.Geometry): string {
+  const source = JSON.stringify(geometry);
+  let value = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    value ^= source.charCodeAt(index);
+    value = Math.imul(value, 16777619);
+  }
+  return (value >>> 0).toString(36);
+}
+
+function voteSegmentFromFeature(feature: MapGeoJSONFeature, dataset: DatasetKey): VoteSegment | null {
+  const properties = feature.properties as FeatureProperties;
+  const currentLts = Number(properties.lts);
+  if (!Number.isInteger(currentLts) || currentLts < 1 || currentLts > 4) return null;
+  const featureKind = String(properties.feature_kind || 'segment');
+  if (featureKind !== 'segment') return null;
+  const osmId = properties.osm_id ? String(properties.osm_id) : undefined;
+  const sourceId = String(properties.segment_id || osmId || feature.id || geometryFingerprint(feature.geometry as GeoJSON.Geometry));
+  const direction = properties.lts_direction || properties.direction;
+  const segmentId = `${featureKind}:${sourceId}${direction ? `:${String(direction)}` : ''}`
+    .replace(/[^a-zA-Z0-9:._-]/g, '_')
+    .slice(0, 160);
+  const maxspeed = Number(properties.maxspeed);
+  const trafficAadt = Number(properties.traffic_aadt);
+  return {
+    dataset,
+    segmentId,
+    name: String(properties.name || 'Unnamed road/path').slice(0, 160),
+    featureKind,
+    currentLts,
+    geometry: JSON.parse(JSON.stringify(feature.geometry)) as GeoJSON.Geometry,
+    osmId,
+    maxspeed: Number.isFinite(maxspeed) ? maxspeed : undefined,
+    trafficAadt: Number.isFinite(trafficAadt) ? trafficAadt : undefined,
+  };
+}
+
 function osmUrl(properties: FeatureProperties): string | null {
   const raw = String(properties.osm_id || '');
   const match = raw.match(/^([wnr])(\d+)$/);
@@ -745,6 +803,9 @@ function trafficFreshness(value: FeatureProperties[string]): { label: string; cl
 export default function LtsLabPage() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const searchMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const locationMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const placeSearchRequestIdRef = useRef(0);
   const routeModeRef = useRef(false);
   const routePointsRef = useRef<Coordinate[]>([]);
   const routeClickRef = useRef<(coordinate: Coordinate) => void>(() => undefined);
@@ -757,6 +818,7 @@ export default function LtsLabPage() {
   const [mapLoading, setMapLoading] = useState(true);
   const [metadata, setMetadata] = useState<LtsMetadata | null>(null);
   const [selected, setSelected] = useState<FeatureProperties | null>(null);
+  const [selectedVoteSegment, setSelectedVoteSegment] = useState<VoteSegment | null>(null);
   const [visibleLts, setVisibleLts] = useState<Set<number>>(new Set([1, 2, 3, 4]));
   const [showCrossings, setShowCrossings] = useState(true);
   const [showLowConfidence, setShowLowConfidence] = useState(true);
@@ -781,7 +843,14 @@ export default function LtsLabPage() {
   const [transparentRoutes, setTransparentRoutes] = useState(false);
   const [routeClassifier, setRouteClassifier] = useState<string | null>(null);
   const [showAbout, setShowAbout] = useState(false);
-  const [mobilePanelExpanded, setMobilePanelExpanded] = useState(false);
+  const [mapPanelExpanded, setMapPanelExpanded] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [placeQuery, setPlaceQuery] = useState('');
+  const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
+  const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
+  const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [datasetKey, setDatasetKey] = useState<DatasetKey>('victoria');
   const activeDataset = DATASETS[datasetKey];
   const stateSourceCopy = STATE_SOURCE_COPY[datasetKey];
@@ -1004,6 +1073,7 @@ export default function LtsLabPage() {
           type: 'vector',
           url: `pmtiles://${activeDataset.dataUrl}`,
         });
+        map.addSource('lts-approved', { type: 'geojson', data: emptyFeatureCollection() });
         map.addSource('lts-selected', { type: 'geojson', data: selectedGeoJson() });
         map.addSource('lts-comparison-route', { type: 'geojson', data: emptyFeatureCollection() });
         map.addSource('lts-route', { type: 'geojson', data: emptyFeatureCollection() });
@@ -1015,6 +1085,15 @@ export default function LtsLabPage() {
           2, LTS_COLOURS[2],
           3, LTS_COLOURS[3],
           4, LTS_COLOURS[4],
+          '#6b7280',
+        ];
+        const approvedColourExpression: maplibregl.ExpressionSpecification = [
+          'case',
+          ['==', ['get', 'lts'], 1], LTS_VOTE_COLOURS[1],
+          ['==', ['get', 'lts'], 1.5], LTS_VOTE_COLOURS[1.5],
+          ['==', ['get', 'lts'], 2], LTS_VOTE_COLOURS[2],
+          ['==', ['get', 'lts'], 3], LTS_VOTE_COLOURS[3],
+          ['==', ['get', 'lts'], 4], LTS_VOTE_COLOURS[4],
           '#6b7280',
         ];
 
@@ -1128,7 +1207,7 @@ export default function LtsLabPage() {
           minzoom: 11,
           layout: { 'line-cap': 'butt', 'line-join': 'round' },
           paint: {
-            'line-color': '#22d3ee',
+            'line-color': '#ec4899',
             'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 14, 2.4, 18, 5.5],
             'line-opacity': 0.45,
             'line-dasharray': [1.1, 1.25],
@@ -1176,6 +1255,42 @@ export default function LtsLabPage() {
             'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 1,
             'circle-opacity': 0.95,
+          },
+        });
+        map.addLayer({
+          id: 'lts-approved-casing',
+          type: 'line',
+          source: 'lts-approved',
+          filter: ['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]],
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.4, 14, 7, 18, 13],
+            'line-opacity': 0.9,
+          },
+        });
+        map.addLayer({
+          id: 'lts-approved-line',
+          type: 'line',
+          source: 'lts-approved',
+          filter: ['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]],
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': approvedColourExpression,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.2, 14, 4.5, 18, 9],
+            'line-opacity': 0.98,
+          },
+        });
+        map.addLayer({
+          id: 'lts-approved-point',
+          type: 'circle',
+          source: 'lts-approved',
+          filter: ['==', ['geometry-type'], 'Point'],
+          paint: {
+            'circle-color': approvedColourExpression,
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 17, 7],
+            'circle-stroke-color': '#ffffff',
+            'circle-stroke-width': 2,
           },
         });
         map.addLayer({
@@ -1259,14 +1374,29 @@ export default function LtsLabPage() {
           }
           const feature = map.queryRenderedFeatures(event.point, { layers: interactiveLayers })[0];
           setSelected(feature ? feature.properties as FeatureProperties : null);
+          setSelectedVoteSegment(feature ? voteSegmentFromFeature(feature, datasetKey) : null);
           (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
             .setData(selectedGeoJson(feature));
         });
+        const approvedParams = new URLSearchParams({ dataset: datasetKey, approved: '1' });
+        fetch(`/api/lts-votes?${approvedParams}`, { cache: 'no-store' })
+          .then((response) => {
+            if (!response.ok) throw new Error(`Approved segments returned ${response.status}`);
+            return response.json();
+          })
+          .then((approved: GeoJSON.FeatureCollection) => {
+            (map.getSource('lts-approved') as maplibregl.GeoJSONSource | undefined)?.setData(approved);
+          })
+          .catch((error) => console.warn('[LTS approved overlay]', error));
         syncSatelliteOverlay(map, satelliteEnabledRef.current, satelliteOpacityRef.current);
         setMapLoading(false);
     });
 
     return () => {
+      searchMarkerRef.current?.remove();
+      searchMarkerRef.current = null;
+      locationMarkerRef.current?.remove();
+      locationMarkerRef.current = null;
       mapRef.current?.remove();
       mapRef.current = null;
       removeProtocol('pmtiles');
@@ -1346,6 +1476,39 @@ export default function LtsLabPage() {
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [showAbout]);
 
+  useEffect(() => {
+    const query = placeQuery.trim();
+    const requestId = ++placeSearchRequestIdRef.current;
+    if (query.length < 3) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setPlaceSearchLoading(true);
+      setPlaceSearchError(null);
+      setLocationError(null);
+      try {
+        const response = await fetch(placeSearchUrl(query, mapRef.current), { signal: controller.signal });
+        const result = await response.json() as { results?: PlaceSearchResult[]; error?: string };
+        if (!response.ok) throw new Error(result.error || 'Place search failed.');
+        if (requestId !== placeSearchRequestIdRef.current) return;
+        const results = result.results || [];
+        setPlaceResults(results);
+        setPlaceSearchError(results.length ? null : 'No Australian places matched that search.');
+      } catch (error) {
+        if (controller.signal.aborted || requestId !== placeSearchRequestIdRef.current) return;
+        setPlaceResults([]);
+        setPlaceSearchError(error instanceof Error ? error.message : 'Place search failed.');
+      } finally {
+        if (requestId === placeSearchRequestIdRef.current) setPlaceSearchLoading(false);
+      }
+    }, 350);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [placeQuery]);
+
   const selectedLts = selected ? Number(selected.lts) : null;
   const selectedOsmUrl = selected ? osmUrl(selected) : null;
   const selectedTrafficFreshness = selected ? trafficFreshness(selected.traffic_year) : null;
@@ -1364,10 +1527,95 @@ export default function LtsLabPage() {
   const toggleRoutePlanning = () => {
     const next = !routeMode;
     setRouteMode(next);
-    setMobilePanelExpanded(false);
+    setMapPanelExpanded(false);
     setSelected(null);
+    setSelectedVoteSegment(null);
     (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
     resetRouteHistory();
+  };
+
+  const searchPlaces = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = placeQuery.trim();
+    if (query.length < 2) {
+      setPlaceSearchError('Enter at least two characters.');
+      setPlaceResults([]);
+      return;
+    }
+    const requestId = ++placeSearchRequestIdRef.current;
+    setPlaceSearchLoading(true);
+    setPlaceSearchError(null);
+    setLocationError(null);
+    try {
+      const response = await fetch(placeSearchUrl(query, mapRef.current));
+      const result = await response.json() as { results?: PlaceSearchResult[]; error?: string };
+      if (!response.ok) throw new Error(result.error || 'Place search failed.');
+      if (requestId !== placeSearchRequestIdRef.current) return;
+      const results = result.results || [];
+      setPlaceResults(results);
+      if (!results.length) setPlaceSearchError('No Australian places matched that search.');
+    } catch (error) {
+      if (requestId !== placeSearchRequestIdRef.current) return;
+      setPlaceResults([]);
+      setPlaceSearchError(error instanceof Error ? error.message : 'Place search failed.');
+    } finally {
+      if (requestId === placeSearchRequestIdRef.current) setPlaceSearchLoading(false);
+    }
+  };
+
+  const showPlace = (place: PlaceSearchResult) => {
+    const map = mapRef.current;
+    if (!map) return;
+    searchMarkerRef.current?.remove();
+    searchMarkerRef.current = new maplibregl.Marker({ color: '#ec4899' })
+      .setLngLat([place.longitude, place.latitude])
+      .addTo(map);
+    if (place.bounds) {
+      map.fitBounds(
+        [[place.bounds[0], place.bounds[1]], [place.bounds[2], place.bounds[3]]],
+        { padding: 80, maxZoom: 16, duration: 900 },
+      );
+    } else {
+      map.flyTo({ center: [place.longitude, place.latitude], zoom: 16, duration: 900 });
+    }
+    setPlaceResults([]);
+    setPlaceSearchError(null);
+    setSearchExpanded(false);
+  };
+
+  const findCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('This browser does not provide location access.');
+      return;
+    }
+    setLocating(true);
+    setLocationError(null);
+    setPlaceSearchError(null);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const map = mapRef.current;
+        if (map) {
+          locationMarkerRef.current?.remove();
+          locationMarkerRef.current = new maplibregl.Marker({ color: '#22c55e' })
+            .setLngLat([coords.longitude, coords.latitude])
+            .addTo(map);
+          map.flyTo({ center: [coords.longitude, coords.latitude], zoom: 16, duration: 900 });
+        }
+        setPlaceResults([]);
+        setLocating(false);
+      },
+      (error) => {
+        const messages: Record<number, string> = {
+          1: 'Location permission was not granted.',
+          2: 'Your current location is unavailable.',
+          3: 'Finding your location timed out.',
+        };
+        setLocationError(messages[error.code] || 'Your current location could not be found.');
+        setSearchExpanded(true);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 30_000 },
+    );
   };
 
   return (
@@ -1408,9 +1656,14 @@ export default function LtsLabPage() {
             setDatasetKey(event.target.value as DatasetKey);
             setShowActAccessOnlyTrails(false);
             setRouteMode(false);
-            setMobilePanelExpanded(false);
+            setMapPanelExpanded(false);
+            setSearchExpanded(false);
             resetRouteHistory();
             setSelected(null);
+            setSelectedVoteSegment(null);
+            setPlaceResults([]);
+            setPlaceSearchError(null);
+            setLocationError(null);
           }}
           aria-label="LTS dataset"
           className="order-last w-full rounded-lg border border-white/10 bg-slate-900 px-2.5 py-2 text-xs font-semibold text-slate-100 md:order-none md:ml-auto md:w-auto"
@@ -1428,7 +1681,123 @@ export default function LtsLabPage() {
         </button>
       </header>
 
-      <aside className="mobile-map-panel absolute left-3 z-10 max-h-[calc(100dvh-8rem)] w-[calc(100%-1.5rem)] max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl backdrop-blur md:bottom-auto md:left-4 md:top-24 md:w-80 md:overflow-y-auto md:rounded-xl md:p-4">
+      <section className={`absolute left-3 top-[7.25rem] z-10 md:left-[22rem] md:top-24 ${searchExpanded ? 'right-14 md:right-16 md:max-w-md' : ''}`} aria-label="Find a place on the map">
+        {searchExpanded ? (
+          <form onSubmit={searchPlaces} className="rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur">
+            <div className="flex items-center gap-1.5">
+              <Search className="ml-2 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+              <label htmlFor="map-place-search" className="sr-only">Search for an Australian place or address</label>
+              <input
+                id="map-place-search"
+                type="search"
+                value={placeQuery}
+                onChange={(event) => {
+                  setPlaceQuery(event.target.value);
+                  setPlaceResults([]);
+                  setPlaceSearchError(null);
+                  setPlaceSearchLoading(false);
+                }}
+                placeholder="Start typing a suburb, road or place…"
+                autoComplete="off"
+                autoFocus
+                className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-white outline-none placeholder:text-slate-500"
+              />
+              <button
+                type="submit"
+                disabled={placeSearchLoading || placeQuery.trim().length < 2}
+                className="flex h-10 shrink-0 items-center justify-center rounded-lg bg-white px-3 text-xs font-bold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {placeSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Searching" /> : 'Search'}
+              </button>
+              <button
+                type="button"
+                onClick={findCurrentLocation}
+                disabled={locating}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-300/30 bg-emerald-300/10 text-emerald-300 transition hover:bg-emerald-300/20 disabled:cursor-wait disabled:opacity-50"
+                aria-label="Find my current location"
+                title="Find my current location"
+              >
+                {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchExpanded(false);
+                  setPlaceResults([]);
+                  setPlaceSearchError(null);
+                  setLocationError(null);
+                }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-300 transition hover:bg-white/10 hover:text-white"
+                aria-label="Minimise place search"
+                title="Minimise place search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {placeResults.length > 0 && (
+              <div className="mt-1.5 overflow-hidden rounded-lg border border-white/10 bg-slate-950" role="listbox" aria-label="Place search results">
+                {placeResults.map((place) => (
+                  <button
+                    key={place.id}
+                    type="button"
+                    onClick={() => showPlace(place)}
+                    className="flex w-full items-start gap-2 border-b border-white/10 px-3 py-2.5 text-left text-xs leading-relaxed text-slate-200 transition last:border-0 hover:bg-white/10"
+                    role="option"
+                    aria-selected="false"
+                  >
+                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink-400" />
+                    <span>{place.name}</span>
+                  </button>
+                ))}
+                <p className="px-3 py-1.5 text-[9px] text-slate-500">Search © OpenStreetMap contributors</p>
+              </div>
+            )}
+            {(placeSearchError || locationError) && (
+              <p className="px-2 pb-1 pt-2 text-[11px] font-semibold text-rose-300" role="status">{placeSearchError || locationError}</p>
+            )}
+          </form>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSearchExpanded(true)}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950/95 text-slate-200 shadow-2xl backdrop-blur transition hover:bg-slate-900 hover:text-white"
+              aria-label="Open place search"
+              aria-expanded="false"
+              title="Search for a place"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={findCurrentLocation}
+              disabled={locating}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-slate-950/95 text-emerald-300 shadow-2xl backdrop-blur transition hover:bg-slate-900 disabled:cursor-wait disabled:opacity-50"
+              aria-label="Find my current location"
+              title="Find my current location"
+            >
+              {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-5 w-5" />}
+            </button>
+          </div>
+        )}
+      </section>
+
+      <aside className={`mobile-map-panel absolute left-3 z-10 md:bottom-auto md:left-4 md:top-24 ${mapPanelExpanded ? 'max-h-[calc(100dvh-8rem)] w-[calc(100%-1.5rem)] max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl backdrop-blur md:w-80 md:overflow-y-auto md:rounded-xl md:p-4' : 'w-auto rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur'}`}>
+        {!mapPanelExpanded ? (
+          <button
+            type="button"
+            onClick={() => setMapPanelExpanded(true)}
+            className="flex min-h-11 max-w-[17rem] items-center gap-2 rounded-lg px-3 text-sm font-bold text-slate-100 transition hover:bg-white/10"
+            aria-expanded="false"
+            aria-controls="map-controls"
+          >
+            <Layers3 className="h-4 w-4 shrink-0 text-cyan-300" />
+            <span className="truncate">{routeMode ? mobileRouteStatus : 'Layers & route'}</span>
+            <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" />
+          </button>
+        ) : (
+          <>
         <div className="md:hidden">
           <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-600" aria-hidden="true" />
           <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
@@ -1446,25 +1815,30 @@ export default function LtsLabPage() {
             )}
             <button
               type="button"
-              onClick={() => setMobilePanelExpanded((expanded) => !expanded)}
-              aria-expanded={mobilePanelExpanded}
-              aria-controls="mobile-map-controls"
+              onClick={() => setMapPanelExpanded(false)}
+              aria-expanded="true"
+              aria-controls="map-controls"
               className="flex min-h-11 items-center gap-1.5 rounded-xl border border-white/10 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10"
             >
               <Layers3 className="h-4 w-4" />
-              {routeMode ? 'Controls' : 'Layers'}
-              {mobilePanelExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              Hide
+              <ChevronDown className="h-4 w-4" />
             </button>
           </div>
-          {routeMode && !mobilePanelExpanded && (
-            <div className={`mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${routeError ? 'bg-red-500/15 text-red-200' : 'bg-emerald-400/10 text-emerald-200'}`}>
-              {routeLoading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />}
-              <span className="truncate">{mobileRouteStatus}</span>
-            </div>
-          )}
         </div>
 
-        <div id="mobile-map-controls" className={`${mobilePanelExpanded ? 'mt-2 block' : 'hidden'} max-h-[calc(100dvh-15rem)] overflow-y-auto px-1 pb-1 md:mt-0 md:block md:max-h-none md:overflow-visible md:px-0 md:pb-0`}>
+        <div id="map-controls" className="mt-2 block max-h-[calc(100dvh-15rem)] overflow-y-auto px-1 pb-1 md:mt-0 md:max-h-none md:overflow-visible md:px-0 md:pb-0">
+        <div className="mb-3 hidden items-center justify-between gap-3 md:flex">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Map controls</p>
+          <button
+            type="button"
+            onClick={() => setMapPanelExpanded(false)}
+            className="flex min-h-9 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+            aria-label="Minimise map controls"
+          >
+            Hide <ChevronUp className="h-4 w-4" />
+          </button>
+        </div>
         {activeDataset.routable ? <button
           type="button"
           onClick={toggleRoutePlanning}
@@ -1687,7 +2061,7 @@ export default function LtsLabPage() {
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <h2 className="font-semibold">Stress levels</h2>
-            <p className="text-xs text-slate-400">{routeMode ? 'The background network remains inspectable after routing.' : 'Click a road or crossing to inspect the rule.'}</p>
+            <p className="text-xs text-slate-400">{routeMode ? 'The background network remains inspectable after routing.' : 'Click a road to inspect and vote; crossings remain inspectable.'}</p>
           </div>
           {metadata && <span className="rounded bg-white/10 px-2 py-1 text-[10px] text-slate-300">{metadata.classifier_version}</span>}
         </div>
@@ -1711,6 +2085,11 @@ export default function LtsLabPage() {
           ))}
         </div>
         <div className="my-3 h-px bg-white/10" />
+        <div className="grid grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm text-slate-200">
+          <span className="h-4 w-4" aria-hidden="true" />
+          <span className="h-1.5 w-8 rounded-full" style={{ background: LTS_VOTE_COLOURS[1.5] }} />
+          <span>Approved LTS 1.5 · quiet trafficable road</span>
+        </div>
         <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showCrossings} onChange={(event) => setShowCrossings(event.target.checked)} className="h-4 w-4" />
           <span className="h-4 w-4 shrink-0 rounded-full border-2 border-white bg-blue-500" /> Crossings (LTS-coloured, zoom 14+)
@@ -1731,7 +2110,7 @@ export default function LtsLabPage() {
         </label>
         <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showUnverifiedTrails} onChange={(event) => setShowUnverifiedTrails(event.target.checked)} className="h-4 w-4" />
-          <span className="w-8 rounded-full border-t-[6px] border-dashed border-cyan-400" />
+          <span className="w-8 rounded-full border-t-[6px] border-dashed border-pink-500" />
           <span>Cycling suitability not confirmed</span>
         </label>
         {datasetKey === 'act' && (
@@ -1758,6 +2137,8 @@ export default function LtsLabPage() {
         )}
         {mapError && <p className="mt-3 rounded-lg bg-red-500/15 p-2 text-xs text-red-300">{mapError}</p>}
         </div>
+          </>
+        )}
       </aside>
 
       {!routeMode && selected && (selectedLts || propertyIsTrue(selected.is_mtb)) && (
@@ -1765,6 +2146,7 @@ export default function LtsLabPage() {
           <button
             onClick={() => {
               setSelected(null);
+              setSelectedVoteSegment(null);
               const source = mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined;
               source?.setData(selectedGeoJson());
             }}
@@ -1778,7 +2160,8 @@ export default function LtsLabPage() {
               <p className="text-sm" style={{ color: selectedLts ? LTS_COLOURS[selectedLts] : '#c084fc' }}>{selectedLts ? LTS_LABELS[selectedLts] : 'MTB trail shown for context'}</p>
             </div>
           </div>
-          <div className="rounded-lg bg-white/5 p-3">
+          {selectedVoteSegment && <SegmentVote segment={selectedVoteSegment} />}
+          <div className="mt-3 rounded-lg bg-white/5 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why this score</p>
             <p className="mt-1 text-sm leading-relaxed text-slate-200">{String(selected.reason || 'No explanation available')}</p>
           </div>
@@ -1828,7 +2211,7 @@ export default function LtsLabPage() {
             <p className="mt-4 rounded-lg border border-purple-400/20 bg-purple-400/10 p-3 text-xs leading-relaxed text-purple-100">{String(selected.mtb_reason)}</p>
           )}
           {selected.trail_routing && selected.trail_routing !== 'normal' && selected.trail_reason && (
-            <p className="mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/10 p-3 text-xs leading-relaxed text-cyan-100">{String(selected.trail_reason)}</p>
+            <p className="mt-3 rounded-lg border border-pink-400/20 bg-pink-400/10 p-3 text-xs leading-relaxed text-pink-100">{String(selected.trail_reason)}</p>
           )}
           {selectedOsmUrl && <a href={selectedOsmUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex text-sm font-semibold text-sky-400 hover:text-sky-300">Inspect this feature in OpenStreetMap →</a>}
         </aside>
