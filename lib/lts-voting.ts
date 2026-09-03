@@ -83,6 +83,8 @@ export interface StoredLtsVote {
   segmentId: string;
   voterKey: string;
   contributorName: string;
+  contributorUid?: string;
+  contributorEmail?: string;
   targetLts?: LtsVoteLevel | null;
   rideability?: RideabilityLevel | null;
   rideabilityIssues?: RideabilityIssue[];
@@ -134,6 +136,7 @@ export interface SegmentVoteSummary {
 
 export interface ReviewVote {
   contributorName: string;
+  contributorEmail?: string;
   targetLts: LtsVoteLevel | null;
   rideability: RideabilityLevel | null;
   rideabilityIssues: RideabilityIssue[];

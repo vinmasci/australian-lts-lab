@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -866,6 +866,14 @@ export default function LtsLabPage() {
   useEffect(() => {
     metadataRef.current = metadata;
   }, [metadata]);
+
+  const refreshApprovedOverlay = useCallback(async () => {
+    const params = new URLSearchParams({ dataset: datasetKey, approved: '1' });
+    const response = await fetch(`/api/lts-votes?${params}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Published segments returned ${response.status}`);
+    const approved = await response.json() as GeoJSON.FeatureCollection;
+    (mapRef.current?.getSource('lts-approved') as maplibregl.GeoJSONSource | undefined)?.setData(approved);
+  }, [datasetKey]);
 
   const setRoutePointSource = (points: Coordinate[]) => {
     const source = mapRef.current?.getSource('lts-route-points') as maplibregl.GeoJSONSource | undefined;
@@ -2098,7 +2106,7 @@ export default function LtsLabPage() {
         <div className="grid grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm text-slate-200">
           <span className="h-4 w-4" aria-hidden="true" />
           <span className="h-1.5 w-8 rounded-full" style={{ background: LTS_VOTE_COLOURS[1.5] }} />
-          <span>Approved LTS 1.5 · quiet trafficable road</span>
+          <span>Community LTS 1.5 · quiet trafficable road</span>
         </div>
         <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showCrossings} onChange={(event) => setShowCrossings(event.target.checked)} className="h-4 w-4" />
@@ -2170,7 +2178,7 @@ export default function LtsLabPage() {
               <p className="text-sm" style={{ color: selectedLts ? LTS_COLOURS[selectedLts] : '#c084fc' }}>{selectedLts ? LTS_LABELS[selectedLts] : 'MTB trail shown for context'}</p>
             </div>
           </div>
-          {selectedVoteSegment && <SegmentVote segment={selectedVoteSegment} />}
+          {selectedVoteSegment && <SegmentVote segment={selectedVoteSegment} onPublished={refreshApprovedOverlay} />}
           <div className="mt-3 rounded-lg bg-white/5 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why this score</p>
             <p className="mt-1 text-sm leading-relaxed text-slate-200">{String(selected.reason || 'No explanation available')}</p>

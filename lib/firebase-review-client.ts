@@ -16,4 +16,5 @@ const app = getApps().some((candidate) => candidate.name === APP_NAME)
       appId: '1:601003510442:web:a91daf9016922656a89ed3',
     }, APP_NAME);
 
-export const reviewAuth = getAuth(app);
+export const ausbugAuth = getAuth(app);
+export const reviewAuth = ausbugAuth;

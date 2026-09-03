@@ -55,6 +55,7 @@ function reviewItem(item: Awaited<ReturnType<typeof communityReviewItems>>[numbe
     reviewNote: item.record.reviewNote,
     votes: votes.map((vote) => ({
       contributorName: vote.contributorName || 'Unnamed pilot contributor',
+      contributorEmail: vote.contributorEmail,
       targetLts: isLtsVoteLevel(vote.targetLts) ? vote.targetLts : null,
       rideability: isRideabilityLevel(vote.rideability) ? vote.rideability : null,
       rideabilityIssues: vote.rideabilityIssues || [],

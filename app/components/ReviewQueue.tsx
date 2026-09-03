@@ -56,8 +56,8 @@ function authMessage(error: unknown, fallback: string): string {
 }
 
 function ReviewCard({ item, authorisedFetch, onReviewed }: { item: ReviewQueueItem; authorisedFetch: AuthorisedFetch; onReviewed: () => void }) {
-  const [targetLts, setTargetLts] = useState<LtsVoteLevel>(item.leadingTarget || Math.max(1, Math.min(4, item.segment.currentLts)) as LtsVoteLevel);
-  const [rideability, setRideability] = useState<RideabilityLevel | null>(item.communityRideability);
+  const [targetLts, setTargetLts] = useState<LtsVoteLevel>(item.approval?.targetLts || item.leadingTarget || Math.max(1, Math.min(4, item.segment.currentLts)) as LtsVoteLevel);
+  const [rideability, setRideability] = useState<RideabilityLevel | null>(item.approval?.approvedRideability ?? item.communityRideability);
   const [reviewNote, setReviewNote] = useState('');
   const [saving, setSaving] = useState<'approve' | 'reject' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +98,7 @@ function ReviewCard({ item, authorisedFetch, onReviewed }: { item: ReviewQueueIt
           <section key={`${vote.updatedAt}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/65 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-bold text-white">{vote.contributorName}</span>
+              {vote.contributorEmail && <span className="text-xs text-slate-500">{vote.contributorEmail}</span>}
               {vote.targetLts !== null && <span className="rounded-full px-2 py-1 text-[11px] font-black text-white" style={{ background: LTS_VOTE_COLOURS[vote.targetLts] }}>LTS {vote.targetLts}</span>}
               {vote.rideability !== null && <span className="rounded-full bg-violet-500/20 px-2 py-1 text-[11px] font-bold text-violet-200">R{vote.rideability} · {RIDEABILITY_LABELS[vote.rideability]}</span>}
               <time className="ml-auto text-[10px] text-slate-500">{new Date(vote.updatedAt).toLocaleString('en-AU')}</time>
@@ -109,36 +110,35 @@ function ReviewCard({ item, authorisedFetch, onReviewed }: { item: ReviewQueueIt
         ))}
       </div>
 
-      {item.moderationStatus === 'pending' ? (
-        <div className="mt-4 border-t border-white/10 pt-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-semibold text-slate-300">Approved LTS proposal
+      <div className="mt-4 border-t border-white/10 pt-4">
+        {item.moderationStatus !== 'pending' && (
+          <p className={`mb-3 rounded-lg p-2 text-xs font-semibold ${item.moderationStatus === 'approved' ? 'bg-emerald-300/10 text-emerald-200' : 'bg-slate-700/50 text-slate-300'}`}>
+            {item.moderationStatus === 'approved' ? 'Currently published' : 'Currently removed'}{item.reviewNote ? ` · ${item.reviewNote}` : ''}
+          </p>
+        )}
+        <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-semibold text-slate-300">Published LTS
               <select value={targetLts} onChange={(event) => setTargetLts(Number(event.target.value) as LtsVoteLevel)} className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-white">
                 {LTS_VOTE_LEVELS.map((level) => <option key={level} value={level}>LTS {level}{item.counts[String(level)] ? ` · ${item.counts[String(level)]} votes` : ''}</option>)}
               </select>
             </label>
-            <label className="text-xs font-semibold text-slate-300">Approved rideability
+            <label className="text-xs font-semibold text-slate-300">Published rideability
               <select value={rideability ?? ''} onChange={(event) => setRideability(event.target.value ? Number(event.target.value) as RideabilityLevel : null)} className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-white">
                 <option value="">Not rated</option>
                 {RIDEABILITY_LEVELS.map((level) => <option key={level} value={level}>R{level} · {RIDEABILITY_LABELS[level]}{item.rideabilityCounts[String(level)] ? ` · ${item.rideabilityCounts[String(level)]} votes` : ''}</option>)}
               </select>
             </label>
-          </div>
-          <p className="mt-2 rounded-lg bg-white/5 p-2 text-xs text-slate-300">Published result: <strong>LTS {targetLts >= 3 ? Math.min(4, Math.ceil((item.segment.currentLts + targetLts) / 2)) : targetLts}</strong>{rideability ? ` · R${rideability}` : ''}</p>
-          <label className="mt-3 block text-xs font-semibold text-slate-300">Reviewer note <span className="font-normal text-slate-500">(recommended when rejecting)</span>
-            <textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 500))} rows={2} className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/60" placeholder="Evidence checked, reason for rejection, or follow-up needed…" />
-          </label>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => void decide('reject')} disabled={Boolean(saving)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rose-300/25 bg-rose-300/10 px-3 text-sm font-bold text-rose-200 hover:bg-rose-300/20 disabled:opacity-50">{saving === 'reject' ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />} Reject</button>
-            <button type="button" onClick={() => void decide('approve')} disabled={Boolean(saving)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-400 px-3 text-sm font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-50">{saving === 'approve' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Approve</button>
-          </div>
-          {error && <p className="mt-2 text-xs font-semibold text-rose-300">{error}</p>}
         </div>
-      ) : (
-        <p className={`mt-4 rounded-lg p-3 text-sm font-semibold ${item.moderationStatus === 'approved' ? 'bg-emerald-300/10 text-emerald-200' : 'bg-slate-700/50 text-slate-300'}`}>
-          {item.moderationStatus === 'approved' ? 'Approved' : 'Rejected'}{item.reviewNote ? ` · ${item.reviewNote}` : ''}
-        </p>
-      )}
+        <p className="mt-2 rounded-lg bg-white/5 p-2 text-xs text-slate-300">Published result: <strong>LTS {targetLts >= 3 ? Math.min(4, Math.ceil((item.segment.currentLts + targetLts) / 2)) : targetLts}</strong>{rideability ? ` · R${rideability}` : ''}</p>
+        <label className="mt-3 block text-xs font-semibold text-slate-300">Reviewer note <span className="font-normal text-slate-500">(recommended when removing)</span>
+          <textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 500))} rows={2} className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/60" placeholder="Evidence checked, reason for correction or removal, or follow-up needed…" />
+        </label>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => void decide('reject')} disabled={Boolean(saving)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rose-300/25 bg-rose-300/10 px-3 text-sm font-bold text-rose-200 hover:bg-rose-300/20 disabled:opacity-50">{saving === 'reject' ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />} {item.moderationStatus === 'approved' ? 'Remove' : item.moderationStatus === 'pending' ? 'Do not publish' : 'Keep removed'}</button>
+          <button type="button" onClick={() => void decide('approve')} disabled={Boolean(saving)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-400 px-3 text-sm font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-50">{saving === 'approve' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {item.moderationStatus === 'pending' ? 'Publish' : item.moderationStatus === 'approved' ? 'Update' : 'Republish'}</button>
+        </div>
+        {error && <p className="mt-2 text-xs font-semibold text-rose-300">{error}</p>}
+      </div>
     </article>
   );
 }
@@ -296,7 +296,7 @@ export function ReviewQueue() {
         <section className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-300"><LogIn className="h-6 w-6" /></div>
           <h1 className="mt-4 text-2xl font-black">AusBUG LTS review</h1>
-          <p className="mt-2 text-sm leading-relaxed text-slate-400">Public contributors still do not need accounts. Reviewers can use their existing AusBUG sign-in.</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-400">Contributors sign in with AusBUG and publish immediately. Approved reviewers can audit, correct or remove those ratings here.</p>
           {user && <p className="mt-4 rounded-lg bg-amber-300/10 p-3 text-sm text-amber-100">Signed in as <strong>{user.email}</strong>, but this account does not have reviewer access.</p>}
 
           {authMode === 'choice' && (
@@ -358,7 +358,7 @@ export function ReviewQueue() {
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Protected reviewer workspace</p>
             <h1 className="mt-1 text-3xl font-black">AusBUG LTS review</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-400">Contributor names and reasoning remain private here. Only approved ratings enter the public map layer.</p>
+            <p className="mt-2 max-w-2xl text-sm text-slate-400">Signed-in contributions publish immediately. Contributor identity and reasoning remain private here so reviewers can audit, correct or remove a rating; OSM reconciliation problems still wait in Pending.</p>
             {reviewer && <p className="mt-1 text-xs text-slate-500">Signed in as {reviewer.name} · {reviewer.email}</p>}
           </div>
           <div className="flex gap-2">

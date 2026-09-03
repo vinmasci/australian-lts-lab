@@ -294,7 +294,12 @@ export async function rejectFirestoreSegment(dataset: string, segmentId: string,
   const snapshot = await reference.get();
   if (!snapshot.exists) throw new Error('Segment does not exist.');
   const now = new Date().toISOString();
-  await reference.set({
+  const approvalReference = db.collection(COLLECTIONS.approvals).doc(documentId);
+  const publishedReference = db.collection(COLLECTIONS.published).doc(documentId);
+  const approvalSnapshot = await approvalReference.get();
+  const previousApproval = approvalSnapshot.exists ? decodeApproval(approvalSnapshot.data()!) : null;
+  const batch = db.batch();
+  batch.set(reference, {
     moderationStatus: 'rejected',
     lastReviewedAt: now,
     reviewedBy: reviewer.name,
@@ -302,10 +307,15 @@ export async function rejectFirestoreSegment(dataset: string, segmentId: string,
     reviewerEmail: reviewer.email,
     reviewNote: reviewer.note,
   }, { merge: true });
+  batch.delete(approvalReference);
+  batch.delete(publishedReference);
+  await batch.commit();
   await db.collection(COLLECTIONS.decisions).add(clean({
     dataset,
     segmentId,
     action: 'rejected',
+    previousApprovedLts: previousApproval?.approvedLts ?? null,
+    previousApprovedRideability: previousApproval?.approvedRideability ?? null,
     reviewedBy: reviewer.name,
     reviewerUid: reviewer.uid,
     reviewerEmail: reviewer.email,
