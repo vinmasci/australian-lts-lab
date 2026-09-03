@@ -536,7 +536,7 @@ function geometryFingerprint(geometry: GeoJSON.Geometry): string {
   return (value >>> 0).toString(36);
 }
 
-function voteSegmentFromFeature(feature: MapGeoJSONFeature, dataset: DatasetKey): VoteSegment | null {
+function voteSegmentFromFeature(feature: MapGeoJSONFeature, dataset: DatasetKey, metadata?: LtsMetadata | null): VoteSegment | null {
   const properties = feature.properties as FeatureProperties;
   const currentLts = Number(properties.lts);
   if (!Number.isInteger(currentLts) || currentLts < 1 || currentLts > 4) return null;
@@ -558,8 +558,12 @@ function voteSegmentFromFeature(feature: MapGeoJSONFeature, dataset: DatasetKey)
     currentLts,
     geometry: JSON.parse(JSON.stringify(feature.geometry)) as GeoJSON.Geometry,
     osmId,
+    direction: direction ? String(direction).slice(0, 30) : undefined,
     maxspeed: Number.isFinite(maxspeed) ? maxspeed : undefined,
     trafficAadt: Number.isFinite(trafficAadt) ? trafficAadt : undefined,
+    datasetVersion: metadata ? `${metadata.source_pbf_modified_at}:${metadata.classifier_version}`.slice(0, 160) : undefined,
+    classifierVersion: metadata?.classifier_version,
+    osmSnapshotDate: metadata?.source_pbf_modified_at,
   };
 }
 
@@ -814,6 +818,7 @@ export default function LtsLabPage() {
   const routeHistoryIndexRef = useRef(0);
   const satelliteEnabledRef = useRef(false);
   const satelliteOpacityRef = useRef(0.55);
+  const metadataRef = useRef<LtsMetadata | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapLoading, setMapLoading] = useState(true);
   const [metadata, setMetadata] = useState<LtsMetadata | null>(null);
@@ -857,6 +862,10 @@ export default function LtsLabPage() {
   const displayedRouteSummary = selectedRouteKind === 'bike-profile'
     ? routeComparison?.stress?.summary || null
     : routeSummary;
+
+  useEffect(() => {
+    metadataRef.current = metadata;
+  }, [metadata]);
 
   const setRoutePointSource = (points: Coordinate[]) => {
     const source = mapRef.current?.getSource('lts-route-points') as maplibregl.GeoJSONSource | undefined;
@@ -1374,7 +1383,7 @@ export default function LtsLabPage() {
           }
           const feature = map.queryRenderedFeatures(event.point, { layers: interactiveLayers })[0];
           setSelected(feature ? feature.properties as FeatureProperties : null);
-          setSelectedVoteSegment(feature ? voteSegmentFromFeature(feature, datasetKey) : null);
+          setSelectedVoteSegment(feature ? voteSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
           (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
             .setData(selectedGeoJson(feature));
         });
@@ -1652,6 +1661,7 @@ export default function LtsLabPage() {
           onChange={(event) => {
             setMapLoading(true);
             setMetadata(null);
+            metadataRef.current = null;
             setMapError(null);
             setDatasetKey(event.target.value as DatasetKey);
             setShowActAccessOnlyTrails(false);

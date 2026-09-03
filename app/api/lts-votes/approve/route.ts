@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHash } from 'node:crypto';
 import { isLtsVoteLevel, isRideabilityLevel, projectApprovedLts, type LtsApproval, type StoredLtsVote } from '@/lib/lts-voting';
-import { listVoteRecords, writeVoteRecord } from '@/lib/lts-vote-store';
+import { communityVotes, saveCommunityApproval } from '@/lib/lts-community-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +10,7 @@ const DATASETS = new Set([
 ]);
 
 function authorised(request: NextRequest): boolean {
-  const configured = process.env.LTS_VOTE_ADMIN_TOKEN;
+  const configured = process.env.LTS_VOTE_ADMIN_TOKEN?.trim();
   if (!configured) return process.env.NODE_ENV !== 'production' && request.headers.get('x-local-review') === 'true';
   return request.headers.get('authorization') === `Bearer ${configured}`;
 }
@@ -28,8 +27,7 @@ export async function POST(request: NextRequest) {
     if (body.rideability !== null && body.rideability !== undefined && !isRideabilityLevel(body.rideability)) {
       return NextResponse.json({ error: 'Rideability must be R1 to R4.' }, { status: 400 });
     }
-    const segmentHash = createHash('sha256').update(`${body.dataset}\0${body.segmentId}`).digest('hex').slice(0, 32);
-    const storedVotes = (await listVoteRecords<StoredLtsVote>(`votes/${body.dataset}/${segmentHash}/`, 1000))
+    const storedVotes = (await communityVotes(body.dataset, body.segmentId))
       .filter((vote) => vote.dataset === body.dataset && vote.segmentId === body.segmentId);
     const latestByVoter = new Map<string, StoredLtsVote>();
     for (const vote of storedVotes) {
@@ -49,8 +47,11 @@ export async function POST(request: NextRequest) {
       segment: representative.segment,
       approvedAt: new Date().toISOString(),
       voteCountAtApproval: votes.length,
+      status: 'current',
+      approvedAgainstVersion: representative.segment.datasetVersion,
+      currentDatasetVersion: representative.segment.datasetVersion,
     };
-    await writeVoteRecord(`approvals/${body.dataset}/${segmentHash}.json`, approval);
+    await saveCommunityApproval(approval);
     return NextResponse.json(approval);
   } catch (error) {
     console.error('[LTS vote approval]', error);

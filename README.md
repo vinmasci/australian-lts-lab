@@ -36,7 +36,9 @@ Set the PMTiles URLs in `.env.local`. Generated PMTiles archives are intentional
 - `LTS_BROUTER_WA_URL`, `LTS_BROUTER_SA_URL`, `LTS_BROUTER_ACT_URL`, `LTS_BROUTER_TAS_URL`, `LTS_BROUTER_NT_URL`: isolated state/territory routing endpoints. Separate stores prevent BRouter&apos;s five-degree tiles from overwriting neighbouring state data.
 - `BROUTER_COMPARISON_URL`: existing AusBUG BRouter endpoint used for the mobile apps' conservative `cyabikepath` (Bike Paths) comparison route.
 - `LTS_ROUTER_CLASSIFIER_VERSION`: classifier label returned by the route API.
-- `BLOB_READ_WRITE_TOKEN`: Vercel Blob store used for one changeable vote per browser and segment. Local development falls back to an in-memory store.
+- `LTS_FIREBASE_PROJECT_ID`: Firebase project containing the private community contribution collections (production uses the existing billed `cyaroutes` project).
+- `LTS_FIREBASE_SERVICE_ACCOUNT_BASE64`: base64-encoded, server-only credential for the narrowly scoped LTS Lab service account. Never expose this as a `NEXT_PUBLIC_` value.
+- `BLOB_READ_WRITE_TOKEN`: legacy pilot store retained as a migration/recovery source. Local development falls back to an in-memory store when Firestore is not configured.
 - `LTS_VOTE_USE_BLOB_LOCALLY`: optional `true` override for testing the shared Blob store during local development.
 - `LTS_VOTE_ADMIN_TOKEN`: reviewer secret required by `POST /api/lts-votes/approve` in production.
 
@@ -46,7 +48,18 @@ Selecting a mapped road opens its contribution controls. A contribution may cont
 
 Rideability is rated independently as R1 any bike, R2 commuter or hybrid, R3 wider tyres advised, or R4 specialist bike/walking may be required. Voters can optionally explain their LTS choice, flag loose surfaces, corrugations, potholes or ruts, uneven stone, and wet-weather slipperiness, and add a short observation. Rideability does not change the LTS because surface difficulty and motor-traffic stress measure different things. The community result uses the conservative upper median when an even number of ratings is split.
 
-Votes do not directly alter the source network. A reviewer approves a proposed target with an authenticated request to `/api/lts-votes/approve`; approved geometry is returned by `/api/lts-votes?dataset=victoria&approved=1` and drawn over the published network. Tied vote totals lean toward the higher-stress value so that uncertainty is not hidden.
+Votes do not directly alter the source network. Raw votes and reasoning are private server-side records under `ltsSegments/{segment}/votes`; reviewer decisions are stored in `ltsApprovals`. Only the sanitised `ltsPublishedSegments` collection feeds `/api/lts-votes?dataset=victoria&approved=1`, so AusBUG clients never need access to voter hashes, notes or reasoning. Tied vote totals lean toward the higher-stress value so that uncertainty is not hidden.
+
+Every contribution carries the OSM snapshot and classifier version. Selecting a contributed segment registers its current geometry. Stable segments are carried forward to a new snapshot; a changed base LTS, ambiguous geometry match or missing segment hides the approval from the published layer and marks it `needs_review` or `orphaned`. After generating a new OSM network, an authenticated `POST /api/lts-votes/reconcile` accepts the complete current contribution-segment manifest, creates aliases for clear split/identifier changes, and queues uncertain matches for review. The manifest must contain every currently contributed segment before `complete: true` is used.
+
+The one-time, non-destructive Blob migration can be audited first and then applied with:
+
+```bash
+npx tsx scripts/migrate-lts-blob-to-firestore.ts
+npx tsx scripts/migrate-lts-blob-to-firestore.ts --apply
+```
+
+The original Blob records are intentionally not deleted.
 
 ## Firebase tile hosting
 

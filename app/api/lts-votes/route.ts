@@ -9,7 +9,6 @@ import {
   leadingVote,
   medianRideability,
   projectApprovedLts,
-  type LtsApproval,
   type LtsVoteLevel,
   type RideabilityIssue,
   type RideabilityLevel,
@@ -17,7 +16,13 @@ import {
   type StoredLtsVote,
   type VoteSegment,
 } from '@/lib/lts-voting';
-import { listVoteRecords, readVoteRecord, writeVoteRecord } from '@/lib/lts-vote-store';
+import {
+  communityApproval,
+  communityVotes,
+  observeCommunitySegment,
+  publishedCommunityApprovals,
+  saveCommunityVote,
+} from '@/lib/lts-community-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,18 +33,6 @@ const DATASETS = new Set([
 
 function digest(value: string): string {
   return createHash('sha256').update(value).digest('hex');
-}
-
-function segmentKey(dataset: string, segmentId: string): string {
-  return digest(`${dataset}\0${segmentId}`).slice(0, 32);
-}
-
-function votePath(dataset: string, segmentId: string, voterId: string): string {
-  return `votes/${dataset}/${segmentKey(dataset, segmentId)}/${digest(voterId)}-${Date.now()}.json`;
-}
-
-function approvalPath(dataset: string, segmentId: string): string {
-  return `approvals/${dataset}/${segmentKey(dataset, segmentId)}.json`;
 }
 
 function validIdentifier(value: unknown, maximum: number): value is string {
@@ -67,12 +60,16 @@ function validSegment(value: unknown): value is VoteSegment {
     && Number.isInteger(segment.currentLts) && segment.currentLts >= 1 && segment.currentLts <= 4
     && validGeometry(segment.geometry)
     && (segment.osmId === undefined || validIdentifier(segment.osmId, 40))
+    && (segment.direction === undefined || validIdentifier(segment.direction, 30))
     && (segment.maxspeed === undefined || (Number.isFinite(segment.maxspeed) && segment.maxspeed >= 0 && segment.maxspeed <= 150))
-    && (segment.trafficAadt === undefined || (Number.isFinite(segment.trafficAadt) && segment.trafficAadt >= 0 && segment.trafficAadt <= 1_000_000));
+    && (segment.trafficAadt === undefined || (Number.isFinite(segment.trafficAadt) && segment.trafficAadt >= 0 && segment.trafficAadt <= 1_000_000))
+    && (segment.datasetVersion === undefined || validIdentifier(segment.datasetVersion, 160))
+    && (segment.classifierVersion === undefined || validIdentifier(segment.classifierVersion, 100))
+    && (segment.osmSnapshotDate === undefined || (typeof segment.osmSnapshotDate === 'string' && segment.osmSnapshotDate.length <= 40));
 }
 
 async function summary(dataset: string, segmentId: string, voterId?: string): Promise<SegmentVoteSummary> {
-  const storedVotes = (await listVoteRecords<StoredLtsVote>(`votes/${dataset}/${segmentKey(dataset, segmentId)}/`, 1000))
+  const storedVotes = (await communityVotes(dataset, segmentId))
     .filter((vote) => vote.dataset === dataset && vote.segmentId === segmentId
       && (isLtsVoteLevel(vote.targetLts) || isRideabilityLevel(vote.rideability)));
   const latestByVoter = new Map<string, StoredLtsVote>();
@@ -91,7 +88,7 @@ async function summary(dataset: string, segmentId: string, voterId?: string): Pr
   }
   const leadingTarget = leadingVote(counts);
   const baseLts = votes.at(-1)?.currentLts;
-  const approval = await readVoteRecord<LtsApproval>(approvalPath(dataset, segmentId));
+  const approval = await communityApproval(dataset, segmentId);
   const voterKey = voterId ? digest(voterId) : null;
   const yourRecord = votes.find((vote) => vote.voterKey === voterKey);
   const ltsTotal = Object.values(counts).reduce((sum, count) => sum + count, 0);
@@ -119,22 +116,23 @@ export async function GET(request: NextRequest) {
     if (!DATASETS.has(dataset)) return NextResponse.json({ error: 'Unknown dataset.' }, { status: 400 });
 
     if (request.nextUrl.searchParams.get('approved') === '1') {
-      const approvals = await listVoteRecords<LtsApproval>(`approvals/${dataset}/`, 1000);
+      const approvals = await publishedCommunityApprovals(dataset);
       return NextResponse.json({
         type: 'FeatureCollection',
         features: approvals
           .filter((approval) => approval.dataset === dataset && isLtsVoteLevel(approval.approvedLts))
           .map((approval) => ({
             type: 'Feature',
-            id: approval.segmentId,
+            id: String(approval.segmentId),
             properties: {
               segment_id: approval.segmentId,
               lts: approval.approvedLts,
               rideability: approval.approvedRideability ?? null,
               target_lts: approval.targetLts,
               approved_at: approval.approvedAt,
+              reconciliation_status: approval.status || 'current',
             },
-            geometry: approval.segment.geometry,
+            geometry: approval.geometry || (approval.segment as VoteSegment | undefined)?.geometry,
           })),
       }, { headers: { 'Cache-Control': 'no-store' } });
     }
@@ -147,6 +145,18 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[LTS votes GET]', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Votes are temporarily unavailable.' }, { status: 503 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json() as { segment?: unknown };
+    if (!validSegment(body.segment)) return NextResponse.json({ error: 'Invalid segment data.' }, { status: 400 });
+    await observeCommunitySegment(body.segment);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('[LTS segment observation]', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Segment could not be registered.' }, { status: 503 });
   }
 }
 
@@ -199,7 +209,7 @@ export async function POST(request: NextRequest) {
       segment: body.segment,
       updatedAt: new Date().toISOString(),
     };
-    await writeVoteRecord(votePath(vote.dataset, vote.segmentId, body.voterId), vote);
+    await saveCommunityVote(vote);
     return NextResponse.json(await summary(vote.dataset, vote.segmentId, body.voterId));
   } catch (error) {
     console.error('[LTS votes POST]', error);

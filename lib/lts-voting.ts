@@ -60,9 +60,15 @@ export interface VoteSegment {
   currentLts: number;
   geometry: GeoJSON.Geometry;
   osmId?: string;
+  direction?: string;
   maxspeed?: number;
   trafficAadt?: number;
+  datasetVersion?: string;
+  classifierVersion?: string;
+  osmSnapshotDate?: string;
 }
+
+export type ReconciliationStatus = 'current' | 'carried_forward' | 'needs_review' | 'orphaned';
 
 export interface StoredLtsVote {
   dataset: string;
@@ -88,6 +94,11 @@ export interface LtsApproval {
   segment: VoteSegment;
   approvedAt: string;
   voteCountAtApproval: number;
+  status?: ReconciliationStatus;
+  statusReason?: string;
+  approvedAgainstVersion?: string;
+  currentDatasetVersion?: string;
+  lastReconciledAt?: string;
 }
 
 export type VoteCounts = Record<string, number>;

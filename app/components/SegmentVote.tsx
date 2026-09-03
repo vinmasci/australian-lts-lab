@@ -97,6 +97,15 @@ export function SegmentVote({ segment }: { segment: VoteSegment }) {
       setNote('');
       try {
         const identity = voterId();
+        const observation = await fetch('/api/lts-votes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ segment }),
+        });
+        if (!observation.ok) {
+          const result = await observation.json() as { error?: string };
+          throw new Error(result.error || 'This segment could not be checked against the current map.');
+        }
         const params = new URLSearchParams({
           dataset: segment.dataset,
           segmentId: segment.segmentId,
@@ -326,8 +335,10 @@ export function SegmentVote({ segment }: { segment: VoteSegment }) {
             </p>
           )}
           {summary.approval && (
-            <p className="mt-2 rounded-lg border border-emerald-300/25 bg-emerald-300/10 p-2 text-xs font-semibold text-emerald-200">
+            <p className={`mt-2 rounded-lg border p-2 text-xs font-semibold ${summary.approval.status === 'needs_review' || summary.approval.status === 'orphaned' ? 'border-amber-300/25 bg-amber-300/10 text-amber-200' : 'border-emerald-300/25 bg-emerald-300/10 text-emerald-200'}`}>
               Approved as LTS {summary.approval.approvedLts}{summary.approval.approvedRideability ? ` · R${summary.approval.approvedRideability}` : ''} on {new Date(summary.approval.approvedAt).toLocaleDateString('en-AU')}.
+              {summary.approval.status === 'carried_forward' && ' Carried forward to the current map geometry.'}
+              {(summary.approval.status === 'needs_review' || summary.approval.status === 'orphaned') && ` Hidden from the published layer pending review. ${summary.approval.statusReason || ''}`}
             </p>
           )}
           {message && <p className="mt-2 text-xs font-semibold text-emerald-300">{message}</p>}
