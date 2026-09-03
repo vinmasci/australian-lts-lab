@@ -301,16 +301,19 @@ const BASEMAP_STYLE: maplibregl.StyleSpecification = {
 };
 const LTS_COLOURS: Record<number, string> = {
   1: '#16a34a',
+  1.5: '#06b6d4',
   2: '#2563eb',
   3: '#f59e0b',
   4: '#dc2626',
 };
 const LTS_LABELS: Record<number, string> = {
   1: 'Very low stress',
+  1.5: 'Quiet trafficable road',
   2: 'Low stress',
   3: 'Higher stress',
   4: 'High stress',
 };
+const ROUTE_LTS_LEVELS = [1, 1.5, 2, 3, 4] as const;
 
 function syncSatelliteOverlay(map: maplibregl.Map, enabled: boolean, opacity: number) {
   if (!enabled || !MAPBOX_PUBLIC_TOKEN) {
@@ -646,7 +649,7 @@ function scoreComparisonAgainstMap(
   }
   if (networkSegments.length === 0) return null;
 
-  const distanceByLts: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0 };
+  const distanceByLts: Record<string, number> = { '1': 0, '1.5': 0, '2': 0, '3': 0, '4': 0 };
   let knownDistance = 0;
   let unknownDistance = 0;
   let knownUnsealedDistance = 0;
@@ -1100,6 +1103,7 @@ export default function LtsLabPage() {
         const colourExpression: maplibregl.ExpressionSpecification = [
           'match', ['get', 'lts'],
           1, LTS_COLOURS[1],
+          1.5, LTS_COLOURS[1.5],
           2, LTS_COLOURS[2],
           3, LTS_COLOURS[3],
           4, LTS_COLOURS[4],
@@ -2024,7 +2028,7 @@ export default function LtsLabPage() {
                   {routeClassifier && <span className="ml-auto text-[9px] text-slate-500">{routeClassifier}</span>}
                 </div>
                 <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/10">
-                  {[1, 2, 3, 4].map((level) => (
+                  {ROUTE_LTS_LEVELS.map((level) => (
                     <span
                       key={level}
                       style={{
@@ -2034,8 +2038,8 @@ export default function LtsLabPage() {
                     />
                   ))}
                 </div>
-                <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[10px] text-slate-400">
-                  {[1, 2, 3, 4].map((level) => (
+                <div className="mt-2 grid grid-cols-5 gap-1 text-center text-[10px] text-slate-400">
+                  {ROUTE_LTS_LEVELS.map((level) => (
                     <div key={level}>
                       <span className="font-semibold" style={{ color: LTS_COLOURS[level] }}>L{level}</span>
                       <br />{displayedRouteSummary.percentage_by_lts[String(level)] || 0}%
@@ -2375,7 +2379,7 @@ export default function LtsLabPage() {
                 {activeDataset.routable && <>
                 <p className="mt-2">The planner accepts up to 26 ordered points labelled A–Z. BRouter connects them in sequence, and every edit—including Clear—can be undone or redone.</p>
                 <p className="mt-2">Each plan also requests the existing AusBUG <strong>Bike Paths</strong> route using the <code className="text-slate-300">cyabikepath</code> BRouter profile—the conservative profile used by the iOS and Android apps—for the same points and gravel setting. The route-comparison switch colours either result using the loaded directional LTS map while drawing the other as a semi-transparent solid grey line. The comparison profile&apos;s own routing cost is never presented as stress: its geometry is spatially matched back to the same map classifier, and any section that cannot be matched confidently remains grey and is reported as unscored.</p>
-                <p className="mt-2">The <code className="text-emerald-300">cyalts</code> profile assigns widely separated routing costs: 1.0 for LTS 1, 1.8 for LTS 2, 5.0 for LTS 3 and 15.0 for LTS 4. This strongly prefers low-stress links while allowing a higher-stress connection when otherwise necessary.</p>
+                <p className="mt-2">The <code className="text-emerald-300">cyalts</code> profile assigns widely separated routing costs: 1.0 for LTS 1, 1.4 for community LTS 1.5, 1.8 for LTS 2, 5.0 for LTS 3 and 15.0 for LTS 4. This strongly prefers low-stress links while allowing a higher-stress connection when otherwise necessary.</p>
                 <p className="mt-2">The enriched routing segments carry the map classifier&apos;s forward and backward LTS values directly. BRouter uses the value for the travel direction; it does not independently reinterpret the road&apos;s lane or cycleway tags. The background line deliberately uses the worse direction, so a routed line can be safer—but not more stressful—when the lane or cycleway on the ridden side is better.</p>
                 <p className="mt-2">Crossing dots are classified by the same rules and add point penalties equivalent to a 0 m, 20 m, 80 m or 250 m detour for LTS 1–4. This encourages the router to prefer signals, refuges and calmer crossings without making a difficult crossing an absolute barrier.</p>
                 <p className="mt-2">The Gravel switch applies only to explicitly known unsealed surfaces. With Gravel off, those links receive a strong additional cost; unknown surfaces are not assumed unsealed. MTB trails with easy or unspecified difficulty remain connected but carry a strong commuter penalty. Trails tagged <code>mtb:scale=2</code> or higher, IMBA 2 or higher, downhill, freeride or trial are treated as clearly technical and excluded from commuter routing.</p>

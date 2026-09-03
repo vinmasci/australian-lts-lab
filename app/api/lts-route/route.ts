@@ -78,15 +78,18 @@ function asNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function ltsFromCost(costPerKm: number): number {
+export function ltsFromCost(costPerKm: number): number {
   if (costPerKm <= 1200) return 1;
+  if (costPerKm <= 1600) return 1.5;
   if (costPerKm <= 3000) return 2;
   if (costPerKm <= 9000) return 3;
   return 4;
 }
 
-function precomputedLtsFromWayTags(wayTags: string): number | null {
+export function precomputedLtsFromWayTags(wayTags: string): number | null {
   const reversed = wayTags.includes('reversedirection=yes');
+  const communityLts15Tag = reversed ? 19 : 18;
+  if (hasPlaceholder(wayTags, communityLts15Tag)) return 1.5;
   const firstTag = reversed ? 8 : 4;
   for (let lts = 1; lts <= 4; lts += 1) {
     const tagNumber = String(firstTag + lts - 1).padStart(2, '0');
@@ -157,7 +160,7 @@ function buildStressOutput(feature: BRouterFeature) {
   const messages = parseMessages(feature.properties);
   const routeDistance = asNumber(feature.properties['track-length']);
   const routeTimeMilliseconds = asNumber(feature.properties['total-time']) * 1000;
-  const distanceByLts: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0 };
+  const distanceByLts: Record<string, number> = { '1': 0, '1.5': 0, '2': 0, '3': 0, '4': 0 };
   let knownUnsealedDistance = 0;
   let mtbCautionDistance = 0;
   let technicalMtbDistance = 0;
