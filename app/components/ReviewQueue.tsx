@@ -1,9 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, type User } from 'firebase/auth';
-import { Bike, Check, ExternalLink, Loader2, LogIn, LogOut, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import {
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  OAuthProvider,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  type User,
+} from 'firebase/auth';
+import { Bike, Check, ChevronLeft, ExternalLink, Loader2, LogIn, LogOut, Mail, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { reviewAuth } from '@/lib/firebase-review-client';
 import {
   LTS_VOTE_COLOURS,
@@ -35,6 +44,16 @@ function osmUrl(osmId?: string): string | null {
 }
 
 type AuthorisedFetch = (input: string, init?: RequestInit) => Promise<Response>;
+type AuthMode = 'choice' | 'email' | 'reset';
+
+function authMessage(error: unknown, fallback: string): string {
+  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') return 'The email or password is incorrect.';
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return 'Sign-in was cancelled.';
+  if (code === 'auth/too-many-requests') return 'Too many attempts. Please wait and try again.';
+  if (code === 'auth/invalid-email') return 'Enter a valid email address.';
+  return fallback;
+}
 
 function ReviewCard({ item, authorisedFetch, onReviewed }: { item: ReviewQueueItem; authorisedFetch: AuthorisedFetch; onReviewed: () => void }) {
   const [targetLts, setTargetLts] = useState<LtsVoteLevel>(item.leadingTarget || Math.max(1, Math.min(4, item.segment.currentLts)) as LtsVoteLevel);
@@ -133,6 +152,10 @@ export function ReviewQueue() {
   const [items, setItems] = useState<ReviewQueueItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<AuthMode>('choice');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const authorisedFetch = useCallback<AuthorisedFetch>(async (input, init = {}) => {
     const currentUser = reviewAuth.currentUser;
@@ -154,7 +177,7 @@ export function ReviewQueue() {
       if (response.status === 401) {
         setAuthenticated(false);
         setReviewer(null);
-        setError('This Google account is signed in but is not an approved LTS reviewer.');
+        setError('This AusBUG account is signed in but is not an approved LTS reviewer.');
         return;
       }
       if (!response.ok) throw new Error(result.error || 'Review queue is unavailable.');
@@ -207,15 +230,50 @@ export function ReviewQueue() {
     return () => window.clearTimeout(timer);
   }, [authenticated, loadQueue]);
 
-  const login = async () => {
+  const socialLogin = async (method: 'google' | 'apple') => {
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
+      const provider = method === 'google' ? new GoogleAuthProvider() : new OAuthProvider('apple.com');
+      if (method === 'google') provider.setCustomParameters({ prompt: 'select_account' });
+      if (method === 'apple') {
+        provider.addScope('email');
+        provider.addScope('name');
+      }
       await signInWithPopup(reviewAuth, provider);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Google sign-in could not be completed.');
+      setError(authMessage(caught, `${method === 'google' ? 'Google' : 'Apple'} sign-in could not be completed.`));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const emailLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await signInWithEmailAndPassword(reviewAuth, email.trim(), password);
+      setPassword('');
+    } catch (caught) {
+      setError(authMessage(caught, 'Email sign-in could not be completed.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendReset = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await sendPasswordResetEmail(reviewAuth, email.trim());
+      setSuccess('Password reset email sent. Check your inbox.');
+    } catch (caught) {
+      setError(authMessage(caught, 'The reset email could not be sent.'));
     } finally {
       setLoading(false);
     }
@@ -226,6 +284,8 @@ export function ReviewQueue() {
     setAuthenticated(false);
     setReviewer(null);
     setItems([]);
+    setAuthMode('choice');
+    setPassword('');
   };
 
   if (authenticated === null) return <main className="flex min-h-dvh items-center justify-center bg-slate-950 text-slate-300"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Checking reviewer access…</main>;
@@ -236,11 +296,55 @@ export function ReviewQueue() {
         <section className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-300"><LogIn className="h-6 w-6" /></div>
           <h1 className="mt-4 text-2xl font-black">AusBUG LTS review</h1>
-          <p className="mt-2 text-sm leading-relaxed text-slate-400">Public contributors still do not need accounts. Review and publishing decisions require an individually approved Google account.</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-400">Public contributors still do not need accounts. Reviewers can use their existing AusBUG sign-in.</p>
           {user && <p className="mt-4 rounded-lg bg-amber-300/10 p-3 text-sm text-amber-100">Signed in as <strong>{user.email}</strong>, but this account does not have reviewer access.</p>}
-          <button type="button" onClick={() => void login()} disabled={loading} className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-400 font-bold text-slate-950 hover:bg-cyan-300 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} {user ? 'Choose another Google account' : 'Continue with Google'}</button>
-          {user && <button type="button" onClick={() => void logout()} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/10 text-sm font-semibold text-slate-300 hover:bg-white/10"><LogOut className="h-4 w-4" /> Sign out</button>}
+
+          {authMode === 'choice' && (
+            <div className="mt-5 space-y-2.5">
+              <button type="button" onClick={() => void socialLogin('apple')} disabled={loading} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-white px-4 font-bold text-black hover:bg-slate-100 disabled:opacity-50">
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" /></svg>}
+                Continue with Apple
+              </button>
+              <button type="button" onClick={() => void socialLogin('google')} disabled={loading} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/15 bg-white px-4 font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-50">
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09A6.6 6.6 0 0 1 5.49 12c0-.73.13-1.43.35-2.09V7.07H2.18A11 11 0 0 0 1 12c0 1.78.43 3.45 1.18 4.93l3.66-2.84z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>}
+                Continue with Google
+              </button>
+              <div className="flex items-center gap-3 py-1 text-xs text-slate-500"><span className="h-px flex-1 bg-white/10" />or<span className="h-px flex-1 bg-white/10" /></div>
+              <button type="button" onClick={() => { setAuthMode('email'); setError(null); setSuccess(null); }} disabled={loading} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/15 px-4 font-bold text-white hover:bg-white/10 disabled:opacity-50"><Mail className="h-5 w-5" /> Continue with email</button>
+              <p className="pt-1 text-center text-xs leading-relaxed text-slate-500">Use an existing AusBUG account. Reviewer access is approved separately.</p>
+            </div>
+          )}
+
+          {authMode === 'email' && (
+            <form onSubmit={(event) => void emailLogin(event)} className="mt-5 space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-400">Email
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-cyan-300/60" />
+              </label>
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-400">Password
+                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-cyan-300/60" />
+              </label>
+              <button type="submit" disabled={loading || !email.trim() || !password} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-400 font-bold text-slate-950 hover:bg-cyan-300 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} Sign in</button>
+              <div className="flex items-center justify-between gap-3 text-xs font-semibold">
+                <button type="button" onClick={() => { setAuthMode('choice'); setError(null); }} className="flex items-center gap-1 text-slate-400 hover:text-white"><ChevronLeft className="h-3.5 w-3.5" /> All options</button>
+                <button type="button" onClick={() => { setAuthMode('reset'); setError(null); setSuccess(null); }} className="text-cyan-300 hover:text-cyan-200">Forgot password?</button>
+              </div>
+            </form>
+          )}
+
+          {authMode === 'reset' && (
+            <form onSubmit={(event) => void sendReset(event)} className="mt-5 space-y-3">
+              <p className="text-sm text-slate-400">Enter the email used by your AusBUG account.</p>
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-400">Email
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-cyan-300/60" />
+              </label>
+              <button type="submit" disabled={loading || !email.trim()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-400 font-bold text-slate-950 hover:bg-cyan-300 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Send reset link</button>
+              <button type="button" onClick={() => { setAuthMode('email'); setError(null); setSuccess(null); }} className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-white"><ChevronLeft className="h-3.5 w-3.5" /> Back to email sign-in</button>
+            </form>
+          )}
+
+          {user && <button type="button" onClick={() => void logout()} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/10 text-sm font-semibold text-slate-300 hover:bg-white/10"><LogOut className="h-4 w-4" /> Sign out</button>}
           {error && <p className="mt-3 text-sm font-semibold text-rose-300">{error}</p>}
+          {success && <p className="mt-3 text-sm font-semibold text-emerald-300">{success}</p>}
           <Link href="/ltsmap" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 hover:text-cyan-200"><Bike className="h-4 w-4" /> Back to the LTS map</Link>
         </section>
       </main>

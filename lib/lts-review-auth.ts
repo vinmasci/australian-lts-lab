@@ -37,9 +37,14 @@ export async function authenticatedReviewer(request: NextRequest): Promise<Revie
   try {
     const decoded = await getAuth(communityFirebaseApp()).verifyIdToken(token);
     const email = decoded.email?.trim().toLowerCase();
-    if (!email || decoded.email_verified !== true) return null;
-    const access = await communityFirestore().collection('ltsReviewers').doc(digest(email)).get();
-    if (!access.exists || access.data()?.active !== true) return null;
+    if (!email) return null;
+    const reviewers = communityFirestore().collection('ltsReviewers');
+    const [uidAccess, verifiedEmailAccess] = await Promise.all([
+      reviewers.doc(decoded.uid).get(),
+      decoded.email_verified === true ? reviewers.doc(digest(email)).get() : Promise.resolve(null),
+    ]);
+    const access = uidAccess.exists ? uidAccess : verifiedEmailAccess;
+    if (!access || !access.exists || access.data()?.active !== true) return null;
     return {
       uid: decoded.uid,
       email,
