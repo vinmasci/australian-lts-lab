@@ -7,6 +7,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, Search, Trash2, Undo2, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 import { SegmentVote } from '@/app/components/SegmentVote';
+import { ltsAppPath } from '@/lib/client-path';
 import { LTS_VOTE_COLOURS, type VoteSegment } from '@/lib/lts-voting';
 
 
@@ -29,7 +30,7 @@ function placeSearchUrl(query: string, map: maplibregl.Map | null): string {
     params.set('lon', centre.lng.toFixed(5));
     params.set('zoom', String(Math.round(map.getZoom())));
   }
-  return `/api/geocode?${params}`;
+  return ltsAppPath(`/api/geocode?${params}`);
 }
 
 const DATASETS = {
@@ -869,7 +870,7 @@ export default function LtsLabPage() {
 
   const refreshApprovedOverlay = useCallback(async () => {
     const params = new URLSearchParams({ dataset: datasetKey, approved: '1' });
-    const response = await fetch(`/api/lts-votes?${params}`, { cache: 'no-store' });
+    const response = await fetch(ltsAppPath(`/api/lts-votes?${params}`), { cache: 'no-store' });
     if (!response.ok) throw new Error(`Published segments returned ${response.status}`);
     const approved = await response.json() as GeoJSON.FeatureCollection;
     (mapRef.current?.getSource('lts-approved') as maplibregl.GeoJSONSource | undefined)?.setData(approved);
@@ -929,7 +930,7 @@ export default function LtsLabPage() {
     setComparisonScoring(false);
     setSelectedRouteKind('low-stress');
     try {
-      const response = await fetch('/api/lts-route', {
+      const response = await fetch(ltsAppPath('/api/lts-route'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ points, allow_gravel: gravelAllowed, dataset: datasetKey }),
@@ -1052,7 +1053,7 @@ export default function LtsLabPage() {
   });
 
   useEffect(() => {
-    fetch(activeDataset.metadataUrl, { cache: 'no-store' })
+    fetch(ltsAppPath(activeDataset.metadataUrl), { cache: 'no-store' })
       .then((response) => {
         if (!response.ok) throw new Error(`Metadata returned ${response.status}`);
         return response.json();
@@ -1088,7 +1089,7 @@ export default function LtsLabPage() {
         simplifyBaseMap(map);
         map.addSource('lts-network', {
           type: 'vector',
-          url: `pmtiles://${activeDataset.dataUrl}`,
+          url: `pmtiles://${ltsAppPath(activeDataset.dataUrl)}`,
         });
         map.addSource('lts-approved', { type: 'geojson', data: emptyFeatureCollection() });
         map.addSource('lts-selected', { type: 'geojson', data: selectedGeoJson() });
@@ -1396,7 +1397,7 @@ export default function LtsLabPage() {
             .setData(selectedGeoJson(feature));
         });
         const approvedParams = new URLSearchParams({ dataset: datasetKey, approved: '1' });
-        fetch(`/api/lts-votes?${approvedParams}`, { cache: 'no-store' })
+        fetch(ltsAppPath(`/api/lts-votes?${approvedParams}`), { cache: 'no-store' })
           .then((response) => {
             if (!response.ok) throw new Error(`Approved segments returned ${response.status}`);
             return response.json();

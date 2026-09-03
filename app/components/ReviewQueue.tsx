@@ -14,6 +14,7 @@ import {
 } from 'firebase/auth';
 import { Bike, Check, ChevronLeft, ExternalLink, Loader2, LogIn, LogOut, Mail, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { reviewAuth } from '@/lib/firebase-review-client';
+import { ltsAppPath } from '@/lib/client-path';
 import {
   LTS_VOTE_COLOURS,
   LTS_VOTE_LEVELS,
@@ -67,7 +68,7 @@ function ReviewCard({ item, authorisedFetch, onReviewed }: { item: ReviewQueueIt
     setSaving(action);
     setError(null);
     try {
-      const response = await authorisedFetch('/api/lts-review', {
+      const response = await authorisedFetch(ltsAppPath('/api/lts-review'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, dataset: item.dataset, segmentId: item.segmentId, targetLts, rideability, reviewNote }),
@@ -172,7 +173,7 @@ export function ReviewQueue() {
     try {
       const params = new URLSearchParams({ status });
       if (dataset) params.set('dataset', dataset);
-      const response = await authorisedFetch(`/api/lts-review?${params}`, { cache: 'no-store' });
+      const response = await authorisedFetch(ltsAppPath(`/api/lts-review?${params}`), { cache: 'no-store' });
       const result = await response.json() as { items?: ReviewQueueItem[]; error?: string };
       if (response.status === 401) {
         setAuthenticated(false);
@@ -200,7 +201,7 @@ export function ReviewQueue() {
         return;
       }
       void currentUser.getIdToken()
-        .then((token) => fetch('/api/lts-review/session', {
+        .then((token) => fetch(ltsAppPath('/api/lts-review/session'), {
           cache: 'no-store',
           headers: { Authorization: `Bearer ${token}` },
         }))

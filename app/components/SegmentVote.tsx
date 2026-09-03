@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth';
 import { Bike, Check, ChevronLeft, CircleHelp, Loader2, LogIn, LogOut, Mail, UserRound, Vote, X } from 'lucide-react';
 import { ausbugAuth } from '@/lib/firebase-review-client';
+import { ltsAppPath } from '@/lib/client-path';
 import {
   LTS_VOTE_COLOURS,
   LTS_VOTE_DESCRIPTIONS,
@@ -125,7 +126,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
       setRideabilityIssues([]);
       setNote('');
       try {
-        const observation = await fetch('/api/lts-votes', {
+        const observation = await fetch(ltsAppPath('/api/lts-votes'), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ segment }),
@@ -136,7 +137,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
         }
         const params = new URLSearchParams({ dataset: segment.dataset, segmentId: segment.segmentId });
         const token = user ? await user.getIdToken() : null;
-        const response = await fetch(`/api/lts-votes?${params}`, {
+        const response = await fetch(ltsAppPath(`/api/lts-votes?${params}`), {
           cache: 'no-store',
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
@@ -181,7 +182,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
     setError(null);
     try {
       const token = await currentUser.getIdToken();
-      const response = await fetch('/api/lts-votes', {
+      const response = await fetch(ltsAppPath('/api/lts-votes'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ segment, targetLts: choice, ltsReason, rideability, rideabilityIssues, note, website }),
