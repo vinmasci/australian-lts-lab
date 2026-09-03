@@ -35,7 +35,7 @@ function placeSearchUrl(query: string, map: maplibregl.Map | null): string {
 const DATASETS = {
   victoria: {
     label: 'Victoria',
-    title: 'Australian LTS Lab · Victoria',
+    title: 'AusBUG LTS Map · Victoria',
     dataUrl: process.env.NEXT_PUBLIC_VICTORIA_PMTILES_URL || '/data/lts/victoria-lts.pmtiles',
     metadataUrl: `/data/lts/victoria-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [145.15, -36.75] as [number, number],
@@ -44,7 +44,7 @@ const DATASETS = {
   },
   nsw: {
     label: 'New South Wales',
-    title: 'Australian LTS Lab · NSW',
+    title: 'AusBUG LTS Map · NSW',
     dataUrl: process.env.NEXT_PUBLIC_NSW_PMTILES_URL || '/data/lts/nsw-lts.pmtiles',
     metadataUrl: `/data/lts/nsw-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [147.2, -32.7] as [number, number],
@@ -53,7 +53,7 @@ const DATASETS = {
   },
   queensland: {
     label: 'Queensland',
-    title: 'Australian LTS Lab · Queensland',
+    title: 'AusBUG LTS Map · Queensland',
     dataUrl: process.env.NEXT_PUBLIC_QUEENSLAND_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/queensland-lts-c0dd9f26.pmtiles',
     metadataUrl: `/data/lts/queensland-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [153.03, -27.47] as [number, number],
@@ -62,7 +62,7 @@ const DATASETS = {
   },
   western_australia: {
     label: 'Western Australia',
-    title: 'Australian LTS Lab · Western Australia',
+    title: 'AusBUG LTS Map · Western Australia',
     dataUrl: process.env.NEXT_PUBLIC_WA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/western-australia-lts-64573cc9.pmtiles',
     metadataUrl: `/data/lts/western-australia-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [115.86, -31.95] as [number, number],
@@ -71,7 +71,7 @@ const DATASETS = {
   },
   south_australia: {
     label: 'South Australia',
-    title: 'Australian LTS Lab · South Australia',
+    title: 'AusBUG LTS Map · South Australia',
     dataUrl: process.env.NEXT_PUBLIC_SA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/south-australia-lts-d579551c.pmtiles',
     metadataUrl: `/data/lts/south-australia-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [138.60, -34.93] as [number, number],
@@ -80,7 +80,7 @@ const DATASETS = {
   },
   act: {
     label: 'Australian Capital Territory',
-    title: 'Australian LTS Lab · ACT',
+    title: 'AusBUG LTS Map · ACT',
     dataUrl: process.env.NEXT_PUBLIC_ACT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/act-lts-166671dc.pmtiles',
     metadataUrl: `/data/lts/act-lts-metadata.json?v=${DATASET_VERSION}-166671dc`,
     center: [149.13, -35.28] as [number, number],
@@ -89,7 +89,7 @@ const DATASETS = {
   },
   tasmania: {
     label: 'Tasmania',
-    title: 'Australian LTS Lab · Tasmania',
+    title: 'AusBUG LTS Map · Tasmania',
     dataUrl: process.env.NEXT_PUBLIC_TASMANIA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/tasmania-lts-ee99da23.pmtiles',
     metadataUrl: `/data/lts/tasmania-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [147.33, -42.88] as [number, number],
@@ -98,7 +98,7 @@ const DATASETS = {
   },
   northern_territory: {
     label: 'Northern Territory',
-    title: 'Australian LTS Lab · Northern Territory',
+    title: 'AusBUG LTS Map · Northern Territory',
     dataUrl: process.env.NEXT_PUBLIC_NT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/northern-territory-lts-e6f8e235.pmtiles',
     metadataUrl: `/data/lts/northern-territory-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [130.85, -12.46] as [number, number],

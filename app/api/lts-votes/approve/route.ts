@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isLtsVoteLevel, isRideabilityLevel, projectApprovedLts, type LtsApproval, type StoredLtsVote } from '@/lib/lts-voting';
 import { communityVotes, saveCommunityApproval } from '@/lib/lts-community-store';
+import { reviewerAuthorised } from '@/lib/lts-review-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,14 +10,8 @@ const DATASETS = new Set([
   'south_australia', 'act', 'tasmania', 'northern_territory',
 ]);
 
-function authorised(request: NextRequest): boolean {
-  const configured = process.env.LTS_VOTE_ADMIN_TOKEN?.trim();
-  if (!configured) return process.env.NODE_ENV !== 'production' && request.headers.get('x-local-review') === 'true';
-  return request.headers.get('authorization') === `Bearer ${configured}`;
-}
-
 export async function POST(request: NextRequest) {
-  if (!authorised(request)) return NextResponse.json({ error: 'Reviewer authorisation required.' }, { status: 401 });
+  if (!reviewerAuthorised(request)) return NextResponse.json({ error: 'Reviewer authorisation required.' }, { status: 401 });
   try {
     const body = await request.json() as { dataset?: unknown; segmentId?: unknown; targetLts?: unknown; rideability?: unknown };
     if (typeof body.dataset !== 'string' || !DATASETS.has(body.dataset)

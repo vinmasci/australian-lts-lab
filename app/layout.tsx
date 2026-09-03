@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Australian Bicycle LTS Lab',
-  description: 'An experimental, transparent Bicycle Level of Traffic Stress map for Victoria and New South Wales.',
+  title: 'AusBUG LTS Map',
+  description: 'A transparent, community-reviewed Bicycle Level of Traffic Stress map for Australia.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -13,4 +13,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-

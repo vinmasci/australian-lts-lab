@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Bike, Check, CircleHelp, Loader2, Vote, X } from 'lucide-react';
+import { Bike, Check, CircleHelp, Loader2, UserRound, Vote, X } from 'lucide-react';
 import {
   LTS_VOTE_COLOURS,
   LTS_VOTE_DESCRIPTIONS,
@@ -21,6 +21,7 @@ import {
 } from '@/lib/lts-voting';
 
 const VOTER_STORAGE_KEY = 'ausbug-lts-voter-v1';
+const CONTRIBUTOR_NAME_STORAGE_KEY = 'ausbug-lts-contributor-name-v1';
 
 function voterId(): string {
   const existing = window.localStorage.getItem(VOTER_STORAGE_KEY);
@@ -37,6 +38,7 @@ function blankSummary(): SegmentVoteSummary {
     leadingTarget: null,
     projectedLts: null,
     yourVote: null,
+    yourContributorName: '',
     yourLtsReason: '',
     rideabilityCounts: Object.fromEntries(RIDEABILITY_LEVELS.map((level) => [String(level), 0])),
     rideabilityTotal: 0,
@@ -44,6 +46,7 @@ function blankSummary(): SegmentVoteSummary {
     yourRideability: null,
     yourRideabilityIssues: [],
     yourObservation: '',
+    moderationStatus: null,
     approval: null,
   };
 }
@@ -73,6 +76,12 @@ export function SegmentVote({ segment }: { segment: VoteSegment }) {
   const [rideability, setRideability] = useState<RideabilityLevel | null>(null);
   const [rideabilityIssues, setRideabilityIssues] = useState<RideabilityIssue[]>([]);
   const [note, setNote] = useState('');
+  const [contributorName, setContributorName] = useState(() =>
+    typeof window === 'undefined'
+      ? ''
+      : window.localStorage.getItem(CONTRIBUTOR_NAME_STORAGE_KEY) || '',
+  );
+  const [website, setWebsite] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -116,6 +125,7 @@ export function SegmentVote({ segment }: { segment: VoteSegment }) {
         if (!response.ok) throw new Error(result.error || 'Votes are unavailable.');
         if (!cancelled) {
           setSummary(result);
+          setContributorName(result.yourContributorName || window.localStorage.getItem(CONTRIBUTOR_NAME_STORAGE_KEY) || '');
           setChoice(result.yourVote);
           setLtsReason(result.yourLtsReason);
           setRideability(result.yourRideability);
@@ -150,17 +160,18 @@ export function SegmentVote({ segment }: { segment: VoteSegment }) {
       const response = await fetch('/api/lts-votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ segment, voterId: voterId(), targetLts: choice, ltsReason, rideability, rideabilityIssues, note }),
+        body: JSON.stringify({ segment, voterId: voterId(), contributorName, targetLts: choice, ltsReason, rideability, rideabilityIssues, note, website }),
       });
       const result = await response.json() as SegmentVoteSummary & { error?: string };
       if (!response.ok) throw new Error(result.error || 'Vote could not be saved.');
       setSummary(result);
+      window.localStorage.setItem(CONTRIBUTOR_NAME_STORAGE_KEY, contributorName.trim());
       setChoice(result.yourVote);
       setLtsReason(result.yourLtsReason);
       setRideability(result.yourRideability);
       setRideabilityIssues(result.yourRideabilityIssues);
       setNote(result.yourObservation);
-      setMessage('Your contribution is saved. You can change it at any time.');
+      setMessage('Your contribution is saved and waiting for AusBUG review. You can change it at any time.');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Vote could not be saved.');
     } finally {
@@ -174,7 +185,7 @@ export function SegmentVote({ segment }: { segment: VoteSegment }) {
         <Vote className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
         <div>
           <h3 id="segment-vote-title" className="text-sm font-bold text-white">Vote on this segment</h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">LTS and rideability are both optional—choose either one or both. Votes remain proposals until reviewed.</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">No account is needed. Choose LTS, rideability or both; your proposal stays pending until an AusBUG reviewer approves it.</p>
         </div>
       </div>
 
@@ -314,10 +325,32 @@ export function SegmentVote({ segment }: { segment: VoteSegment }) {
             placeholder="For example: very little traffic; bluestone is rough and slippery when wet. Don’t include personal information."
             className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 text-xs text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/60"
           />
+
+          <div className="mt-3 flex items-start gap-2">
+            <UserRound className="mt-6 h-4 w-4 shrink-0 text-cyan-300" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-contributor-name">Name or nickname</label>
+              <input
+                id="vote-contributor-name"
+                value={contributorName}
+                onChange={(event) => setContributorName(event.target.value.slice(0, 60))}
+                minLength={2}
+                maxLength={60}
+                autoComplete="name"
+                placeholder="Used by reviewers only"
+                className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/60"
+              />
+              <p className="mt-1 text-[10px] leading-relaxed text-slate-500">This is not verified and is never included in the public map data.</p>
+            </div>
+          </div>
+          <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+            <label htmlFor="vote-website">Website</label>
+            <input id="vote-website" value={website} onChange={(event) => setWebsite(event.target.value)} tabIndex={-1} autoComplete="off" />
+          </div>
           <button
             type="button"
             onClick={saveVote}
-            disabled={(choice === null && rideability === null) || saving}
+            disabled={(choice === null && rideability === null) || contributorName.trim().length < 2 || saving}
             className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-45"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Vote className="h-4 w-4" />}
@@ -333,6 +366,12 @@ export function SegmentVote({ segment }: { segment: VoteSegment }) {
             <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
               {summary.rideabilityTotal} rideability {summary.rideabilityTotal === 1 ? 'rating' : 'ratings'} · community median <strong className="text-violet-200">R{summary.communityRideability} {RIDEABILITY_LABELS[summary.communityRideability]}</strong>.
             </p>
+          )}
+          {summary.moderationStatus === 'pending' && (
+            <p className="mt-2 rounded-lg border border-amber-300/25 bg-amber-300/10 p-2 text-xs font-semibold text-amber-200">This segment has a contribution waiting for AusBUG review.</p>
+          )}
+          {summary.moderationStatus === 'rejected' && (
+            <p className="mt-2 rounded-lg border border-slate-300/20 bg-slate-300/10 p-2 text-xs font-semibold text-slate-300">The latest proposal was reviewed but not published. You can update it with better local evidence.</p>
           )}
           {summary.approval && (
             <p className={`mt-2 rounded-lg border p-2 text-xs font-semibold ${summary.approval.status === 'needs_review' || summary.approval.status === 'orphaned' ? 'border-amber-300/25 bg-amber-300/10 text-amber-200' : 'border-emerald-300/25 bg-emerald-300/10 text-emerald-200'}`}>

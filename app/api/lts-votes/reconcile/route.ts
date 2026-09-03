@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { reconcileCommunityDataset, registerCommunityDataset } from '@/lib/lts-community-store';
 import type { VoteSegment } from '@/lib/lts-voting';
+import { reviewerAuthorised } from '@/lib/lts-review-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,12 +9,6 @@ const DATASETS = new Set([
   'victoria', 'nsw', 'queensland', 'western_australia',
   'south_australia', 'act', 'tasmania', 'northern_territory',
 ]);
-
-function authorised(request: NextRequest): boolean {
-  const configured = process.env.LTS_VOTE_ADMIN_TOKEN?.trim();
-  if (!configured) return process.env.NODE_ENV !== 'production' && request.headers.get('x-local-review') === 'true';
-  return request.headers.get('authorization') === `Bearer ${configured}`;
-}
 
 function validSegment(value: unknown, dataset: string): value is VoteSegment {
   if (!value || typeof value !== 'object') return false;
@@ -26,7 +21,7 @@ function validSegment(value: unknown, dataset: string): value is VoteSegment {
 }
 
 export async function POST(request: NextRequest) {
-  if (!authorised(request)) return NextResponse.json({ error: 'Reviewer authorisation required.' }, { status: 401 });
+  if (!reviewerAuthorised(request)) return NextResponse.json({ error: 'Reviewer authorisation required.' }, { status: 401 });
   try {
     const body = await request.json() as {
       dataset?: unknown;

@@ -18,11 +18,13 @@ import {
 } from '@/lib/lts-voting';
 import {
   communityApproval,
+  communityModerationStatus,
   communityVotes,
   observeCommunitySegment,
   publishedCommunityApprovals,
   saveCommunityVote,
 } from '@/lib/lts-community-store';
+import { enforceVoteRateLimit, RateLimitError } from '@/lib/lts-rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +39,14 @@ function digest(value: string): string {
 
 function validIdentifier(value: unknown, maximum: number): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= maximum && /^[a-zA-Z0-9:._-]+$/.test(value);
+}
+
+function validContributorName(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const name = value.trim();
+  return name.length >= 2 && name.length <= 60
+    && !/[\u0000-\u001f\u007f]/.test(name)
+    && !/(?:https?:\/\/|www\.)/i.test(name);
 }
 
 function validGeometry(value: unknown): value is GeoJSON.Geometry {
@@ -88,7 +98,10 @@ async function summary(dataset: string, segmentId: string, voterId?: string): Pr
   }
   const leadingTarget = leadingVote(counts);
   const baseLts = votes.at(-1)?.currentLts;
-  const approval = await communityApproval(dataset, segmentId);
+  const [approval, moderationStatus] = await Promise.all([
+    communityApproval(dataset, segmentId),
+    communityModerationStatus(dataset, segmentId),
+  ]);
   const voterKey = voterId ? digest(voterId) : null;
   const yourRecord = votes.find((vote) => vote.voterKey === voterKey);
   const ltsTotal = Object.values(counts).reduce((sum, count) => sum + count, 0);
@@ -99,6 +112,7 @@ async function summary(dataset: string, segmentId: string, voterId?: string): Pr
     leadingTarget,
     projectedLts: leadingTarget !== null && baseLts ? projectApprovedLts(baseLts, leadingTarget) : null,
     yourVote: isLtsVoteLevel(yourRecord?.targetLts) ? yourRecord.targetLts : null,
+    yourContributorName: typeof yourRecord?.contributorName === 'string' ? yourRecord.contributorName : '',
     yourLtsReason: typeof yourRecord?.ltsReason === 'string' ? yourRecord.ltsReason : '',
     rideabilityCounts,
     rideabilityTotal,
@@ -106,6 +120,7 @@ async function summary(dataset: string, segmentId: string, voterId?: string): Pr
     yourRideability: isRideabilityLevel(yourRecord?.rideability) ? yourRecord.rideability : null,
     yourRideabilityIssues: (yourRecord?.rideabilityIssues || []).filter(isRideabilityIssue),
     yourObservation: typeof yourRecord?.note === 'string' ? yourRecord.note : '',
+    moderationStatus,
     approval,
   };
 }
@@ -165,14 +180,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as {
       segment?: unknown;
       voterId?: unknown;
+      contributorName?: unknown;
       targetLts?: unknown;
       rideability?: unknown;
       rideabilityIssues?: unknown;
       ltsReason?: unknown;
       note?: unknown;
+      website?: unknown;
     };
     if (!validSegment(body.segment)) return NextResponse.json({ error: 'Invalid segment data.' }, { status: 400 });
     if (!validIdentifier(body.voterId, 100)) return NextResponse.json({ error: 'Invalid voter key.' }, { status: 400 });
+    if (!validContributorName(body.contributorName)) return NextResponse.json({ error: 'Enter a name or nickname between 2 and 60 characters.' }, { status: 400 });
+    if (typeof body.website === 'string' && body.website.trim()) return NextResponse.json({ error: 'Submission could not be accepted.' }, { status: 400 });
     if (body.targetLts !== null && body.targetLts !== undefined && !isLtsVoteLevel(body.targetLts)) {
       return NextResponse.json({ error: 'Choose a valid LTS.' }, { status: 400 });
     }
@@ -194,10 +213,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Choose an LTS rating, a rideability rating, or both.' }, { status: 400 });
     }
 
+    await enforceVoteRateLimit(request, body.voterId);
+
     const vote: StoredLtsVote = {
       dataset: body.segment.dataset,
       segmentId: body.segment.segmentId,
       voterKey: digest(body.voterId),
+      contributorName: body.contributorName.trim(),
       targetLts: isLtsVoteLevel(body.targetLts) ? body.targetLts as LtsVoteLevel : null,
       rideability: isRideabilityLevel(body.rideability) ? body.rideability as RideabilityLevel : null,
       rideabilityIssues: isRideabilityLevel(body.rideability)
@@ -213,6 +235,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(await summary(vote.dataset, vote.segmentId, body.voterId));
   } catch (error) {
     console.error('[LTS votes POST]', error);
+    if (error instanceof RateLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429, headers: { 'Retry-After': String(error.retryAfter) } });
+    }
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Vote could not be saved.' }, { status: 503 });
   }
 }

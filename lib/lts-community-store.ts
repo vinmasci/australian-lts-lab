@@ -4,17 +4,21 @@ import { createHash } from 'node:crypto';
 import {
   firestoreConfigured,
   listPublishedApprovals,
+  listFirestoreReviewItems,
   observeSegment,
   readFirestoreApproval,
+  readFirestoreModerationStatus,
   readFirestoreVotes,
+  rejectFirestoreSegment,
   reconcileDataset,
   registerDataset,
   writeFirestoreApproval,
   writeFirestoreVote,
   type ReconciliationResult,
+  type StoredReviewItem,
 } from '@/lib/lts-firestore';
 import { listVoteRecords, readVoteRecord, writeVoteRecord } from '@/lib/lts-vote-store';
-import type { LtsApproval, StoredLtsVote, VoteSegment } from '@/lib/lts-voting';
+import type { LtsApproval, ModerationStatus, StoredLtsVote, VoteSegment } from '@/lib/lts-voting';
 
 function digest(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -40,9 +44,24 @@ export async function communityApproval(dataset: string, segmentId: string): Pro
   return readVoteRecord<LtsApproval>(`approvals/${dataset}/${legacySegmentKey(dataset, segmentId)}.json`);
 }
 
-export async function saveCommunityApproval(approval: LtsApproval): Promise<void> {
-  if (firestoreConfigured()) return writeFirestoreApproval(approval);
+export async function saveCommunityApproval(approval: LtsApproval, reviewer?: { name: string; note: string }): Promise<void> {
+  if (firestoreConfigured()) return writeFirestoreApproval(approval, reviewer);
   return writeVoteRecord(`approvals/${approval.dataset}/${legacySegmentKey(approval.dataset, approval.segmentId)}.json`, approval);
+}
+
+export async function communityModerationStatus(dataset: string, segmentId: string): Promise<ModerationStatus | null> {
+  if (firestoreConfigured()) return readFirestoreModerationStatus(dataset, segmentId);
+  return (await communityVotes(dataset, segmentId)).length ? 'pending' : null;
+}
+
+export async function communityReviewItems(status: ModerationStatus = 'pending'): Promise<StoredReviewItem[]> {
+  if (!firestoreConfigured()) return [];
+  return listFirestoreReviewItems(status);
+}
+
+export async function rejectCommunitySegment(dataset: string, segmentId: string, reviewer: { name: string; note: string }): Promise<void> {
+  if (!firestoreConfigured()) throw new Error('Firestore is required for moderation.');
+  await rejectFirestoreSegment(dataset, segmentId, reviewer);
 }
 
 export async function publishedCommunityApprovals(dataset: string): Promise<Array<Record<string, unknown>>> {

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type DocumentData, type Firestore } from 'firebase-admin/firestore';
 import { bestSegmentMatch, segmentMatch } from '@/lib/lts-reconciliation';
-import type { LtsApproval, ReconciliationStatus, StoredLtsVote, VoteSegment } from '@/lib/lts-voting';
+import type { LtsApproval, ModerationStatus, ReconciliationStatus, StoredLtsVote, VoteSegment } from '@/lib/lts-voting';
 
 const COLLECTIONS = {
   datasets: 'ltsDatasets',
@@ -12,6 +12,7 @@ const COLLECTIONS = {
   approvals: 'ltsApprovals',
   published: 'ltsPublishedSegments',
   aliases: 'ltsSegmentAliases',
+  decisions: 'ltsReviewDecisions',
 } as const;
 
 interface SegmentRecord {
@@ -24,6 +25,18 @@ interface SegmentRecord {
   firstSeenAt: string;
   lastSeenAt: string;
   lastReconciledAt: string;
+  moderationStatus?: ModerationStatus;
+  lastContributionAt?: string;
+  lastReviewedAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+}
+
+export interface StoredReviewItem {
+  documentId: string;
+  record: SegmentRecord;
+  votes: StoredLtsVote[];
+  approval: LtsApproval | null;
 }
 
 export interface ReconciliationResult {
@@ -139,12 +152,13 @@ export async function observeSegment(segment: VoteSegment): Promise<{ documentId
   const reference = db.collection(COLLECTIONS.segments).doc(documentId);
   const snapshot = await reference.get();
   const now = new Date().toISOString();
+  const previousRecord = snapshot.exists ? decodeSegmentRecord(snapshot.data()!) : null;
   let status: ReconciliationStatus = 'current';
   let statusReason = 'Current segment observed in the active dataset.';
   let firstSeenAt = now;
 
-  if (snapshot.exists) {
-    const previous = decodeSegmentRecord(snapshot.data()!);
+  if (previousRecord) {
+    const previous = previousRecord;
     firstSeenAt = previous.firstSeenAt || now;
     const match = segmentMatch(previous.current, segment);
     status = match.status;
@@ -176,6 +190,13 @@ export async function observeSegment(segment: VoteSegment): Promise<{ documentId
     firstSeenAt,
     lastSeenAt: now,
     lastReconciledAt: now,
+    moderationStatus: status === 'needs_review' || status === 'orphaned'
+      ? 'pending'
+      : previousRecord?.moderationStatus,
+    lastContributionAt: previousRecord?.lastContributionAt,
+    lastReviewedAt: previousRecord?.lastReviewedAt,
+    reviewedBy: previousRecord?.reviewedBy,
+    reviewNote: previousRecord?.reviewNote,
   });
   await reference.set(encodeSegmentRecord(record));
   await db.collection(COLLECTIONS.aliases).doc(segmentDocumentId(segment.dataset, segment.segmentId)).set(clean({
@@ -198,8 +219,13 @@ export async function observeSegment(segment: VoteSegment): Promise<{ documentId
 
 export async function writeFirestoreVote(vote: StoredLtsVote): Promise<void> {
   const { documentId } = await observeSegment(vote.segment);
-  await communityFirestore().collection(COLLECTIONS.segments).doc(documentId)
-    .collection('votes').doc(vote.voterKey).set(encodeVote(vote));
+  const segmentReference = communityFirestore().collection(COLLECTIONS.segments).doc(documentId);
+  await segmentReference.collection('votes').doc(vote.voterKey).set(encodeVote(vote));
+  await segmentReference.set({
+    moderationStatus: 'pending',
+    lastContributionAt: vote.updatedAt,
+    reviewNote: null,
+  }, { merge: true });
 }
 
 export async function readFirestoreVotes(dataset: string, segmentId: string): Promise<StoredLtsVote[]> {
@@ -216,7 +242,15 @@ export async function readFirestoreApproval(dataset: string, segmentId: string):
   return snapshot.exists ? decodeApproval(snapshot.data()!) : null;
 }
 
-export async function writeFirestoreApproval(approval: LtsApproval): Promise<void> {
+export async function readFirestoreModerationStatus(dataset: string, segmentId: string): Promise<ModerationStatus | null> {
+  const db = communityFirestore();
+  const documentId = await canonicalDocumentId(db, dataset, segmentId);
+  const snapshot = await db.collection(COLLECTIONS.segments).doc(documentId).get();
+  const value = snapshot.data()?.moderationStatus;
+  return value === 'pending' || value === 'approved' || value === 'rejected' ? value : null;
+}
+
+export async function writeFirestoreApproval(approval: LtsApproval, reviewer?: { name: string; note: string }): Promise<void> {
   const { documentId, record } = await observeSegment(approval.segment);
   const now = new Date().toISOString();
   const stored = clean({
@@ -230,7 +264,64 @@ export async function writeFirestoreApproval(approval: LtsApproval): Promise<voi
   });
   const db = communityFirestore();
   await db.collection(COLLECTIONS.approvals).doc(documentId).set(encodeApproval(stored));
+  await db.collection(COLLECTIONS.segments).doc(documentId).set({
+    moderationStatus: 'approved',
+    lastReviewedAt: now,
+    reviewedBy: reviewer?.name || approval.reviewedBy || 'AusBUG reviewer',
+    reviewNote: reviewer?.note || approval.reviewNote || '',
+  }, { merge: true });
+  await db.collection(COLLECTIONS.decisions).add(clean({
+    dataset: approval.dataset,
+    segmentId: approval.segmentId,
+    action: 'approved',
+    approvedLts: approval.approvedLts,
+    approvedRideability: approval.approvedRideability ?? null,
+    reviewedBy: reviewer?.name || approval.reviewedBy || 'AusBUG reviewer',
+    reviewNote: reviewer?.note || approval.reviewNote || '',
+    reviewedAt: now,
+  }));
   await publishApproval(db, documentId, stored, record.current, record.status, record.statusReason);
+}
+
+export async function rejectFirestoreSegment(dataset: string, segmentId: string, reviewer: { name: string; note: string }): Promise<void> {
+  const db = communityFirestore();
+  const documentId = await canonicalDocumentId(db, dataset, segmentId);
+  const reference = db.collection(COLLECTIONS.segments).doc(documentId);
+  const snapshot = await reference.get();
+  if (!snapshot.exists) throw new Error('Segment does not exist.');
+  const now = new Date().toISOString();
+  await reference.set({
+    moderationStatus: 'rejected',
+    lastReviewedAt: now,
+    reviewedBy: reviewer.name,
+    reviewNote: reviewer.note,
+  }, { merge: true });
+  await db.collection(COLLECTIONS.decisions).add(clean({
+    dataset,
+    segmentId,
+    action: 'rejected',
+    reviewedBy: reviewer.name,
+    reviewNote: reviewer.note,
+    reviewedAt: now,
+  }));
+}
+
+export async function listFirestoreReviewItems(status: ModerationStatus = 'pending', maximum = 200): Promise<StoredReviewItem[]> {
+  const db = communityFirestore();
+  const snapshot = await db.collection(COLLECTIONS.segments).where('moderationStatus', '==', status).limit(maximum).get();
+  const items = await Promise.all(snapshot.docs.map(async (document) => {
+    const [votesSnapshot, approvalSnapshot] = await Promise.all([
+      document.ref.collection('votes').get(),
+      db.collection(COLLECTIONS.approvals).doc(document.id).get(),
+    ]);
+    return {
+      documentId: document.id,
+      record: decodeSegmentRecord(document.data()),
+      votes: votesSnapshot.docs.map((vote) => decodeVote(vote.data())),
+      approval: approvalSnapshot.exists ? decodeApproval(approvalSnapshot.data()!) : null,
+    };
+  }));
+  return items.sort((left, right) => (right.record.lastContributionAt || '').localeCompare(left.record.lastContributionAt || ''));
 }
 
 export async function listPublishedApprovals(dataset: string, maximum = 5000): Promise<DocumentData[]> {
@@ -293,7 +384,16 @@ export async function reconcileDataset(dataset: string, candidates: VoteSegment[
     if (status === 'carried_forward') result.carriedForward += 1;
     if (status === 'needs_review') result.needsReview += 1;
     if (status === 'orphaned') result.orphaned += 1;
-    await document.ref.set(encodeSegmentRecord(clean({ ...previous, currentSegmentId: current.segmentId, current, status, statusReason: reason, lastReconciledAt: now, lastSeenAt: now })));
+    await document.ref.set(encodeSegmentRecord(clean({
+      ...previous,
+      currentSegmentId: current.segmentId,
+      current,
+      status,
+      statusReason: reason,
+      moderationStatus: status === 'needs_review' || status === 'orphaned' ? 'pending' : previous.moderationStatus,
+      lastReconciledAt: now,
+      lastSeenAt: now,
+    })));
     const approvalReference = db.collection(COLLECTIONS.approvals).doc(document.id);
     const approvalSnapshot = await approvalReference.get();
     if (approvalSnapshot.exists) {

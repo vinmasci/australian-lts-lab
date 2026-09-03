@@ -69,11 +69,13 @@ export interface VoteSegment {
 }
 
 export type ReconciliationStatus = 'current' | 'carried_forward' | 'needs_review' | 'orphaned';
+export type ModerationStatus = 'pending' | 'approved' | 'rejected';
 
 export interface StoredLtsVote {
   dataset: string;
   segmentId: string;
   voterKey: string;
+  contributorName: string;
   targetLts?: LtsVoteLevel | null;
   rideability?: RideabilityLevel | null;
   rideabilityIssues?: RideabilityIssue[];
@@ -99,6 +101,8 @@ export interface LtsApproval {
   approvedAgainstVersion?: string;
   currentDatasetVersion?: string;
   lastReconciledAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
 }
 
 export type VoteCounts = Record<string, number>;
@@ -109,6 +113,7 @@ export interface SegmentVoteSummary {
   leadingTarget: LtsVoteLevel | null;
   projectedLts: LtsVoteLevel | null;
   yourVote: LtsVoteLevel | null;
+  yourContributorName: string;
   yourLtsReason: string;
   rideabilityCounts: VoteCounts;
   rideabilityTotal: number;
@@ -116,6 +121,34 @@ export interface SegmentVoteSummary {
   yourRideability: RideabilityLevel | null;
   yourRideabilityIssues: RideabilityIssue[];
   yourObservation: string;
+  moderationStatus: ModerationStatus | null;
+  approval: LtsApproval | null;
+}
+
+export interface ReviewVote {
+  contributorName: string;
+  targetLts: LtsVoteLevel | null;
+  rideability: RideabilityLevel | null;
+  rideabilityIssues: RideabilityIssue[];
+  ltsReason: string;
+  note: string;
+  updatedAt: string;
+}
+
+export interface ReviewQueueItem {
+  dataset: string;
+  segmentId: string;
+  segment: VoteSegment;
+  moderationStatus: ModerationStatus;
+  lastContributionAt: string;
+  lastReviewedAt?: string;
+  reviewNote?: string;
+  votes: ReviewVote[];
+  counts: VoteCounts;
+  rideabilityCounts: VoteCounts;
+  leadingTarget: LtsVoteLevel | null;
+  projectedLts: LtsVoteLevel | null;
+  communityRideability: RideabilityLevel | null;
   approval: LtsApproval | null;
 }
 

@@ -1,4 +1,4 @@
-# Australian Bicycle LTS Lab
+# AusBUG LTS Map
 
 A public, experimental Bicycle Level of Traffic Stress (LTS) map for Australia.
 
@@ -40,15 +40,20 @@ Set the PMTiles URLs in `.env.local`. Generated PMTiles archives are intentional
 - `LTS_FIREBASE_SERVICE_ACCOUNT_BASE64`: base64-encoded, server-only credential for the narrowly scoped LTS Lab service account. Never expose this as a `NEXT_PUBLIC_` value.
 - `BLOB_READ_WRITE_TOKEN`: legacy pilot store retained as a migration/recovery source. Local development falls back to an in-memory store when Firestore is not configured.
 - `LTS_VOTE_USE_BLOB_LOCALLY`: optional `true` override for testing the shared Blob store during local development.
-- `LTS_VOTE_ADMIN_TOKEN`: reviewer secret required by `POST /api/lts-votes/approve` in production.
+- `LTS_VOTE_ADMIN_TOKEN`: server-only reviewer access key. It protects the review session and the legacy approval/reconciliation endpoints.
+- `LTS_VOTE_HASH_SALT`: separate server-only random value used when hashing network identifiers for abuse controls.
 
 ## Community segment voting
 
-Selecting a mapped road opens its contribution controls. A contribution may contain an LTS vote, a rideability rating, or both; at least one rating is required, but neither scale is mandatory when submitting the other. LTS 1.5 is the cyan class for a trafficable road above 30 km/h with very little motor traffic. Votes for LTS 1, 1.5 or 2 become that value if approved. An approved LTS 3 or 4 proposal is averaged with the published score and rounded up: for example, a published LTS 2 plus an LTS 3 proposal becomes LTS 3.
+Selecting a mapped road opens its contribution controls. A contribution may contain an LTS vote, a rideability rating, or both; at least one rating is required, but neither scale is mandatory when submitting the other. Contributors enter a name or nickname, but do not need to create an account. That name, their reasoning and their observation are visible only to protected reviewers. One browser has one editable contribution per segment.
+
+LTS 1.5 is the cyan class for a trafficable road above 30 km/h with very little motor traffic. Votes for LTS 1, 1.5 or 2 become that value if approved. An approved LTS 3 or 4 proposal is averaged with the published score and rounded up: for example, a published LTS 2 plus an LTS 3 proposal becomes LTS 3.
 
 Rideability is rated independently as R1 any bike, R2 commuter or hybrid, R3 wider tyres advised, or R4 specialist bike/walking may be required. Voters can optionally explain their LTS choice, flag loose surfaces, corrugations, potholes or ruts, uneven stone, and wet-weather slipperiness, and add a short observation. Rideability does not change the LTS because surface difficulty and motor-traffic stress measure different things. The community result uses the conservative upper median when an even number of ratings is split.
 
-Votes do not directly alter the source network. Raw votes and reasoning are private server-side records under `ltsSegments/{segment}/votes`; reviewer decisions are stored in `ltsApprovals`. Only the sanitised `ltsPublishedSegments` collection feeds `/api/lts-votes?dataset=victoria&approved=1`, so AusBUG clients never need access to voter hashes, notes or reasoning. Tied vote totals lean toward the higher-stress value so that uncertainty is not hidden.
+Votes do not directly alter the source network. Every new or edited contribution is marked pending until an AusBUG reviewer approves or rejects it at `/ltsmap/review` (also available at `/review`). The access key is exchanged for a signed, HTTP-only eight-hour reviewer session; failed login attempts and public contributions are rate-limited. A hidden honeypot catches simple automated submissions.
+
+Raw votes, names and reasoning are private server-side records under `ltsSegments/{segment}/votes`; decisions have an append-only audit record in `ltsReviewDecisions`, while current approvals are stored in `ltsApprovals`. Only the sanitised `ltsPublishedSegments` collection feeds `/api/lts-votes?dataset=victoria&approved=1`, so AusBUG clients never need access to voter hashes, names, notes or reasoning. Tied vote totals lean toward the higher-stress value so that uncertainty is not hidden.
 
 Every contribution carries the OSM snapshot and classifier version. Selecting a contributed segment registers its current geometry. Stable segments are carried forward to a new snapshot; a changed base LTS, ambiguous geometry match or missing segment hides the approval from the published layer and marks it `needs_review` or `orphaned`. After generating a new OSM network, an authenticated `POST /api/lts-votes/reconcile` accepts the complete current contribution-segment manifest, creates aliases for clear split/identifier changes, and queues uncertain matches for review. The manifest must contain every currently contributed segment before `complete: true` is used.
 
