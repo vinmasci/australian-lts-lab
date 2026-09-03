@@ -116,6 +116,16 @@ export interface LtsApproval {
 
 export type VoteCounts = Record<string, number>;
 
+export interface PublicLtsContribution {
+  contributorName: string;
+  targetLts: LtsVoteLevel | null;
+  rideability: RideabilityLevel | null;
+  rideabilityIssues: RideabilityIssue[];
+  ltsReason: string;
+  observation: string;
+  updatedAt: string;
+}
+
 export interface SegmentVoteSummary {
   counts: VoteCounts;
   total: number;
@@ -130,6 +140,7 @@ export interface SegmentVoteSummary {
   yourRideability: RideabilityLevel | null;
   yourRideabilityIssues: RideabilityIssue[];
   yourObservation: string;
+  publicContributions: PublicLtsContribution[];
   moderationStatus: ModerationStatus | null;
   approval: LtsApproval | null;
 }
@@ -172,6 +183,30 @@ export function isRideabilityLevel(value: unknown): value is RideabilityLevel {
 
 export function isRideabilityIssue(value: unknown): value is RideabilityIssue {
   return typeof value === 'string' && RIDEABILITY_ISSUES.includes(value as RideabilityIssue);
+}
+
+function publicContributorName(vote: StoredLtsVote): string {
+  const name = typeof vote.contributorName === 'string'
+    ? vote.contributorName.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60)
+    : '';
+  const emailPrefix = typeof vote.contributorEmail === 'string' ? vote.contributorEmail.split('@')[0]?.toLowerCase() : '';
+  return name && name.toLowerCase() !== emailPrefix ? name : 'AusBUG rider';
+}
+
+export function publishedLtsContributions(votes: StoredLtsVote[], published: boolean): PublicLtsContribution[] {
+  if (!published) return [];
+  return votes
+    .filter((vote) => Boolean(vote.contributorUid) && (Boolean(vote.ltsReason?.trim()) || Boolean(vote.note?.trim())))
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .map((vote) => ({
+      contributorName: publicContributorName(vote),
+      targetLts: isLtsVoteLevel(vote.targetLts) ? vote.targetLts : null,
+      rideability: isRideabilityLevel(vote.rideability) ? vote.rideability : null,
+      rideabilityIssues: (vote.rideabilityIssues || []).filter(isRideabilityIssue),
+      ltsReason: typeof vote.ltsReason === 'string' ? vote.ltsReason.trim().slice(0, 500) : '',
+      observation: typeof vote.note === 'string' ? vote.note.trim().slice(0, 500) : '',
+      updatedAt: vote.updatedAt,
+    }));
 }
 
 export function projectApprovedLts(currentLts: number, targetLts: LtsVoteLevel): LtsVoteLevel {

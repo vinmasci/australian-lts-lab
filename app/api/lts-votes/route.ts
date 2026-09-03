@@ -9,6 +9,7 @@ import {
   leadingVote,
   medianRideability,
   projectApprovedLts,
+  publishedLtsContributions,
   type LtsApproval,
   type LtsVoteLevel,
   type RideabilityIssue,
@@ -102,6 +103,10 @@ async function summary(dataset: string, segmentId: string, contributorUid?: stri
   const ltsTotal = Object.values(counts).reduce((sum, count) => sum + count, 0);
   const rideabilityTotal = Object.values(rideabilityCounts).reduce((sum, count) => sum + count, 0);
   const publicApproval = approval ? { ...approval, reviewedBy: undefined, reviewNote: undefined } : null;
+  const contributionsArePublished = moderationStatus === 'approved'
+    && Boolean(approval)
+    && approval?.status !== 'needs_review'
+    && approval?.status !== 'orphaned';
   return {
     counts,
     total: ltsTotal,
@@ -116,6 +121,7 @@ async function summary(dataset: string, segmentId: string, contributorUid?: stri
     yourRideability: isRideabilityLevel(yourRecord?.rideability) ? yourRecord.rideability : null,
     yourRideabilityIssues: (yourRecord?.rideabilityIssues || []).filter(isRideabilityIssue),
     yourObservation: typeof yourRecord?.note === 'string' ? yourRecord.note : '',
+    publicContributions: publishedLtsContributions(votes, contributionsArePublished),
     moderationStatus,
     approval: publicApproval,
   };
@@ -212,7 +218,9 @@ export async function POST(request: NextRequest) {
       dataset: body.segment.dataset,
       segmentId: body.segment.segmentId,
       voterKey: digest(contributor.uid),
-      contributorName: contributor.name,
+      contributorName: contributor.name.toLowerCase() === contributor.email.split('@')[0]
+        ? 'AusBUG rider'
+        : contributor.name,
       contributorUid: contributor.uid,
       contributorEmail: contributor.email,
       targetLts: isLtsVoteLevel(body.targetLts) ? body.targetLts as LtsVoteLevel : null,

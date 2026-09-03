@@ -58,6 +58,7 @@ function blankSummary(): SegmentVoteSummary {
     yourRideability: null,
     yourRideabilityIssues: [],
     yourObservation: '',
+    publicContributions: [],
     moderationStatus: null,
     approval: null,
   };
@@ -272,7 +273,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
         <Vote className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
         <div>
           <h3 id="segment-vote-title" className="text-sm font-bold text-white">Vote on this segment</h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">Sign in with an existing AusBUG account. Your contribution publishes immediately and remains available for correction.</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">Sign in with an existing AusBUG account. Your display name, reasoning and observation publish immediately; your email stays private.</p>
         </div>
       </div>
 
@@ -368,7 +369,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
                   ? <span>Published result: ceil(({segment.currentLts} + {choice}) ÷ 2) = <strong>LTS {choiceResult}</strong></span>
                   : <span>Published result: this segment becomes <strong>LTS {choiceResult}</strong></span>}
               </div>
-              <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-lts-reason">Why did you choose this LTS? <span className="normal-case tracking-normal text-slate-600">Optional</span></label>
+              <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-lts-reason">Why did you choose this LTS? <span className="normal-case tracking-normal text-cyan-300">Optional · public</span></label>
               <textarea
                 id="vote-lts-reason"
                 value={ltsReason}
@@ -448,7 +449,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
             </div>
           )}
 
-          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-observation">What did you observe? <span className="normal-case tracking-normal text-slate-600">Optional</span></label>
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-observation">What did you observe? <span className="normal-case tracking-normal text-cyan-300">Optional · public</span></label>
           <textarea
             id="vote-observation"
             value={note}
@@ -463,6 +464,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-slate-200">Signed in as {user.displayName || user.email}</p>
               {user.displayName && user.email && <p className="truncate text-[10px] text-slate-500">{user.email}</p>}
+              <p className="mt-0.5 text-[10px] text-slate-500">Shown publicly as {user.displayName || 'AusBUG rider'}; your email is never shown.</p>
             </div>
             <button type="button" onClick={() => void logout()} className="flex min-h-9 items-center gap-1 rounded-md border border-white/10 px-2 text-[11px] font-semibold text-slate-300 hover:bg-white/10"><LogOut className="h-3.5 w-3.5" /> Sign out</button>
           </div>
@@ -506,6 +508,30 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
           {message && <p className="mt-2 text-xs font-semibold text-emerald-300">{message}</p>}
           {error && <p className="mt-2 text-xs font-semibold text-rose-300">{error}</p>}
         </>
+      )}
+
+      {!loading && summary.publicContributions.length > 0 && (
+        <section className="mt-4 border-t border-white/10 pt-4" aria-labelledby="community-comments-title">
+          <div className="flex items-center gap-2">
+            <UserRound className="h-4 w-4 text-cyan-300" aria-hidden="true" />
+            <h4 id="community-comments-title" className="text-xs font-bold text-white">Community comments</h4>
+          </div>
+          <div className="mt-2 space-y-2">
+            {summary.publicContributions.map((contribution, index) => (
+              <article key={`${contribution.updatedAt}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/45 p-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-bold text-white">{contribution.contributorName}</span>
+                  {contribution.targetLts !== null && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-black text-white" style={{ background: LTS_VOTE_COLOURS[contribution.targetLts] }}>LTS {contribution.targetLts}</span>}
+                  {contribution.rideability !== null && <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-bold text-violet-200">R{contribution.rideability}</span>}
+                  <time className="ml-auto text-[10px] text-slate-600">{new Date(contribution.updatedAt).toLocaleDateString('en-AU')}</time>
+                </div>
+                {contribution.ltsReason && <p className="mt-1.5 text-xs leading-relaxed text-slate-200">{contribution.ltsReason}</p>}
+                {contribution.observation && <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{contribution.observation}</p>}
+                {contribution.rideabilityIssues.length > 0 && <p className="mt-1.5 text-[10px] text-violet-200">Surface: {contribution.rideabilityIssues.map((issue) => RIDEABILITY_ISSUE_LABELS[issue]).join(', ')}</p>}
+              </article>
+            ))}
+          </div>
+        </section>
       )}
 
       {help && (
