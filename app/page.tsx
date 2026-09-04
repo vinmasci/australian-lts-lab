@@ -1101,12 +1101,12 @@ export default function LtsLabPage() {
         map.addSource('lts-route-points', { type: 'geojson', data: routePointsGeoJson(routePointsRef.current) });
 
         const colourExpression: maplibregl.ExpressionSpecification = [
-          'match', ['get', 'lts'],
-          1, LTS_COLOURS[1],
-          1.5, LTS_COLOURS[1.5],
-          2, LTS_COLOURS[2],
-          3, LTS_COLOURS[3],
-          4, LTS_COLOURS[4],
+          'case',
+          ['==', ['get', 'lts'], 1], LTS_COLOURS[1],
+          ['==', ['get', 'lts'], 1.5], LTS_COLOURS[1.5],
+          ['==', ['get', 'lts'], 2], LTS_COLOURS[2],
+          ['==', ['get', 'lts'], 3], LTS_COLOURS[3],
+          ['==', ['get', 'lts'], 4], LTS_COLOURS[4],
           '#6b7280',
         ];
         const approvedColourExpression: maplibregl.ExpressionSpecification = [
@@ -1384,8 +1384,10 @@ export default function LtsLabPage() {
         });
 
         const interactiveLayers = ['lts-crossings', 'lts-act-access-only-trails', 'lts-unverified-trails', 'lts-mtb-trails', 'lts-unsealed', 'lts-segments-low-confidence', 'lts-segments'];
+        const availableInteractiveLayers = () => interactiveLayers.filter((layerId) => Boolean(map.getLayer(layerId)));
         map.on('mousemove', (event) => {
-          map.getCanvas().style.cursor = routeModeRef.current || map.queryRenderedFeatures(event.point, { layers: interactiveLayers }).length
+          const layers = availableInteractiveLayers();
+          map.getCanvas().style.cursor = routeModeRef.current || (layers.length > 0 && map.queryRenderedFeatures(event.point, { layers }).length > 0)
             ? 'pointer'
             : '';
         });
@@ -1394,7 +1396,8 @@ export default function LtsLabPage() {
             routeClickRef.current([event.lngLat.lng, event.lngLat.lat]);
             return;
           }
-          const feature = map.queryRenderedFeatures(event.point, { layers: interactiveLayers })[0];
+          const layers = availableInteractiveLayers();
+          const feature = layers.length > 0 ? map.queryRenderedFeatures(event.point, { layers })[0] : undefined;
           setSelected(feature ? feature.properties as FeatureProperties : null);
           setSelectedVoteSegment(feature ? voteSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
           (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
