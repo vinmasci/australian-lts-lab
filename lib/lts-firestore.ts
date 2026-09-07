@@ -3,6 +3,7 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type DocumentData, type Firestore } from 'firebase-admin/firestore';
+import { createLtsContributionEvent } from '@/lib/lts-contribution-audit';
 import { bestSegmentMatch, segmentMatch } from '@/lib/lts-reconciliation';
 import type { LtsApproval, ModerationStatus, ReconciliationStatus, ReviewerAudit, StoredLtsVote, VoteSegment } from '@/lib/lts-voting';
 
@@ -13,6 +14,7 @@ const COLLECTIONS = {
   published: 'ltsPublishedSegments',
   aliases: 'ltsSegmentAliases',
   decisions: 'ltsReviewDecisions',
+  contributionEvents: 'ltsContributionEvents',
 } as const;
 
 interface SegmentRecord {
@@ -219,13 +221,22 @@ export async function observeSegment(segment: VoteSegment): Promise<{ documentId
 
 export async function writeFirestoreVote(vote: StoredLtsVote): Promise<void> {
   const { documentId } = await observeSegment(vote.segment);
-  const segmentReference = communityFirestore().collection(COLLECTIONS.segments).doc(documentId);
-  await segmentReference.collection('votes').doc(vote.voterKey).set(encodeVote(vote));
-  await segmentReference.set({
-    moderationStatus: 'pending',
-    lastContributionAt: vote.updatedAt,
-    reviewNote: null,
-  }, { merge: true });
+  const db = communityFirestore();
+  const segmentReference = db.collection(COLLECTIONS.segments).doc(documentId);
+  const voteReference = segmentReference.collection('votes').doc(vote.voterKey);
+  const eventReference = db.collection(COLLECTIONS.contributionEvents).doc();
+  await db.runTransaction(async (transaction) => {
+    const previousSnapshot = await transaction.get(voteReference);
+    const previousVote = previousSnapshot.exists ? decodeVote(previousSnapshot.data()!) : null;
+    const event = createLtsContributionEvent(vote, previousVote, documentId);
+    transaction.set(voteReference, encodeVote(vote));
+    transaction.set(segmentReference, {
+      moderationStatus: 'pending',
+      lastContributionAt: vote.updatedAt,
+      reviewNote: null,
+    }, { merge: true });
+    transaction.set(eventReference, clean(event));
+  });
 }
 
 export async function readFirestoreVotes(dataset: string, segmentId: string): Promise<StoredLtsVote[]> {

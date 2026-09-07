@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       dataset: body.dataset,
       segmentId: body.segmentId,
       targetLts: body.targetLts,
-      approvedLts: projectApprovedLts(representative.currentLts, body.targetLts),
+      approvedLts: projectApprovedLts(representative.currentLts, body.targetLts, representative.segment.maxspeed),
       approvedRideability: isRideabilityLevel(body.rideability) ? body.rideability : null,
       baseLts: representative.currentLts,
       segment: representative.segment,

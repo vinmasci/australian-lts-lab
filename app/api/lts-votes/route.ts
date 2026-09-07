@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import {
+  applyHardSpeedRuleFloor,
   emptyVoteCounts,
   emptyRideabilityCounts,
   isLtsVoteLevel,
@@ -93,7 +94,8 @@ async function summary(dataset: string, segmentId: string, contributorUid?: stri
     if (isRideabilityLevel(vote.rideability)) rideabilityCounts[String(vote.rideability)] += 1;
   }
   const leadingTarget = leadingVote(counts);
-  const baseLts = votes.at(-1)?.currentLts;
+  const representative = [...votes].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+  const baseLts = representative?.currentLts;
   const [approval, moderationStatus] = await Promise.all([
     communityApproval(dataset, segmentId),
     communityModerationStatus(dataset, segmentId),
@@ -102,7 +104,16 @@ async function summary(dataset: string, segmentId: string, contributorUid?: stri
   const yourRecord = votes.find((vote) => vote.voterKey === voterKey);
   const ltsTotal = Object.values(counts).reduce((sum, count) => sum + count, 0);
   const rideabilityTotal = Object.values(rideabilityCounts).reduce((sum, count) => sum + count, 0);
-  const publicApproval = approval ? { ...approval, reviewedBy: undefined, reviewNote: undefined } : null;
+  const publicApproval = approval ? {
+    ...approval,
+    approvedLts: applyHardSpeedRuleFloor(
+      approval.baseLts,
+      approval.approvedLts,
+      approval.segment?.maxspeed,
+    ),
+    reviewedBy: undefined,
+    reviewNote: undefined,
+  } : null;
   const contributionsArePublished = moderationStatus === 'approved'
     && Boolean(approval)
     && approval?.status !== 'needs_review'
@@ -111,7 +122,9 @@ async function summary(dataset: string, segmentId: string, contributorUid?: stri
     counts,
     total: ltsTotal,
     leadingTarget,
-    projectedLts: leadingTarget !== null && baseLts ? projectApprovedLts(baseLts, leadingTarget) : null,
+    projectedLts: leadingTarget !== null && baseLts
+      ? projectApprovedLts(baseLts, leadingTarget, representative?.segment.maxspeed)
+      : null,
     yourVote: isLtsVoteLevel(yourRecord?.targetLts) ? yourRecord.targetLts : null,
     yourContributorName: typeof yourRecord?.contributorName === 'string' ? yourRecord.contributorName : '',
     yourLtsReason: typeof yourRecord?.ltsReason === 'string' ? yourRecord.ltsReason : '',
@@ -138,19 +151,28 @@ export async function GET(request: NextRequest) {
         type: 'FeatureCollection',
         features: approvals
           .filter((approval) => approval.dataset === dataset && isLtsVoteLevel(approval.approvedLts))
-          .map((approval) => ({
+          .map((approval) => {
+            const segment = approval.segment as VoteSegment | undefined;
+            const baseLts = Number(approval.baseLts ?? segment?.currentLts);
+            const publishedLts = applyHardSpeedRuleFloor(
+              Number.isFinite(baseLts) ? baseLts : Number(approval.approvedLts),
+              approval.approvedLts as LtsVoteLevel,
+              segment?.maxspeed,
+            );
+            return ({
             type: 'Feature',
             id: String(approval.segmentId),
             properties: {
               segment_id: approval.segmentId,
-              lts: approval.approvedLts,
+              lts: publishedLts,
               rideability: approval.approvedRideability ?? null,
               target_lts: approval.targetLts,
               approved_at: approval.approvedAt,
               reconciliation_status: approval.status || 'current',
             },
-            geometry: approval.geometry || (approval.segment as VoteSegment | undefined)?.geometry,
-          })),
+            geometry: approval.geometry || segment?.geometry,
+          });
+          }),
       }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
@@ -242,7 +264,7 @@ export async function POST(request: NextRequest) {
       dataset: vote.dataset,
       segmentId: vote.segmentId,
       targetLts,
-      approvedLts: projectApprovedLts(vote.currentLts, targetLts),
+      approvedLts: projectApprovedLts(vote.currentLts, targetLts, vote.segment.maxspeed),
       approvedRideability: result.communityRideability,
       baseLts: vote.currentLts,
       segment: vote.segment,

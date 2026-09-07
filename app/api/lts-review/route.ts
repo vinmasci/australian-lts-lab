@@ -66,7 +66,9 @@ function reviewItem(item: Awaited<ReturnType<typeof communityReviewItems>>[numbe
     counts,
     rideabilityCounts,
     leadingTarget,
-    projectedLts: leadingTarget === null ? null : projectApprovedLts(item.record.current.currentLts, leadingTarget),
+    projectedLts: leadingTarget === null
+      ? null
+      : projectApprovedLts(item.record.current.currentLts, leadingTarget, item.record.current.maxspeed),
     communityRideability: medianRideability(rideabilityCounts),
     approval: item.approval,
   };
@@ -124,7 +126,7 @@ export async function POST(request: NextRequest) {
       dataset: body.dataset,
       segmentId: body.segmentId,
       targetLts: body.targetLts,
-      approvedLts: projectApprovedLts(representative.currentLts, body.targetLts),
+      approvedLts: projectApprovedLts(representative.currentLts, body.targetLts, representative.segment.maxspeed),
       approvedRideability: isRideabilityLevel(body.rideability) ? body.rideability as RideabilityLevel : null,
       baseLts: representative.currentLts,
       segment: representative.segment,

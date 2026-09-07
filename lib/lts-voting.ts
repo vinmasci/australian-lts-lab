@@ -209,9 +209,21 @@ export function publishedLtsContributions(votes: StoredLtsVote[], published: boo
     }));
 }
 
-export function projectApprovedLts(currentLts: number, targetLts: LtsVoteLevel): LtsVoteLevel {
-  if (targetLts < 3) return targetLts;
-  return Math.min(4, Math.max(1, Math.ceil((currentLts + targetLts) / 2))) as LtsVoteLevel;
+export function hardSpeedRuleFloor(currentLts: number, maxspeed?: number): LtsVoteLevel | null {
+  if (!Number.isFinite(maxspeed) || Number(maxspeed) < 70) return null;
+  return Math.min(4, Math.max(1, Math.ceil(currentLts))) as LtsVoteLevel;
+}
+
+export function applyHardSpeedRuleFloor(currentLts: number, proposedLts: LtsVoteLevel, maxspeed?: number): LtsVoteLevel {
+  const hardFloor = hardSpeedRuleFloor(currentLts, maxspeed);
+  return hardFloor === null ? proposedLts : Math.max(proposedLts, hardFloor) as LtsVoteLevel;
+}
+
+export function projectApprovedLts(currentLts: number, targetLts: LtsVoteLevel, maxspeed?: number): LtsVoteLevel {
+  const projected = targetLts < 3
+    ? targetLts
+    : Math.min(4, Math.max(1, Math.ceil((currentLts + targetLts) / 2))) as LtsVoteLevel;
+  return applyHardSpeedRuleFloor(currentLts, projected, maxspeed);
 }
 
 export function leadingVote(counts: VoteCounts): LtsVoteLevel | null {

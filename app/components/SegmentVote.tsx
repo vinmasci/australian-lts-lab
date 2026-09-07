@@ -105,8 +105,8 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
   const [help, setHelp] = useState<'lts' | 'rideability' | null>(null);
 
   const choiceResult = useMemo(
-    () => choice === null ? null : projectApprovedLts(segment.currentLts, choice),
-    [choice, segment.currentLts],
+    () => choice === null ? null : projectApprovedLts(segment.currentLts, choice, segment.maxspeed),
+    [choice, segment.currentLts, segment.maxspeed],
   );
 
   useEffect(() => onAuthStateChanged(ausbugAuth, (currentUser) => {

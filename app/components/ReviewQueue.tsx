@@ -18,6 +18,7 @@ import { ltsAppPath } from '@/lib/client-path';
 import {
   LTS_VOTE_COLOURS,
   LTS_VOTE_LEVELS,
+  projectApprovedLts,
   RIDEABILITY_LABELS,
   RIDEABILITY_LEVELS,
   type LtsVoteLevel,
@@ -130,7 +131,7 @@ function ReviewCard({ item, authorisedFetch, onReviewed }: { item: ReviewQueueIt
               </select>
             </label>
         </div>
-        <p className="mt-2 rounded-lg bg-white/5 p-2 text-xs text-slate-300">Published result: <strong>LTS {targetLts >= 3 ? Math.min(4, Math.ceil((item.segment.currentLts + targetLts) / 2)) : targetLts}</strong>{rideability ? ` · R${rideability}` : ''}</p>
+        <p className="mt-2 rounded-lg bg-white/5 p-2 text-xs text-slate-300">Published result: <strong>LTS {projectApprovedLts(item.segment.currentLts, targetLts, item.segment.maxspeed)}</strong>{rideability ? ` · R${rideability}` : ''}</p>
         <label className="mt-3 block text-xs font-semibold text-slate-300">Reviewer note <span className="font-normal text-slate-500">(recommended when removing)</span>
           <textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value.slice(0, 500))} rows={2} className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/60" placeholder="Evidence checked, reason for correction or removal, or follow-up needed…" />
         </label>

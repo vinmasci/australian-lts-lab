@@ -4,22 +4,191 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, Search, Trash2, Undo2, X } from 'lucide-react';
+import { ArrowRight, Bike, BriefcaseBusiness, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, School, Search, ShieldCheck, Trash2, Undo2, Vote, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
+import { DismountReport } from '@/app/components/DismountReport';
 import { SegmentVote } from '@/app/components/SegmentVote';
 import { ltsAppPath } from '@/lib/client-path';
+import type { DismountReportSegment } from '@/lib/dismount-reporting';
+import { googleStreetViewUrl } from '@/lib/google-maps';
 import { LTS_VOTE_COLOURS, type VoteSegment } from '@/lib/lts-voting';
+import { assessBikeAccess, orderedOsmTags, type OsmFeatureDetails } from '@/lib/osm-tags';
 
 
 const DATASET_VERSION = 'au-lts-v0.5-council-traffic';
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
-
 interface PlaceSearchResult {
   id: string;
   name: string;
   latitude: number;
   longitude: number;
   bounds: [number, number, number, number] | null;
+}
+
+interface ProjectLandingProps {
+  onExplore: () => void;
+  onSearch: () => void;
+  onLearn: () => void;
+}
+
+function ProjectLanding({ onExplore, onSearch, onLearn }: ProjectLandingProps) {
+  return (
+    <section className="absolute inset-0 z-[60] overflow-y-auto bg-slate-950 text-white" aria-labelledby="lts-project-title">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[44rem] overflow-hidden" aria-hidden="true">
+        <div className="absolute left-[-8rem] top-20 h-80 w-80 rounded-full bg-emerald-400/15 blur-3xl" />
+        <div className="absolute right-[-8rem] top-[-4rem] h-96 w-96 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.8) 1px, transparent 1px)', backgroundSize: '42px 42px' }} />
+      </div>
+
+      <nav className="relative mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8 sm:py-7">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 text-slate-950"><Bike className="h-5 w-5" /></span>
+          <div>
+            <p className="text-sm font-black tracking-tight">AusBUG LTS</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-slate-500">Community map</p>
+          </div>
+        </div>
+        <button type="button" onClick={onExplore} className="flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-bold text-white transition hover:border-emerald-300/50 hover:bg-white/10">
+          Open map <ArrowRight className="h-4 w-4" />
+        </button>
+      </nav>
+
+      <div className="relative mx-auto w-full max-w-6xl px-5 pb-16 pt-8 sm:px-8 sm:pb-24 sm:pt-16">
+        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_.95fr] lg:gap-16">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1.5 text-xs font-bold text-emerald-200">
+              <Vote className="h-3.5 w-3.5" /> Built from local knowledge
+            </div>
+            <h1 id="lts-project-title" className="mt-6 max-w-3xl text-4xl font-black leading-[1.02] tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">
+              Help build Australia&apos;s <span className="text-emerald-300">unofficial bike highways.</span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-300 sm:text-xl">
+              Connect calm streets, paths and crossings into cycling corridors that help children get to school and people get to work—with the roads chosen by the people who ride them.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <button type="button" onClick={onSearch} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-6 text-base font-black text-slate-950 transition hover:bg-emerald-300">
+                Find a road and vote <ArrowRight className="h-5 w-5" />
+              </button>
+              <button type="button" onClick={onExplore} className="min-h-14 rounded-2xl border border-white/15 bg-white/5 px-6 text-base font-bold text-white transition hover:bg-white/10">
+                Explore the LTS map
+              </button>
+            </div>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-xl" aria-label="Example low-stress route connecting home, school and work">
+            <div className="absolute -inset-5 rounded-[2rem] bg-emerald-400/10 blur-2xl" />
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-slate-900/90 p-5 shadow-2xl sm:p-7">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">A corridor worth sharing</p>
+                  <p className="mt-1 text-lg font-black">Home → school → work</p>
+                </div>
+                <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-300">Low stress</span>
+              </div>
+              <div className="relative mt-6 h-64 overflow-hidden rounded-2xl border border-white/10 bg-[#071322] sm:h-72" aria-hidden="true">
+                <svg viewBox="0 0 520 300" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
+                  <path d="M-20 68 C85 45 116 112 205 92 S350 32 540 68" fill="none" stroke="#1e293b" strokeWidth="25" />
+                  <path d="M70 -20 C94 65 81 133 157 174 S307 168 335 320" fill="none" stroke="#1e293b" strokeWidth="20" />
+                  <path d="M-20 235 C92 220 175 252 258 226 S398 160 540 192" fill="none" stroke="#1e293b" strokeWidth="22" />
+                  <path d="M35 238 C106 225 168 248 245 225 C302 208 318 158 352 132 C389 104 431 111 486 86" fill="none" stroke="#064e3b" strokeWidth="18" strokeLinecap="round" />
+                  <path d="M35 238 C106 225 168 248 245 225 C302 208 318 158 352 132 C389 104 431 111 486 86" fill="none" stroke="#4ade80" strokeWidth="9" strokeLinecap="round" />
+                  <path d="M245 225 C276 214 298 192 315 169" fill="none" stroke="#22d3ee" strokeWidth="9" strokeDasharray="5 7" strokeLinecap="round" />
+                </svg>
+                <div className="absolute bottom-7 left-5 rounded-xl border border-white/10 bg-slate-950/90 px-3 py-2 text-xs font-bold shadow-xl">Home</div>
+                <div className="absolute left-[53%] top-[48%] flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-400 text-slate-950 shadow-xl"><School className="h-5 w-5" /></div>
+                <div className="absolute right-5 top-10 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400 text-slate-950 shadow-xl"><BriefcaseBusiness className="h-5 w-5" /></div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-slate-400">
+                <span className="flex items-center gap-2"><i className="h-2.5 w-7 rounded-full bg-emerald-400" /> Connected low-stress route</span>
+                <span className="flex items-center gap-2"><i className="h-2.5 w-7 rounded-full bg-cyan-400" /> Community-discovered link</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-24 sm:mt-32">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">What local knowledge unlocks</p>
+          <div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <h2 className="max-w-2xl text-3xl font-black tracking-tight sm:text-5xl">Small observations can create big connections.</h2>
+            <p className="max-w-sm text-sm leading-relaxed text-slate-400">The computer gives us a starting point. People who know the streets make it useful.</p>
+          </div>
+
+          <div className="mt-8 grid gap-4 lg:grid-cols-3">
+            <article className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 sm:p-6">
+              <div className="relative h-40 overflow-hidden rounded-2xl bg-slate-900" aria-hidden="true">
+                <div className="absolute left-0 top-[46%] h-7 w-[43%] bg-slate-700" />
+                <div className="absolute right-0 top-[46%] h-7 w-[43%] bg-slate-700" />
+                <div className="absolute left-[42%] top-[49%] h-4 w-[17%] rounded-full bg-emerald-400" />
+                <div className="absolute left-1/2 top-[34%] h-12 w-1 -translate-x-1/2 bg-slate-200" />
+                <div className="absolute left-1/2 top-[31%] -translate-x-1/2 rounded-md bg-white px-2 py-1 text-[9px] font-black text-slate-900">BIKES + PEDS</div>
+                <School className="absolute bottom-4 right-5 h-8 w-8 text-cyan-300" />
+              </div>
+              <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-300">Example 01 · School route</p>
+              <h3 className="mt-2 text-xl font-black">A modal filter joins two quiet streets</h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-400">Cars hit a dead end, but bikes and pedestrians pass through. One short link can turn disconnected local streets into a calm route to school.</p>
+            </article>
+
+            <article className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 sm:p-6">
+              <div className="relative h-40 overflow-hidden rounded-2xl bg-slate-900" aria-hidden="true">
+                <div className="absolute left-5 right-5 top-8 h-5 rotate-[-5deg] rounded-full bg-blue-600" />
+                <div className="absolute left-5 right-5 bottom-9 h-5 rotate-[4deg] rounded-full bg-blue-600 ring-4 ring-emerald-400/30" />
+                <span className="absolute right-6 top-4 rounded-lg bg-blue-500 px-2 py-1 text-[10px] font-black">LTS 2</span>
+                <span className="absolute bottom-3 right-6 rounded-lg bg-emerald-400 px-2 py-1 text-[10px] font-black text-slate-950">Quieter + continuous</span>
+              </div>
+              <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Example 02 · Better choice</p>
+              <h3 className="mt-2 text-xl font-black">Two LTS 2 roads are not always equal</h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-400">Both options look low-stress in the data. Local riders can identify the quieter street, easier crossing or more continuous corridor.</p>
+            </article>
+
+            <article className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 sm:p-6">
+              <div className="relative flex h-40 items-center justify-center overflow-hidden rounded-2xl bg-slate-900" aria-hidden="true">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-xl font-black">L2</span>
+                  <ArrowRight className="h-6 w-6 text-slate-500" />
+                  <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500 text-xl font-black text-slate-950">L3</span>
+                </div>
+                <span className="absolute bottom-4 rounded-full border border-white/10 bg-slate-950/80 px-3 py-1 text-[10px] font-bold text-slate-300">Traffic is heavier than mapped</span>
+              </div>
+              <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-amber-300">Example 03 · Correct the map</p>
+              <h3 className="mt-2 text-xl font-black">Flag a road that feels more stressful</h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-400">If speeds, traffic or a difficult crossing make a segment feel wrong, vote for the LTS you observe and explain why.</p>
+            </article>
+          </div>
+        </div>
+
+        <div className="mt-24 grid gap-8 rounded-[2rem] border border-emerald-300/20 bg-emerald-300/[0.07] p-6 sm:p-10 lg:grid-cols-[.75fr_1.25fr] lg:items-center">
+          <div>
+            <ShieldCheck className="h-10 w-10 text-emerald-300" />
+            <h2 className="mt-5 text-3xl font-black tracking-tight sm:text-4xl">Your street knowledge belongs on the map.</h2>
+            <p className="mt-4 leading-relaxed text-slate-300">Know a road that is safer—or more stressful—than shown? Don&apos;t keep it to yourself.</p>
+          </div>
+          <ol className="grid gap-3 sm:grid-cols-3">
+            {[
+              ['1', 'Select', 'Choose a road segment you know.'],
+              ['2', 'Vote', 'Rate its LTS and add your reason.'],
+              ['3', 'Connect', 'Help reveal better everyday corridors.'],
+            ].map(([number, title, copy]) => (
+              <li key={number} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400 text-sm font-black text-slate-950">{number}</span>
+                <p className="mt-4 font-black text-white">{title}</p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-400">{copy}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="mt-20 flex flex-col items-center rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-12 text-center sm:px-10 sm:py-16">
+          <RouteIcon className="h-9 w-9 text-cyan-300" />
+          <h2 className="mt-5 max-w-2xl text-3xl font-black tracking-tight sm:text-5xl">What road do you know better than the map?</h2>
+          <p className="mt-4 max-w-xl text-slate-400">Find it, select the segment and add your voice.</p>
+          <button type="button" onClick={onSearch} className="mt-7 flex min-h-14 items-center gap-2 rounded-2xl bg-emerald-400 px-7 text-base font-black text-slate-950 transition hover:bg-emerald-300">
+            Open the map and vote <ArrowRight className="h-5 w-5" />
+          </button>
+          <button type="button" onClick={onLearn} className="mt-4 text-sm font-bold text-slate-400 underline decoration-white/20 underline-offset-4 transition hover:text-white">Learn how LTS works</button>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function placeSearchUrl(query: string, map: maplibregl.Map | null): string {
@@ -349,6 +518,8 @@ interface LtsMetadata {
   generated_at: string;
   source_pbf_modified_at: string;
   segments: number;
+  dismount_segments?: number;
+  dismount_distance_km?: number;
   crossings: number;
   segment_counts: Record<string, number>;
   segment_distance_km: Record<string, number>;
@@ -565,6 +736,28 @@ function voteSegmentFromFeature(feature: MapGeoJSONFeature, dataset: DatasetKey,
     direction: direction ? String(direction).slice(0, 30) : undefined,
     maxspeed: Number.isFinite(maxspeed) ? maxspeed : undefined,
     trafficAadt: Number.isFinite(trafficAadt) ? trafficAadt : undefined,
+    datasetVersion: metadata ? `${metadata.source_pbf_modified_at}:${metadata.classifier_version}`.slice(0, 160) : undefined,
+    classifierVersion: metadata?.classifier_version,
+    osmSnapshotDate: metadata?.source_pbf_modified_at,
+  };
+}
+
+function dismountReportSegmentFromFeature(
+  feature: MapGeoJSONFeature,
+  dataset: DatasetKey,
+  metadata?: LtsMetadata | null,
+): DismountReportSegment | null {
+  const properties = feature.properties as FeatureProperties;
+  if (String(properties.feature_kind || '') !== 'dismount') return null;
+  const osmId = properties.osm_id ? String(properties.osm_id) : undefined;
+  const sourceId = String(properties.segment_id || osmId || feature.id || geometryFingerprint(feature.geometry as GeoJSON.Geometry));
+  return {
+    dataset,
+    segmentId: `dismount:${sourceId}`.replace(/[^a-zA-Z0-9:._-]/g, '_').slice(0, 160),
+    name: String(properties.name || 'Unnamed road/path').slice(0, 160),
+    featureKind: 'dismount',
+    geometry: JSON.parse(JSON.stringify(feature.geometry)) as GeoJSON.Geometry,
+    osmId,
     datasetVersion: metadata ? `${metadata.source_pbf_modified_at}:${metadata.classifier_version}`.slice(0, 160) : undefined,
     classifierVersion: metadata?.classifier_version,
     osmSnapshotDate: metadata?.source_pbf_modified_at,
@@ -828,10 +1021,15 @@ export default function LtsLabPage() {
   const [metadata, setMetadata] = useState<LtsMetadata | null>(null);
   const [selected, setSelected] = useState<FeatureProperties | null>(null);
   const [selectedVoteSegment, setSelectedVoteSegment] = useState<VoteSegment | null>(null);
+  const [selectedDismountSegment, setSelectedDismountSegment] = useState<DismountReportSegment | null>(null);
+  const [selectedStreetViewPoint, setSelectedStreetViewPoint] = useState<Coordinate | null>(null);
+  const [osmFeatureDetails, setOsmFeatureDetails] = useState<OsmFeatureDetails | null>(null);
+  const [osmFeatureError, setOsmFeatureError] = useState<{ osmId: string; message: string } | null>(null);
   const [visibleLts, setVisibleLts] = useState<Set<number>>(new Set([1, 2, 3, 4]));
   const [showCrossings, setShowCrossings] = useState(true);
   const [showLowConfidence, setShowLowConfidence] = useState(true);
   const [showMtbTrails, setShowMtbTrails] = useState(true);
+  const [showDismountLinks, setShowDismountLinks] = useState(true);
   const [showUnverifiedTrails, setShowUnverifiedTrails] = useState(true);
   const [showActAccessOnlyTrails, setShowActAccessOnlyTrails] = useState(false);
   const [satelliteEnabled, setSatelliteEnabled] = useState(false);
@@ -851,6 +1049,7 @@ export default function LtsLabPage() {
   const [selectedRouteKind, setSelectedRouteKind] = useState<'low-stress' | 'bike-profile'>('low-stress');
   const [transparentRoutes, setTransparentRoutes] = useState(false);
   const [routeClassifier, setRouteClassifier] = useState<string | null>(null);
+  const [showProjectLanding, setShowProjectLanding] = useState(true);
   const [showAbout, setShowAbout] = useState(false);
   const [mapPanelExpanded, setMapPanelExpanded] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -1265,6 +1464,35 @@ export default function LtsLabPage() {
           },
         });
         map.addLayer({
+          id: 'lts-dismount-casing',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['==', ['get', 'feature_kind'], 'dismount'],
+          minzoom: 10,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2.2, 14, 5.5, 18, 11],
+            'line-opacity': 0.9,
+          },
+        });
+        map.addLayer({
+          id: 'lts-dismount',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['==', ['get', 'feature_kind'], 'dismount'],
+          minzoom: 10,
+          layout: { 'line-cap': 'butt', 'line-join': 'round' },
+          paint: {
+            'line-color': '#6b7280',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.2, 14, 3.2, 18, 7],
+            'line-opacity': 0.98,
+            'line-dasharray': [1.5, 1],
+          },
+        });
+        map.addLayer({
           id: 'lts-crossings',
           type: 'circle',
           source: 'lts-network',
@@ -1383,7 +1611,7 @@ export default function LtsLabPage() {
           paint: { 'circle-color': '#111827', 'circle-radius': 9, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 },
         });
 
-        const interactiveLayers = ['lts-crossings', 'lts-act-access-only-trails', 'lts-unverified-trails', 'lts-mtb-trails', 'lts-unsealed', 'lts-segments-low-confidence', 'lts-segments'];
+        const interactiveLayers = ['lts-crossings', 'lts-dismount', 'lts-act-access-only-trails', 'lts-unverified-trails', 'lts-mtb-trails', 'lts-unsealed', 'lts-segments-low-confidence', 'lts-segments'];
         const availableInteractiveLayers = () => interactiveLayers.filter((layerId) => Boolean(map.getLayer(layerId)));
         map.on('mousemove', (event) => {
           const layers = availableInteractiveLayers();
@@ -1400,6 +1628,8 @@ export default function LtsLabPage() {
           const feature = layers.length > 0 ? map.queryRenderedFeatures(event.point, { layers })[0] : undefined;
           setSelected(feature ? feature.properties as FeatureProperties : null);
           setSelectedVoteSegment(feature ? voteSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
+          setSelectedDismountSegment(feature ? dismountReportSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
+          setSelectedStreetViewPoint(feature ? [event.lngLat.lng, event.lngLat.lat] : null);
           (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
             .setData(selectedGeoJson(feature));
         });
@@ -1474,7 +1704,9 @@ export default function LtsLabPage() {
     const showActAccessOnly = datasetKey === 'act' && showActAccessOnlyTrails;
     map.setLayoutProperty('lts-act-access-only-trails-casing', 'visibility', showActAccessOnly ? 'visible' : 'none');
     map.setLayoutProperty('lts-act-access-only-trails', 'visibility', showActAccessOnly ? 'visible' : 'none');
-  }, [datasetKey, showActAccessOnlyTrails, showCrossings, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
+    map.setLayoutProperty('lts-dismount-casing', 'visibility', showDismountLinks ? 'visible' : 'none');
+    map.setLayoutProperty('lts-dismount', 'visibility', showDismountLinks ? 'visible' : 'none');
+  }, [datasetKey, showActAccessOnlyTrails, showCrossings, showDismountLinks, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
 
   useEffect(() => {
     satelliteEnabledRef.current = satelliteEnabled;
@@ -1534,9 +1766,56 @@ export default function LtsLabPage() {
     };
   }, [placeQuery]);
 
-  const selectedLts = selected ? Number(selected.lts) : null;
+  const selectedOsmId = selected?.osm_id ? String(selected.osm_id) : null;
+
+  useEffect(() => {
+    if (!selectedOsmId) return;
+
+    const controller = new AbortController();
+    fetch(ltsAppPath(`/api/osm-feature?osmId=${encodeURIComponent(selectedOsmId)}`), {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const body = await response.json() as OsmFeatureDetails & { error?: string };
+        if (!response.ok) throw new Error(body.error || `OSM lookup returned ${response.status}`);
+        return body;
+      })
+      .then((details) => {
+        setOsmFeatureDetails(details);
+        setOsmFeatureError(null);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setOsmFeatureError({
+          osmId: selectedOsmId,
+          message: error instanceof Error ? error.message : 'Could not load OSM tags.',
+        });
+      });
+
+    return () => controller.abort();
+  }, [selectedOsmId]);
+
+  const selectedLtsValue = selected ? Number(selected.lts) : Number.NaN;
+  const selectedLts = Number.isFinite(selectedLtsValue) ? selectedLtsValue : null;
+  const selectedIsDismount = selected?.feature_kind === 'dismount';
   const selectedOsmUrl = selected ? osmUrl(selected) : null;
   const selectedTrafficFreshness = selected ? trafficFreshness(selected.traffic_year) : null;
+  const selectedOsmFeatureDetails = osmFeatureDetails?.osmId === selectedOsmId ? osmFeatureDetails : null;
+  const selectedOsmFeatureError = osmFeatureError?.osmId === selectedOsmId ? osmFeatureError.message : null;
+  const osmFeatureLoading = Boolean(selectedOsmId && !selectedOsmFeatureDetails && !selectedOsmFeatureError);
+  const selectedBikeAccess = selected && selectedOsmFeatureDetails
+    ? assessBikeAccess(selectedOsmFeatureDetails.tags, String(selected.highway || ''))
+    : null;
+  const selectedBikeAccessClass = selectedIsDismount
+    ? 'border-slate-300/30 bg-slate-300/10 text-slate-100'
+    : selectedBikeAccess?.kind === 'designated'
+    ? 'border-emerald-300/30 bg-emerald-300/10 text-emerald-100'
+    : selectedBikeAccess?.kind === 'permitted'
+      ? 'border-cyan-300/30 bg-cyan-300/10 text-cyan-100'
+      : selectedBikeAccess?.kind === 'prohibited'
+        ? 'border-red-300/30 bg-red-300/10 text-red-100'
+        : 'border-amber-300/30 bg-amber-300/10 text-amber-100';
   const mobileRouteStatus = routeLoading
     ? 'Finding the lowest-stress route…'
     : routeError
@@ -1555,6 +1834,8 @@ export default function LtsLabPage() {
     setMapPanelExpanded(false);
     setSelected(null);
     setSelectedVoteSegment(null);
+    setSelectedDismountSegment(null);
+    setSelectedStreetViewPoint(null);
     (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
     resetRouteHistory();
   };
@@ -1687,6 +1968,8 @@ export default function LtsLabPage() {
             resetRouteHistory();
             setSelected(null);
             setSelectedVoteSegment(null);
+            setSelectedDismountSegment(null);
+            setSelectedStreetViewPoint(null);
             setPlaceResults([]);
             setPlaceSearchError(null);
             setLocationError(null);
@@ -1698,8 +1981,8 @@ export default function LtsLabPage() {
         </select>
         <button
           type="button"
-          onClick={() => setShowAbout(true)}
-          aria-label="About this LTS map"
+          onClick={() => setShowProjectLanding(true)}
+          aria-label="About the AusBUG LTS project"
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-200 hover:bg-white/10 sm:w-auto sm:gap-1.5 sm:px-2.5"
         >
           <Info className="h-4 w-4" />
@@ -2124,6 +2407,11 @@ export default function LtsLabPage() {
           <input type="checkbox" checked={showLowConfidence} onChange={(event) => setShowLowConfidence(event.target.checked)} className="h-4 w-4" />
           <span className="w-8 shrink-0 rounded-full border-t-[6px] border-dashed border-green-500" /> Inferred / low-confidence roads
         </label>
+        <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
+          <input type="checkbox" checked={showDismountLinks} onChange={(event) => setShowDismountLinks(event.target.checked)} className="h-4 w-4" />
+          <span className="relative h-1.5 w-8 shrink-0 rounded-full bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-slate-500" /></span>
+          <span>Dismount / walk-bike link</span>
+        </label>
         <div className="grid grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm text-slate-200">
           <span className="h-4 w-4" aria-hidden="true" />
           <span className="relative h-1.5 w-8 rounded-full bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-blue-500" /></span>
@@ -2153,7 +2441,7 @@ export default function LtsLabPage() {
         )}
         {metadata && (
           <div className="mt-3 text-[11px] leading-relaxed text-slate-500">
-            <p>{metadata.segments.toLocaleString()} segments · {metadata.crossings.toLocaleString()} crossings · OSM snapshot {new Date(metadata.source_pbf_modified_at).toLocaleDateString('en-AU')}</p>
+            <p>{metadata.segments.toLocaleString()} LTS segments · {(metadata.dismount_segments || 0).toLocaleString()} walk-bike links · {metadata.crossings.toLocaleString()} crossings · OSM snapshot {new Date(metadata.source_pbf_modified_at).toLocaleDateString('en-AU')}</p>
             {metadata.traffic_volume && (
               <p className="mt-1 text-sky-300/75">
                 Traffic volume matched to {metadata.traffic_volume.matched_segments.toLocaleString()} segments ({metadata.traffic_volume.matched_distance_km.toLocaleString()} km) · {metadata.traffic_volume.uplifted_segments.toLocaleString()} raised
@@ -2167,12 +2455,14 @@ export default function LtsLabPage() {
         )}
       </aside>
 
-      {!routeMode && selected && (selectedLts || propertyIsTrue(selected.is_mtb)) && (
+      {!routeMode && selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)) && (
         <aside className="absolute bottom-3 right-3 top-auto z-20 max-h-[70vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl border border-white/10 bg-slate-950/95 p-5 shadow-2xl backdrop-blur md:bottom-auto md:right-4 md:top-4 md:w-96">
           <button
             onClick={() => {
               setSelected(null);
               setSelectedVoteSegment(null);
+              setSelectedDismountSegment(null);
+              setSelectedStreetViewPoint(null);
               const source = mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined;
               source?.setData(selectedGeoJson());
             }}
@@ -2180,17 +2470,68 @@ export default function LtsLabPage() {
             aria-label="Close details"
           ><X className="h-5 w-5" /></button>
           <div className="mb-4 flex items-center gap-3 pr-8">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl text-lg font-black text-white" style={{ background: selectedLts ? LTS_COLOURS[selectedLts] : '#a855f7' }}>{selectedLts ? `L${selectedLts}` : 'MTB'}</span>
+            <span className={`flex h-12 w-12 items-center justify-center rounded-xl font-black text-white ${selectedIsDismount ? 'text-xs' : 'text-lg'}`} style={{ background: selectedLts ? LTS_COLOURS[selectedLts] : selectedIsDismount ? '#6b7280' : '#a855f7' }}>{selectedLts ? `L${selectedLts}` : selectedIsDismount ? 'WALK' : 'MTB'}</span>
             <div>
               <h2 className="font-bold">{String(selected.name || (selected.feature_kind === 'crossing' ? 'Crossing' : 'Unnamed road/path'))}</h2>
-              <p className="text-sm" style={{ color: selectedLts ? LTS_COLOURS[selectedLts] : '#c084fc' }}>{selectedLts ? LTS_LABELS[selectedLts] : 'MTB trail shown for context'}</p>
+              <p className="text-sm" style={{ color: selectedLts ? LTS_COLOURS[selectedLts] : selectedIsDismount ? '#cbd5e1' : '#c084fc' }}>{selectedLts ? LTS_LABELS[selectedLts] : selectedIsDismount ? 'Dismount / walk bike' : 'MTB trail shown for context'}</p>
             </div>
           </div>
+          {selectedStreetViewPoint && (
+            <a
+              href={googleStreetViewUrl(selectedStreetViewPoint)}
+              target="_blank"
+              rel="noreferrer"
+              className="mb-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-sky-300/25 bg-sky-300/10 px-3 text-sm font-bold text-sky-100 transition hover:border-sky-300/40 hover:bg-sky-300/20"
+            >
+              <MapPin className="h-4 w-4" />
+              Open Street View
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
           {selectedVoteSegment && <SegmentVote segment={selectedVoteSegment} onPublished={refreshApprovedOverlay} />}
+          {selectedDismountSegment && <DismountReport segment={selectedDismountSegment} />}
           <div className="mt-3 rounded-lg bg-white/5 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why this score</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{selectedIsDismount ? 'Why this is grey' : 'Why this score'}</p>
             <p className="mt-1 text-sm leading-relaxed text-slate-200">{String(selected.reason || 'No explanation available')}</p>
           </div>
+          {selectedOsmId && (
+            <section className="mt-3 rounded-lg border border-white/10 bg-white/[0.035] p-3" aria-labelledby="osm-access-heading">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 id="osm-access-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Current OSM access</h3>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">Live tags can be newer than the OSM snapshot used to build this LTS score.</p>
+                </div>
+                {selectedOsmFeatureDetails?.updatedAt && (
+                  <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+                    {new Date(selectedOsmFeatureDetails.updatedAt).toLocaleDateString('en-AU')}
+                  </span>
+                )}
+              </div>
+              {osmFeatureLoading && <p className="mt-3 text-sm text-slate-300">Loading OpenStreetMap tags…</p>}
+              {selectedOsmFeatureError && <p className="mt-3 rounded-md border border-amber-300/20 bg-amber-300/10 p-2 text-xs text-amber-100">{selectedOsmFeatureError}</p>}
+              {selectedBikeAccess && (
+                <div className={`mt-3 rounded-lg border p-3 ${selectedBikeAccessClass}`}>
+                  <p className="text-sm font-black">Bike access: {selectedBikeAccess.label}</p>
+                  <p className="mt-1 text-xs leading-relaxed opacity-90">{selectedBikeAccess.detail}</p>
+                </div>
+              )}
+              {selectedOsmFeatureDetails && (
+                <details className="mt-3">
+                  <summary className="min-h-11 cursor-pointer select-none py-3 text-sm font-bold text-sky-300">Show all {Object.keys(selectedOsmFeatureDetails.tags).length} OSM tags</summary>
+                  {Object.keys(selectedOsmFeatureDetails.tags).length > 0 ? (
+                    <dl className="grid max-h-64 gap-1.5 overflow-y-auto rounded-lg bg-slate-950/70 p-2 text-xs">
+                      {orderedOsmTags(selectedOsmFeatureDetails.tags).map(([key, value]) => (
+                        <div key={key} className="grid grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-2 border-b border-white/5 py-1.5 last:border-0">
+                          <dt><code className="break-all text-cyan-300">{key}</code></dt>
+                          <dd><code className="break-all text-slate-200">{value}</code></dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : <p className="rounded-lg bg-slate-950/70 p-2 text-xs text-slate-400">This OSM feature currently has no tags.</p>}
+                </details>
+              )}
+            </section>
+          )}
           {selected.traffic_aadt && (
             <div className="mt-3 rounded-lg border border-sky-400/20 bg-sky-400/10 p-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -2241,6 +2582,20 @@ export default function LtsLabPage() {
           )}
           {selectedOsmUrl && <a href={selectedOsmUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex text-sm font-semibold text-sky-400 hover:text-sky-300">Inspect this feature in OpenStreetMap →</a>}
         </aside>
+      )}
+
+      {showProjectLanding && (
+        <ProjectLanding
+          onExplore={() => setShowProjectLanding(false)}
+          onSearch={() => {
+            setShowProjectLanding(false);
+            setSearchExpanded(true);
+          }}
+          onLearn={() => {
+            setShowProjectLanding(false);
+            setShowAbout(true);
+          }}
+        />
       )}
 
       {showAbout && (
@@ -2308,7 +2663,7 @@ export default function LtsLabPage() {
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">Map delivery</p>
-                    <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered with MapLibre over a simplified OpenFreeMap base map. An optional Mapbox Satellite overlay can be faded from transparent to opaque; it changes only the background imagery, never the classification or routing. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Short white-backed purple dashes identify OSM-tagged MTB trails. Short white-backed cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
+                    <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered with MapLibre over a simplified OpenFreeMap base map. An optional Mapbox Satellite overlay can be faded from transparent to opaque; it changes only the background imagery, never the classification or routing. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Grey dashes identify <code>bicycle=dismount</code> walk-bike links and deliberately carry no LTS score. Short white-backed purple dashes identify OSM-tagged MTB trails. Short white-backed cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">Experimental routing</p>
@@ -2336,6 +2691,7 @@ export default function LtsLabPage() {
                     <thead className="bg-white/10 text-slate-300"><tr><th className="px-3 py-2">Facility or road context</th><th className="px-3 py-2">Exact base LTS rule</th></tr></thead>
                     <tbody className="divide-y divide-white/10 align-top">
                       <tr><td className="px-3 py-2 font-semibold text-slate-200">Traffic-free path or protected lane</td><td className="px-3 py-2">LTS 1. This includes mapped cycleways/paths and on-road cycling treatments tagged as track, protected, separate or separated.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Dismount / walk-bike link</td><td className="px-3 py-2">No LTS score. A way tagged <code>bicycle=dismount</code> is shown grey and may remain routable with a strong penalty, but is not represented as permission to ride.</td></tr>
                       <tr><td className="px-3 py-2 font-semibold text-slate-200">Slow local street</td><td className="px-3 py-2">A living street, or a local road at 30 km/h or less: LTS 1 with one lane per direction; LTS 2 with more. Roundabouts do not receive this shortcut.</td></tr>
                       <tr><td className="px-3 py-2 font-semibold text-slate-200">Buffered painted lane</td><td className="px-3 py-2">LTS 2 at no more than 50 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4.</td></tr>
                       <tr><td className="px-3 py-2 font-semibold text-slate-200">Unbuffered painted lane</td><td className="px-3 py-2">LTS 2 at no more than 40 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4. Any mapped adjacent kerbside parking then adds one LTS level, capped at LTS 4.</td></tr>
@@ -2364,6 +2720,7 @@ export default function LtsLabPage() {
                   </table>
                 </div>
                 <p className="mt-3 text-xs text-slate-400">Traffic volume is applied after the base rule. It may only raise a segment with no cycling facility, sharrows or a shoulder. It never lowers a score and currently does not alter a path, protected lane, buffered lane or painted lane. A low-confidence SCATS estimate may raise a segment by no more than one level.</p>
+                <p className="mt-2 text-xs text-slate-400">Community votes remain visible as local observations, but they cannot lower the published result below the classifier&apos;s facility-aware score when an explicit speed limit is 70 km/h or higher. The mapped speed or facility evidence must be corrected before that safety floor can change.</p>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-xs text-sky-50">
                     <h4 className="font-semibold text-white">Crossing scores</h4>
@@ -2387,10 +2744,11 @@ export default function LtsLabPage() {
                 <p className="mt-2">Crossing dots are classified by the same rules and add point penalties equivalent to a 0 m, 20 m, 80 m or 250 m detour for LTS 1–4. This encourages the router to prefer signals, refuges and calmer crossings without making a difficult crossing an absolute barrier.</p>
                 <p className="mt-2">The Gravel switch applies only to explicitly known unsealed surfaces. With Gravel off, those links receive a strong additional cost; unknown surfaces are not assumed unsealed. MTB trails with easy or unspecified difficulty remain connected but carry a strong commuter penalty. Trails tagged <code>mtb:scale=2</code> or higher, IMBA 2 or higher, downhill, freeride or trial are treated as clearly technical and excluded from commuter routing.</p>
                 <p className="mt-2">A generic path, track or bridleway without explicit bicycle access or normal bicycle-route membership remains available only with an additional unverified-trail penalty. Hiking/foot route membership makes that warning more specific but does not prohibit cycling by itself. A <code>sac_scale</code> hiking-difficulty tag without positive cycling or MTB evidence is excluded from commuter routing.</p>
+                <p className="mt-2">A link explicitly tagged <code>bicycle=dismount</code> remains connected with a strong penalty so a station crossing or short passage does not break the route. It is shown grey without an LTS score because the mapped instruction is to walk the bike, not ride it. Rider reports that signage is missing are saved for access verification and do not silently erase the OSM restriction.</p>
                 <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-400/10 p-4">
                   <h4 className="font-semibold text-white">Handling unavoidable high-stress gaps</h4>
                   <p className="mt-2 text-xs text-violet-50">The values 1.0, 1.8, 5.0 and 15.0 are deliberately separated experimental preference weights, not measured speeds, crash risks or final calibrated constants. Before other routing costs are considered, one kilometre at LTS 2, 3 or 4 therefore contributes roughly the same route cost as 1.8, 5 or 15 kilometres at LTS 1. The spacing makes the router mildly prefer LTS 1 over LTS 2, strongly avoid LTS 3 and treat LTS 4 as a last resort, while keeping every legal cycling connection available where the network has no practical alternative. These values still need comparison against routes chosen by riders.</p>
-                  <p className="mt-2 text-xs text-violet-50">The model assumes the rider remains on the bicycle throughout the route. It does not silently switch to walking, change travel speed or instruct the rider to dismount. The LTS 4 weight represents a strong preference against riding a stressful link; it is not an estimate of walking time or travel speed. A future hybrid model could offer dismounting as an explicit alternative, but the present route only models cycling.</p>
+                  <p className="mt-2 text-xs text-violet-50">The model normally assumes the rider remains on the bicycle. The sole explicit exception is an OSM <code>bicycle=dismount</code> connector: the router may use it with a strong penalty and the map marks it grey as a walk-bike section. The current travel-time estimate does not yet separately model walking speed, so riders should allow extra time. LTS 4 still represents riding a stressful link; it is not a walking estimate.</p>
                 </div>
                 <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-100">
                   {USING_LOCAL_ENRICHED_ROUTER

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  applyHardSpeedRuleFloor,
   emptyRideabilityCounts,
   emptyVoteCounts,
   leadingVote,
@@ -20,6 +21,23 @@ test('averages higher-stress votes with the source LTS and rounds up', () => {
   assert.equal(projectApprovedLts(2, 3), 3);
   assert.equal(projectApprovedLts(2, 4), 3);
   assert.equal(projectApprovedLts(3, 4), 4);
+});
+
+test('records votes without lowering an explicit 70 km/h safety-rule result', () => {
+  assert.equal(projectApprovedLts(4, 1, 70), 4);
+  assert.equal(projectApprovedLts(4, 1.5, 70), 4);
+  assert.equal(projectApprovedLts(4, 2, 70), 4);
+  assert.equal(projectApprovedLts(4, 3, 70), 4);
+});
+
+test('preserves the classifier facility result as the floor on a 70 km/h road', () => {
+  assert.equal(projectApprovedLts(3, 1.5, 70), 3);
+  assert.equal(projectApprovedLts(1, 1.5, 70), 1.5);
+});
+
+test('clamps an older published approval when it is served to the map', () => {
+  assert.equal(applyHardSpeedRuleFloor(4, 1.5, 70), 4);
+  assert.equal(applyHardSpeedRuleFloor(3, 2, 80), 3);
 });
 
 test('a tied LTS vote resolves conservatively to the higher stress', () => {

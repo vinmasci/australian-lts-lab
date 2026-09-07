@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 const ARCHIVE_URLS = {
   victoria: process.env.NEXT_PUBLIC_VICTORIA_PMTILES_URL
-    || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/victoria-lts-9b3a9942.pmtiles',
+    || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/victoria-lts-5a1325e7.pmtiles',
   nsw: process.env.NEXT_PUBLIC_NSW_PMTILES_URL
     || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/nsw-lts-d4fdc970.pmtiles',
   queensland: process.env.NEXT_PUBLIC_QUEENSLAND_PMTILES_URL
