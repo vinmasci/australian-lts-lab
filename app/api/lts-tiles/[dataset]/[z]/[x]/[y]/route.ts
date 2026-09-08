@@ -1,4 +1,6 @@
 import { NextRequest } from 'next/server';
+import { promisify } from 'node:util';
+import { gzip as gzipCallback } from 'node:zlib';
 import { PMTiles, SharedPromiseCache } from 'pmtiles';
 
 export const runtime = 'nodejs';
@@ -29,6 +31,7 @@ type Dataset = keyof typeof ARCHIVE_URLS;
 // cached at the HTTP edge and by the mobile map SDKs.
 const directoryCache = new SharedPromiseCache(256);
 const archives = new Map<Dataset, PMTiles>();
+const gzip = promisify(gzipCallback);
 
 function archiveFor(dataset: Dataset): PMTiles {
   const existing = archives.get(dataset);
@@ -67,11 +70,18 @@ export async function GET(
     const tile = await archiveFor(path.dataset).getZxy(z, x, y, request.signal);
     if (!tile) return new Response(null, { status: 204 });
 
-    return new Response(tile.data, {
+    // PMTiles transparently expands its internally compressed tile payloads.
+    // Recompress the MVT for HTTP delivery: metropolitan low-zoom tiles can be
+    // several megabytes raw, while mobile map SDKs natively accept gzip.
+    const encodedTile = await gzip(tile.data, { level: 6 });
+
+    return new Response(new Uint8Array(encodedTile), {
       headers: {
         'Content-Type': 'application/vnd.mapbox-vector-tile',
+        'Content-Encoding': 'gzip',
         'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000',
         'Access-Control-Allow-Origin': '*',
+        'Vary': 'Accept-Encoding',
       },
     });
   } catch (error) {
