@@ -8,6 +8,7 @@ import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, Loc
 import { Protocol } from 'pmtiles';
 import { DismountReport } from '@/app/components/DismountReport';
 import { SegmentVote } from '@/app/components/SegmentVote';
+import { CommunityActivity } from '@/app/components/CommunityActivity';
 import { ltsAppPath } from '@/lib/client-path';
 import type { DismountReportSegment } from '@/lib/dismount-reporting';
 import { googleStreetViewUrl } from '@/lib/google-maps';
@@ -1843,7 +1844,7 @@ export default function LtsLabPage() {
       )}
 
       <header className="lts-surface mobile-map-header lts-open-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 shadow-2xl md:left-4 md:right-4 md:flex-nowrap md:gap-3 md:px-4">
-        <div className="shrink-0"><img src={process.env.NODE_ENV === 'production' ? 'https://australian-lts-lab.vercel.app/ausbug-logo.png' : '/ausbug-logo.png'} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
+        <div className="shrink-0"><img src={process.env.NODE_ENV === 'production' ? 'https://australian-lts-lab.vercel.app/ausbug-logo-transparent.png' : '/ausbug-logo-transparent.png'} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>AusBUG <span className="font-normal text-slate-400">LTS map</span></h1>
         </div>
@@ -1873,6 +1874,22 @@ export default function LtsLabPage() {
         >
           {Object.entries(DATASETS).map(([key, dataset]) => <option key={key} value={key}>{dataset.label}</option>)}
         </select>
+        <CommunityActivity onShowRoad={(dataset, center) => {
+          if (!Object.prototype.hasOwnProperty.call(DATASETS, dataset)) return;
+          setShowAbout(false);
+          setMapPanelExpanded(false);
+          setSearchExpanded(false);
+          if (dataset === datasetKey) {
+            mapRef.current?.flyTo({ center, zoom: 16 });
+          } else {
+            startupViewRef.current = { dataset: dataset as DatasetKey, center };
+            setRouteMode(false);
+            resetRouteHistory();
+            setSelected(null);
+            setMapLoading(true);
+            setDatasetKey(dataset as DatasetKey);
+          }
+        }} />
         <button
           type="button"
           onClick={() => setShowAbout(true)}
@@ -2594,7 +2611,7 @@ export default function LtsLabPage() {
                 <ol className="about-score-steps">
                   <li><strong>Check access.</strong><span>Check whether cycling is permitted. Dismount links are grey and have no LTS score.</span></li>
                   <li><strong>Assess each direction.</strong><span>Use speed, lanes and cycling facilities to set the base score.</span></li>
-                  <li><strong>Apply safeguards.</strong><span>Traffic volume can raise the score. Votes cannot bypass the high-speed floor.</span></li>
+                  <li><strong>Apply community adjustments.</strong><span>LTS 4 roads use the average of the base score and approved vote, rounded up. LTS 2 → 1.5 stays a direct adjustment.</span></li>
                   <li><strong>Display the result.</strong><span>The map shows the worse direction. Your route uses the direction you ride.</span></li>
                 </ol>
                 <details className="about-subdetail"><summary>Access, directions and evidence</summary>
@@ -2650,7 +2667,7 @@ export default function LtsLabPage() {
                   </table>
                 </div>
                 <p className="mt-3 text-xs text-slate-400">Traffic volume is applied after the base rule. It may only raise a segment with no cycling facility, sharrows or a shoulder. It never lowers a score and currently does not alter a path, protected lane, buffered lane or painted lane. A low-confidence SCATS estimate may raise a segment by no more than one level.</p>
-                <p className="mt-2 text-xs text-slate-400">Community votes remain visible as local observations, but they cannot lower the published result below the classifier&apos;s facility-aware score when an explicit speed limit is 70 km/h or higher. The mapped speed or facility evidence must be corrected before that safety floor can change.</p>
+                <p className="mt-2 text-xs text-slate-400">Community-adjusted LTS 4 roads use (4 + approved vote) ÷ 2, rounded up, at every speed. Votes of 1, 1.5 or 2 give LTS 3; votes of 3 or 4 retain LTS 4. LTS 2 roads voted to 1.5 still become 1.5 directly. Speed limits and access restrictions are unchanged. Community adjustments are not independently verified safety assessments.</p>
                 </details>
                 <details className="about-subdetail"><summary>Crossings and what LTS does not measure</summary>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">

@@ -66,6 +66,35 @@ export async function rejectCommunitySegment(dataset: string, segmentId: string,
 
 export async function publishedCommunityApprovals(dataset: string): Promise<Array<Record<string, unknown>>> {
   if (firestoreConfigured()) return listPublishedApprovals(dataset) as Promise<Array<Record<string, unknown>>>;
+  if (process.env.NODE_ENV === 'development') {
+    // Read the public production records for previews, rather than silently
+    // painting an empty development store. Never forward credentials or writes.
+    const read = async (params: URLSearchParams) => {
+      const response = await fetch(`https://ausbug.app/ltsmap/api/lts-votes?${params}`, {
+        next: { revalidate: 60 }, signal: AbortSignal.timeout(12000),
+      });
+      if (!response.ok) throw new Error('Published community records are unavailable.');
+      return response.json();
+    };
+    const collection = await read(new URLSearchParams({ dataset, approved: '1' })) as {
+      features: Array<{ properties: { segment_id: string } }>;
+    };
+    const approvals: Array<Record<string, unknown>> = [];
+    // Bound concurrent requests; use each original vote target and base score
+    // so preview calculations do not average an already-adjusted score again.
+    for (let start = 0; start < collection.features.length; start += 6) {
+      const batch = await Promise.all(collection.features.slice(start, start + 6).map(async feature => {
+        const result = await read(new URLSearchParams({ dataset, segmentId: feature.properties.segment_id }));
+        return result.approval as LtsApproval | null;
+      }));
+      for (const approval of batch) {
+        if (approval && approval.status !== 'needs_review' && approval.status !== 'orphaned') {
+          approvals.push(approval as unknown as Record<string, unknown>);
+        }
+      }
+    }
+    return approvals;
+  }
   return (await listVoteRecords<LtsApproval>(`approvals/${dataset}/`, 1000))
     .filter((approval) => approval.dataset === dataset) as unknown as Array<Record<string, unknown>>;
 }

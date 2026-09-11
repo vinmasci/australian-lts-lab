@@ -12,9 +12,14 @@ import {
 } from '@/lib/lts-voting';
 
 test('publishes approved LTS 1, 1.5 and 2 directly', () => {
-  assert.equal(projectApprovedLts(4, 1), 1);
-  assert.equal(projectApprovedLts(4, 1.5), 1.5);
-  assert.equal(projectApprovedLts(4, 2), 2);
+  assert.equal(projectApprovedLts(4, 1), 3);
+  assert.equal(projectApprovedLts(4, 1.5), 3);
+  assert.equal(projectApprovedLts(4, 2), 3);
+  for (const speed of [30, 70, 80, 100, undefined]) {
+    assert.equal(projectApprovedLts(2, 1.5, speed), 1.5);
+    assert.equal(projectApprovedLts(4, 1.5, speed), 3);
+    assert.equal(applyHardSpeedRuleFloor(4, projectApprovedLts(4, 1.5, speed), speed), 3);
+  }
 });
 
 test('averages higher-stress votes with the source LTS and rounds up', () => {
@@ -24,9 +29,9 @@ test('averages higher-stress votes with the source LTS and rounds up', () => {
 });
 
 test('records votes without lowering an explicit 70 km/h safety-rule result', () => {
-  assert.equal(projectApprovedLts(4, 1, 70), 4);
-  assert.equal(projectApprovedLts(4, 1.5, 70), 4);
-  assert.equal(projectApprovedLts(4, 2, 70), 4);
+  assert.equal(projectApprovedLts(4, 1, 70), 3);
+  assert.equal(projectApprovedLts(4, 1.5, 70), 3);
+  assert.equal(projectApprovedLts(4, 2, 70), 3);
   assert.equal(projectApprovedLts(4, 3, 70), 4);
 });
 
@@ -36,7 +41,7 @@ test('preserves the classifier facility result as the floor on a 70 km/h road', 
 });
 
 test('clamps an older published approval when it is served to the map', () => {
-  assert.equal(applyHardSpeedRuleFloor(4, 1.5, 70), 4);
+  assert.equal(applyHardSpeedRuleFloor(4, 1.5, 70), 3);
   assert.equal(applyHardSpeedRuleFloor(3, 2, 80), 3);
 });
 
@@ -96,7 +101,17 @@ test('publishes signed-in contributor names and comments without private identif
 
 test('does not expose removed or old anonymous comments', () => {
   assert.deepEqual(publishedLtsContributions([storedVote], false), []);
-  assert.deepEqual(publishedLtsContributions([{ ...storedVote, contributorUid: undefined }], true), []);
+  const [legacy] = publishedLtsContributions([{ ...storedVote, contributorUid: undefined }], true);
+  assert.equal(legacy.contributorName, storedVote.contributorName);
+  assert.equal(legacy.targetLts, storedVote.targetLts);
+  assert.equal(legacy.observation, '');
+  assert.equal(legacy.ltsReason, '');
+});
+
+test('shows approved votes even without comments, but never email display names', () => {
+  const [vote] = publishedLtsContributions([{ ...storedVote, contributorName: 'rider@example.com', ltsReason: '', note: '' }], true);
+  assert.equal(vote.contributorName, 'AusBUG rider');
+  assert.equal(vote.targetLts, 1.5);
 });
 
 test('does not use an email prefix as a public display name', () => {

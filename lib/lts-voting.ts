@@ -190,26 +190,29 @@ function publicContributorName(vote: StoredLtsVote): string {
     ? vote.contributorName.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60)
     : '';
   const emailPrefix = typeof vote.contributorEmail === 'string' ? vote.contributorEmail.split('@')[0]?.toLowerCase() : '';
-  return name && name.toLowerCase() !== emailPrefix ? name : 'AusBUG rider';
+  return name && !name.includes('@') && name.toLowerCase() !== emailPrefix ? name : 'AusBUG rider';
 }
 
 export function publishedLtsContributions(votes: StoredLtsVote[], published: boolean): PublicLtsContribution[] {
   if (!published) return [];
   return votes
-    .filter((vote) => Boolean(vote.contributorUid) && (Boolean(vote.ltsReason?.trim()) || Boolean(vote.note?.trim())))
+    .filter((vote) => isLtsVoteLevel(vote.targetLts) || isRideabilityLevel(vote.rideability))
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .map((vote) => ({
       contributorName: publicContributorName(vote),
       targetLts: isLtsVoteLevel(vote.targetLts) ? vote.targetLts : null,
       rideability: isRideabilityLevel(vote.rideability) ? vote.rideability : null,
       rideabilityIssues: (vote.rideabilityIssues || []).filter(isRideabilityIssue),
-      ltsReason: typeof vote.ltsReason === 'string' ? vote.ltsReason.trim().slice(0, 500) : '',
-      observation: typeof vote.note === 'string' ? vote.note.trim().slice(0, 500) : '',
+      ltsReason: vote.contributorUid && typeof vote.ltsReason === 'string' ? vote.ltsReason.trim().slice(0, 500) : '',
+      observation: vote.contributorUid && typeof vote.note === 'string' ? vote.note.trim().slice(0, 500) : '',
       updatedAt: vote.updatedAt,
     }));
 }
 
 export function hardSpeedRuleFloor(currentLts: number, maxspeed?: number): LtsVoteLevel | null {
+  // Community-adjusted LTS 4 roads remain at least LTS 3 at every speed.
+  if (currentLts >= 4) return 3;
+  if (currentLts <= 2) return null;
   if (!Number.isFinite(maxspeed) || Number(maxspeed) < 70) return null;
   return Math.min(4, Math.max(1, Math.ceil(currentLts))) as LtsVoteLevel;
 }
@@ -220,7 +223,9 @@ export function applyHardSpeedRuleFloor(currentLts: number, proposedLts: LtsVote
 }
 
 export function projectApprovedLts(currentLts: number, targetLts: LtsVoteLevel, maxspeed?: number): LtsVoteLevel {
-  const projected = targetLts < 3
+  const projected = currentLts >= 4
+    ? Math.min(4, Math.ceil((currentLts + targetLts) / 2)) as LtsVoteLevel
+    : targetLts < 3
     ? targetLts
     : Math.min(4, Math.max(1, Math.ceil((currentLts + targetLts) / 2))) as LtsVoteLevel;
   return applyHardSpeedRuleFloor(currentLts, projected, maxspeed);

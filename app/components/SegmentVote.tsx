@@ -281,10 +281,37 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
         <Vote className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
         <div>
           <h3 id="segment-vote-title" className="text-sm font-bold text-white">Vote on this segment</h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">Sign in with an existing AusBUG account. Your display name, reasoning and observation publish immediately; your email stays private.</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">Anyone can read published votes. Sign in to contribute. Your display name and explanation appear after review; your email stays private.</p>
         </div>
       </div>
 
+      {!loading && summary.publicContributions.length > 0 && (
+        <section className="mt-4 border-t border-white/10 pt-4" aria-labelledby="community-comments-title">
+          <div className="flex items-center gap-2">
+            <UserRound className="h-4 w-4 text-cyan-300" aria-hidden="true" />
+            <h4 id="community-comments-title" className="text-xs font-bold text-white">Community votes</h4>
+          </div>
+          <div className="mt-2 space-y-2">
+            {summary.publicContributions.map((contribution, index) => (
+              <article key={`${contribution.updatedAt}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/45 p-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-bold text-white">{contribution.contributorName}</span>
+                  {contribution.targetLts !== null && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-black text-white" style={{ background: LTS_VOTE_COLOURS[contribution.targetLts] }}>LTS {contribution.targetLts}</span>}
+                  {contribution.rideability !== null && <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-bold text-violet-200">R{contribution.rideability}</span>}
+                  <time className="ml-auto text-[10px] text-slate-600">{new Date(contribution.updatedAt).toLocaleDateString('en-AU')}</time>
+                </div>
+                {contribution.ltsReason && <p className="mt-1.5 text-xs leading-relaxed text-slate-200">{contribution.ltsReason}</p>}
+                {contribution.observation && <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{contribution.observation}</p>}
+                {contribution.rideabilityIssues.length > 0 && <p className="mt-1.5 text-[10px] text-violet-200">Surface: {contribution.rideabilityIssues.map((issue) => RIDEABILITY_ISSUE_LABELS[issue]).join(', ')}</p>}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+      {!loading && <p className="mt-3 text-sm">{summary.total} traffic-stress votes · {summary.rideabilityTotal} rideability ratings</p>}
+      {!loading && summary.total > 0 && <p className="mt-1 text-sm">{Object.entries(summary.counts).filter(([, count]) => count > 0).map(([level, count]) => `LTS ${level}: ${count}`).join(' · ')}</p>}
+      {!loading && summary.total > 0 && !summary.publicContributions.length && <p className="mt-1 text-sm">Voter names are not available in this public record.</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-rose-700">{error}</p>}
       {!authReady ? (
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Checking your AusBUG account…</div>
       ) : !user ? (
@@ -520,29 +547,6 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
         </>
       )}
 
-      {!loading && summary.publicContributions.length > 0 && (
-        <section className="mt-4 border-t border-white/10 pt-4" aria-labelledby="community-comments-title">
-          <div className="flex items-center gap-2">
-            <UserRound className="h-4 w-4 text-cyan-300" aria-hidden="true" />
-            <h4 id="community-comments-title" className="text-xs font-bold text-white">Community comments</h4>
-          </div>
-          <div className="mt-2 space-y-2">
-            {summary.publicContributions.map((contribution, index) => (
-              <article key={`${contribution.updatedAt}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/45 p-2.5">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs font-bold text-white">{contribution.contributorName}</span>
-                  {contribution.targetLts !== null && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-black text-white" style={{ background: LTS_VOTE_COLOURS[contribution.targetLts] }}>LTS {contribution.targetLts}</span>}
-                  {contribution.rideability !== null && <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-bold text-violet-200">R{contribution.rideability}</span>}
-                  <time className="ml-auto text-[10px] text-slate-600">{new Date(contribution.updatedAt).toLocaleDateString('en-AU')}</time>
-                </div>
-                {contribution.ltsReason && <p className="mt-1.5 text-xs leading-relaxed text-slate-200">{contribution.ltsReason}</p>}
-                {contribution.observation && <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{contribution.observation}</p>}
-                {contribution.rideabilityIssues.length > 0 && <p className="mt-1.5 text-[10px] text-violet-200">Surface: {contribution.rideabilityIssues.map((issue) => RIDEABILITY_ISSUE_LABELS[issue]).join(', ')}</p>}
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
 
       {help && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">

@@ -353,6 +353,30 @@ export async function listFirestoreReviewItems(status: ModerationStatus = 'pendi
   return items.sort((left, right) => (right.record.lastContributionAt || '').localeCompare(left.record.lastContributionAt || ''));
 }
 
+// Bounded, newest-first public activity; moderation and privacy are applied by
+// the endpoint, never by exposing raw Firestore documents to the browser.
+export async function recentCommunitySegments(cursor?: string): Promise<{ items: StoredReviewItem[]; nextCursor: string | null }> {
+  const db = communityFirestore();
+  let query = db.collection(COLLECTIONS.segments).orderBy('lastContributionAt', 'desc').limit(21);
+  if (cursor) {
+    const previous = await db.collection(COLLECTIONS.segments).doc(cursor).get();
+    if (!previous.exists) return { items: [], nextCursor: null };
+    query = query.startAfter(previous);
+  }
+  const snapshot = await query.get();
+  const documents = snapshot.docs.slice(0, 20);
+  const items = await Promise.all(documents.map(async document => {
+    const record = decodeSegmentRecord(document.data());
+    const approvalSnapshot = await db.collection(COLLECTIONS.approvals).doc(document.id).get();
+    const approval = approvalSnapshot.exists ? decodeApproval(approvalSnapshot.data()!) : null;
+    const visible = record.moderationStatus === 'approved' && approval
+      && approval.status !== 'needs_review' && approval.status !== 'orphaned';
+    const votes = visible ? (await document.ref.collection('votes').get()).docs.map(vote => decodeVote(vote.data())) : [];
+    return { documentId: document.id, record, approval, votes };
+  }));
+  return { items, nextCursor: snapshot.docs.length > 20 ? documents[documents.length - 1].id : null };
+}
+
 export async function listPublishedApprovals(dataset: string, maximum = 5000): Promise<DocumentData[]> {
   const snapshot = await communityFirestore().collection(COLLECTIONS.published)
     .where('dataset', '==', dataset).limit(maximum).get();

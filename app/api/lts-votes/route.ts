@@ -30,6 +30,7 @@ import {
 } from '@/lib/lts-community-store';
 import { enforceVoteRateLimit, RateLimitError } from '@/lib/lts-rate-limit';
 import { authenticatedContributor } from '@/lib/lts-review-auth';
+import { firestoreConfigured } from '@/lib/lts-firestore';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,9 +107,9 @@ async function summary(dataset: string, segmentId: string, contributorUid?: stri
   const rideabilityTotal = Object.values(rideabilityCounts).reduce((sum, count) => sum + count, 0);
   const publicApproval = approval ? {
     ...approval,
-    approvedLts: applyHardSpeedRuleFloor(
+    approvedLts: projectApprovedLts(
       approval.baseLts,
-      approval.approvedLts,
+      approval.targetLts,
       approval.segment?.maxspeed,
     ),
     reviewedBy: undefined,
@@ -154,9 +155,9 @@ export async function GET(request: NextRequest) {
           .map((approval) => {
             const segment = approval.segment as VoteSegment | undefined;
             const baseLts = Number(approval.baseLts ?? segment?.currentLts);
-            const publishedLts = applyHardSpeedRuleFloor(
+            const publishedLts = projectApprovedLts(
               Number.isFinite(baseLts) ? baseLts : Number(approval.approvedLts),
-              approval.approvedLts as LtsVoteLevel,
+              (approval.targetLts ?? approval.approvedLts) as LtsVoteLevel,
               segment?.maxspeed,
             );
             return ({
@@ -178,6 +179,17 @@ export async function GET(request: NextRequest) {
 
     const segmentId = request.nextUrl.searchParams.get('segmentId') || '';
     if (!validIdentifier(segmentId, 160)) return NextResponse.json({ error: 'Invalid segment.' }, { status: 400 });
+    if (process.env.NODE_ENV === 'development' && !firestoreConfigured() && !request.headers.has('authorization')) {
+      const params = new URLSearchParams({ dataset, segmentId });
+      const response = await fetch(`https://ausbug.app/ltsmap/api/lts-votes?${params}`, { cache: 'no-store', signal: AbortSignal.timeout(12000) });
+      if (!response.ok) throw new Error('Public votes are temporarily unavailable.');
+      const result = await response.json() as SegmentVoteSummary;
+      if (result.approval) {
+        const approval = result.approval;
+        approval.approvedLts = projectApprovedLts(approval.baseLts, approval.targetLts, approval.segment?.maxspeed);
+      }
+      return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
+    }
     const contributor = await authenticatedContributor(request);
     return NextResponse.json(await summary(dataset, segmentId, contributor?.uid), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

@@ -1,7 +1,7 @@
 import { VectorTile } from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import { fromVectorTileJs } from 'vt-pbf';
-import { applyHardSpeedRuleFloor, isLtsVoteLevel, type LtsVoteLevel } from './lts-voting';
+import { applyHardSpeedRuleFloor, projectApprovedLts, isLtsVoteLevel, type LtsVoteLevel } from './lts-voting';
 
 export function tileApprovals(dataset: string, records: Array<Record<string, unknown>>): Map<string, LtsVoteLevel> {
   const ratings = new Map<string, LtsVoteLevel>();
@@ -12,7 +12,7 @@ export function tileApprovals(dataset: string, records: Array<Record<string, unk
     if (!id) continue;
     const segment = record.segment as { maxspeed?: number; currentLts?: number } | undefined;
     const base = Number(record.baseLts ?? segment?.currentLts ?? record.approvedLts);
-    ratings.set(id[1], applyHardSpeedRuleFloor(base, record.approvedLts, segment?.maxspeed));
+    ratings.set(id[1], base >= 4 ? projectApprovedLts(base, isLtsVoteLevel(record.targetLts) ? record.targetLts : record.approvedLts, segment?.maxspeed) : applyHardSpeedRuleFloor(base, record.approvedLts, segment?.maxspeed));
   }
   return ratings;
 }

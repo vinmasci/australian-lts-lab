@@ -29,7 +29,7 @@ test('shared tile changes published roads, preserves geometry, crossings, access
   assert.equal(output.feature(0).properties.base_lts, 2);
   assert.equal(output.feature(0).properties.bicycle, 'dismount');
   assert.deepEqual(output.feature(1).properties, original.feature(1).properties);
-  assert.equal(output.feature(2).properties.lts, 4);
+  assert.equal(output.feature(2).properties.lts, 3);
   assert.equal(output.feature(2).properties.lts_backward, 3);
   assert.deepEqual(output.feature(3).properties, original.feature(3).properties);
 });
@@ -44,7 +44,7 @@ test('only current published segment ratings apply, using approved rather than r
     { dataset: 'victoria', segmentId: 'segment:w6', approvedLts: 9 },
     { dataset: 'victoria', segmentId: 'segment:w7', approvedLts: 1, baseLts: 4, segment: { maxspeed: 70 } },
   ];
-  assert.deepEqual([...tileApprovals('victoria', records)], [['w50882098', 1], ['w2', 1.5], ['w7', 4]]);
+  assert.deepEqual([...tileApprovals('victoria', records)], [['w50882098', 1], ['w2', 1.5], ['w7', 3]]);
 });
 
 test('empty / nonmatching approval snapshots return byte-identical base tiles', () => {
