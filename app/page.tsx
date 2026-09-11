@@ -1976,7 +1976,7 @@ export default function LtsLabPage() {
       )}
 
       <header className="lts-surface mobile-map-header lts-open-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 shadow-2xl md:left-4 md:right-4 md:flex-nowrap md:gap-3 md:px-4">
-        <div className="shrink-0"><img src={ltsAppPath('/ausbug-logo.png')} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
+        <div className="shrink-0"><img src={process.env.NODE_ENV === 'production' ? 'https://australian-lts-lab.vercel.app/ausbug-logo.png' : '/ausbug-logo.png'} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>AusBUG <span className="font-normal text-slate-400">LTS map</span></h1>
         </div>
