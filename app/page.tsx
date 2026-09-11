@@ -4,7 +4,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { ArrowRight, Bike, BriefcaseBusiness, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, School, Search, ShieldCheck, Trash2, Undo2, Vote, X } from 'lucide-react';
+import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, Search, Trash2, Undo2, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 import { DismountReport } from '@/app/components/DismountReport';
 import { SegmentVote } from '@/app/components/SegmentVote';
@@ -26,171 +26,6 @@ interface PlaceSearchResult {
   bounds: [number, number, number, number] | null;
 }
 
-interface ProjectLandingProps {
-  onExplore: () => void;
-  onSearch: () => void;
-  onLearn: () => void;
-}
-
-function ProjectLanding({ onExplore, onSearch, onLearn }: ProjectLandingProps) {
-  return (
-    <section className="absolute inset-0 z-[60] overflow-y-auto bg-slate-950 text-white" aria-labelledby="lts-project-title">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[44rem] overflow-hidden" aria-hidden="true">
-        <div className="absolute left-[-8rem] top-20 h-80 w-80 rounded-full bg-emerald-400/15 blur-3xl" />
-        <div className="absolute right-[-8rem] top-[-4rem] h-96 w-96 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.8) 1px, transparent 1px)', backgroundSize: '42px 42px' }} />
-      </div>
-
-      <nav className="relative mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8 sm:py-7">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 text-slate-950"><Bike className="h-5 w-5" /></span>
-          <div>
-            <p className="text-sm font-black tracking-tight">AusBUG LTS</p>
-            <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-slate-500">Community map</p>
-          </div>
-        </div>
-        <button type="button" onClick={onExplore} className="flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-bold text-white transition hover:border-emerald-300/50 hover:bg-white/10">
-          Open map <ArrowRight className="h-4 w-4" />
-        </button>
-      </nav>
-
-      <div className="relative mx-auto w-full max-w-6xl px-5 pb-16 pt-8 sm:px-8 sm:pb-24 sm:pt-16">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_.95fr] lg:gap-16">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1.5 text-xs font-bold text-emerald-200">
-              <Vote className="h-3.5 w-3.5" /> Built from local knowledge
-            </div>
-            <h1 id="lts-project-title" className="mt-6 max-w-3xl text-4xl font-black leading-[1.02] tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">
-              Help build Australia&apos;s <span className="text-emerald-300">unofficial bike highways.</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-300 sm:text-xl">
-              Connect calm streets, paths and crossings into cycling corridors that help children get to school and people get to work—with the roads chosen by the people who ride them.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <button type="button" onClick={onSearch} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-6 text-base font-black text-slate-950 transition hover:bg-emerald-300">
-                Find a road and vote <ArrowRight className="h-5 w-5" />
-              </button>
-              <button type="button" onClick={onExplore} className="min-h-14 rounded-2xl border border-white/15 bg-white/5 px-6 text-base font-bold text-white transition hover:bg-white/10">
-                Explore the LTS map
-              </button>
-            </div>
-          </div>
-
-          <div className="relative mx-auto w-full max-w-xl" aria-label="Example low-stress route connecting home, school and work">
-            <div className="absolute -inset-5 rounded-[2rem] bg-emerald-400/10 blur-2xl" />
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-slate-900/90 p-5 shadow-2xl sm:p-7">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">A corridor worth sharing</p>
-                  <p className="mt-1 text-lg font-black">Home → school → work</p>
-                </div>
-                <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-300">Low stress</span>
-              </div>
-              <div className="relative mt-6 h-64 overflow-hidden rounded-2xl border border-white/10 bg-[#071322] sm:h-72" aria-hidden="true">
-                <svg viewBox="0 0 520 300" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
-                  <path d="M-20 68 C85 45 116 112 205 92 S350 32 540 68" fill="none" stroke="#1e293b" strokeWidth="25" />
-                  <path d="M70 -20 C94 65 81 133 157 174 S307 168 335 320" fill="none" stroke="#1e293b" strokeWidth="20" />
-                  <path d="M-20 235 C92 220 175 252 258 226 S398 160 540 192" fill="none" stroke="#1e293b" strokeWidth="22" />
-                  <path d="M35 238 C106 225 168 248 245 225 C302 208 318 158 352 132 C389 104 431 111 486 86" fill="none" stroke="#064e3b" strokeWidth="18" strokeLinecap="round" />
-                  <path d="M35 238 C106 225 168 248 245 225 C302 208 318 158 352 132 C389 104 431 111 486 86" fill="none" stroke="#4ade80" strokeWidth="9" strokeLinecap="round" />
-                  <path d="M245 225 C276 214 298 192 315 169" fill="none" stroke="#22d3ee" strokeWidth="9" strokeDasharray="5 7" strokeLinecap="round" />
-                </svg>
-                <div className="absolute bottom-7 left-5 rounded-xl border border-white/10 bg-slate-950/90 px-3 py-2 text-xs font-bold shadow-xl">Home</div>
-                <div className="absolute left-[53%] top-[48%] flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-400 text-slate-950 shadow-xl"><School className="h-5 w-5" /></div>
-                <div className="absolute right-5 top-10 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400 text-slate-950 shadow-xl"><BriefcaseBusiness className="h-5 w-5" /></div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-slate-400">
-                <span className="flex items-center gap-2"><i className="h-2.5 w-7 rounded-full bg-emerald-400" /> Connected low-stress route</span>
-                <span className="flex items-center gap-2"><i className="h-2.5 w-7 rounded-full bg-cyan-400" /> Community-discovered link</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-24 sm:mt-32">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">What local knowledge unlocks</p>
-          <div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <h2 className="max-w-2xl text-3xl font-black tracking-tight sm:text-5xl">Small observations can create big connections.</h2>
-            <p className="max-w-sm text-sm leading-relaxed text-slate-400">The computer gives us a starting point. People who know the streets make it useful.</p>
-          </div>
-
-          <div className="mt-8 grid gap-4 lg:grid-cols-3">
-            <article className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 sm:p-6">
-              <div className="relative h-40 overflow-hidden rounded-2xl bg-slate-900" aria-hidden="true">
-                <div className="absolute left-0 top-[46%] h-7 w-[43%] bg-slate-700" />
-                <div className="absolute right-0 top-[46%] h-7 w-[43%] bg-slate-700" />
-                <div className="absolute left-[42%] top-[49%] h-4 w-[17%] rounded-full bg-emerald-400" />
-                <div className="absolute left-1/2 top-[34%] h-12 w-1 -translate-x-1/2 bg-slate-200" />
-                <div className="absolute left-1/2 top-[31%] -translate-x-1/2 rounded-md bg-white px-2 py-1 text-[9px] font-black text-slate-900">BIKES + PEDS</div>
-                <School className="absolute bottom-4 right-5 h-8 w-8 text-cyan-300" />
-              </div>
-              <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-300">Example 01 · School route</p>
-              <h3 className="mt-2 text-xl font-black">A modal filter joins two quiet streets</h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-400">Cars hit a dead end, but bikes and pedestrians pass through. One short link can turn disconnected local streets into a calm route to school.</p>
-            </article>
-
-            <article className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 sm:p-6">
-              <div className="relative h-40 overflow-hidden rounded-2xl bg-slate-900" aria-hidden="true">
-                <div className="absolute left-5 right-5 top-8 h-5 rotate-[-5deg] rounded-full bg-blue-600" />
-                <div className="absolute left-5 right-5 bottom-9 h-5 rotate-[4deg] rounded-full bg-blue-600 ring-4 ring-emerald-400/30" />
-                <span className="absolute right-6 top-4 rounded-lg bg-blue-500 px-2 py-1 text-[10px] font-black">LTS 2</span>
-                <span className="absolute bottom-3 right-6 rounded-lg bg-emerald-400 px-2 py-1 text-[10px] font-black text-slate-950">Quieter + continuous</span>
-              </div>
-              <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-blue-300">Example 02 · Better choice</p>
-              <h3 className="mt-2 text-xl font-black">Two LTS 2 roads are not always equal</h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-400">Both options look low-stress in the data. Local riders can identify the quieter street, easier crossing or more continuous corridor.</p>
-            </article>
-
-            <article className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 sm:p-6">
-              <div className="relative flex h-40 items-center justify-center overflow-hidden rounded-2xl bg-slate-900" aria-hidden="true">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-xl font-black">L2</span>
-                  <ArrowRight className="h-6 w-6 text-slate-500" />
-                  <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500 text-xl font-black text-slate-950">L3</span>
-                </div>
-                <span className="absolute bottom-4 rounded-full border border-white/10 bg-slate-950/80 px-3 py-1 text-[10px] font-bold text-slate-300">Traffic is heavier than mapped</span>
-              </div>
-              <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-amber-300">Example 03 · Correct the map</p>
-              <h3 className="mt-2 text-xl font-black">Flag a road that feels more stressful</h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-400">If speeds, traffic or a difficult crossing make a segment feel wrong, vote for the LTS you observe and explain why.</p>
-            </article>
-          </div>
-        </div>
-
-        <div className="mt-24 grid gap-8 rounded-[2rem] border border-emerald-300/20 bg-emerald-300/[0.07] p-6 sm:p-10 lg:grid-cols-[.75fr_1.25fr] lg:items-center">
-          <div>
-            <ShieldCheck className="h-10 w-10 text-emerald-300" />
-            <h2 className="mt-5 text-3xl font-black tracking-tight sm:text-4xl">Your street knowledge belongs on the map.</h2>
-            <p className="mt-4 leading-relaxed text-slate-300">Know a road that is safer—or more stressful—than shown? Don&apos;t keep it to yourself.</p>
-          </div>
-          <ol className="grid gap-3 sm:grid-cols-3">
-            {[
-              ['1', 'Select', 'Choose a road segment you know.'],
-              ['2', 'Vote', 'Rate its LTS and add your reason.'],
-              ['3', 'Connect', 'Help reveal better everyday corridors.'],
-            ].map(([number, title, copy]) => (
-              <li key={number} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400 text-sm font-black text-slate-950">{number}</span>
-                <p className="mt-4 font-black text-white">{title}</p>
-                <p className="mt-1 text-sm leading-relaxed text-slate-400">{copy}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <div className="mt-20 flex flex-col items-center rounded-[2rem] border border-white/10 bg-white/[0.04] px-5 py-12 text-center sm:px-10 sm:py-16">
-          <RouteIcon className="h-9 w-9 text-cyan-300" />
-          <h2 className="mt-5 max-w-2xl text-3xl font-black tracking-tight sm:text-5xl">What road do you know better than the map?</h2>
-          <p className="mt-4 max-w-xl text-slate-400">Find it, select the segment and add your voice.</p>
-          <button type="button" onClick={onSearch} className="mt-7 flex min-h-14 items-center gap-2 rounded-2xl bg-emerald-400 px-7 text-base font-black text-slate-950 transition hover:bg-emerald-300">
-            Open the map and vote <ArrowRight className="h-5 w-5" />
-          </button>
-          <button type="button" onClick={onLearn} className="mt-4 text-sm font-bold text-slate-400 underline decoration-white/20 underline-offset-4 transition hover:text-white">Learn how LTS works</button>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function placeSearchUrl(query: string, map: maplibregl.Map | null): string {
   const params = new URLSearchParams({ q: query });
@@ -209,8 +44,8 @@ const DATASETS = {
     title: 'AusBUG LTS Map · Victoria',
     dataUrl: process.env.NEXT_PUBLIC_VICTORIA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/victoria-lts-5a1325e7.pmtiles',
     metadataUrl: `/data/lts/victoria-lts-metadata.json?v=${DATASET_VERSION}`,
-    center: [145.15, -36.75] as [number, number],
-    zoom: 7.1,
+    center: [144.9631, -37.8136] as [number, number],
+    zoom: 12,
     routable: true,
   },
   nsw: {
@@ -218,8 +53,8 @@ const DATASETS = {
     title: 'AusBUG LTS Map · NSW',
     dataUrl: process.env.NEXT_PUBLIC_NSW_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/nsw-lts-d4fdc970.pmtiles',
     metadataUrl: `/data/lts/nsw-lts-metadata.json?v=${DATASET_VERSION}`,
-    center: [147.2, -32.7] as [number, number],
-    zoom: 7,
+    center: [151.2093, -33.8688] as [number, number],
+    zoom: 12,
     routable: true,
   },
   queensland: {
@@ -228,7 +63,7 @@ const DATASETS = {
     dataUrl: process.env.NEXT_PUBLIC_QUEENSLAND_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/queensland-lts-c0dd9f26.pmtiles',
     metadataUrl: `/data/lts/queensland-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [153.03, -27.47] as [number, number],
-    zoom: 8.5,
+    zoom: 12,
     routable: true,
   },
   western_australia: {
@@ -237,7 +72,7 @@ const DATASETS = {
     dataUrl: process.env.NEXT_PUBLIC_WA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/western-australia-lts-64573cc9.pmtiles',
     metadataUrl: `/data/lts/western-australia-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [115.86, -31.95] as [number, number],
-    zoom: 8.5,
+    zoom: 12,
     routable: true,
   },
   south_australia: {
@@ -246,7 +81,7 @@ const DATASETS = {
     dataUrl: process.env.NEXT_PUBLIC_SA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/south-australia-lts-d579551c.pmtiles',
     metadataUrl: `/data/lts/south-australia-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [138.60, -34.93] as [number, number],
-    zoom: 8.5,
+    zoom: 12,
     routable: true,
   },
   act: {
@@ -255,7 +90,7 @@ const DATASETS = {
     dataUrl: process.env.NEXT_PUBLIC_ACT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/act-lts-166671dc.pmtiles',
     metadataUrl: `/data/lts/act-lts-metadata.json?v=${DATASET_VERSION}-166671dc`,
     center: [149.13, -35.28] as [number, number],
-    zoom: 10.5,
+    zoom: 12,
     routable: true,
   },
   tasmania: {
@@ -264,7 +99,7 @@ const DATASETS = {
     dataUrl: process.env.NEXT_PUBLIC_TASMANIA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/tasmania-lts-ee99da23.pmtiles',
     metadataUrl: `/data/lts/tasmania-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [147.33, -42.88] as [number, number],
-    zoom: 8.5,
+    zoom: 12,
     routable: true,
   },
   northern_territory: {
@@ -273,7 +108,7 @@ const DATASETS = {
     dataUrl: process.env.NEXT_PUBLIC_NT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/northern-territory-lts-e6f8e235.pmtiles',
     metadataUrl: `/data/lts/northern-territory-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [130.85, -12.46] as [number, number],
-    zoom: 9,
+    zoom: 12,
     routable: true,
   },
 } as const;
@@ -1050,7 +885,6 @@ export default function LtsLabPage() {
   const [selectedRouteKind, setSelectedRouteKind] = useState<'low-stress' | 'bike-profile'>('low-stress');
   const [transparentRoutes, setTransparentRoutes] = useState(false);
   const [routeClassifier, setRouteClassifier] = useState<string | null>(null);
-  const [showProjectLanding, setShowProjectLanding] = useState(true);
   const [showAbout, setShowAbout] = useState(false);
   const aboutDialogRef = useRef<HTMLDivElement>(null);
   const aboutCloseRef = useRef<HTMLButtonElement>(null);
@@ -1064,6 +898,8 @@ export default function LtsLabPage() {
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [datasetKey, setDatasetKey] = useState<DatasetKey>('victoria');
+  const startupInteractionRef = useRef(false);
+  const startupViewRef = useRef<{ dataset: DatasetKey; center: [number, number] } | null>(null);
   const activeDataset = DATASETS[datasetKey];
   const stateSourceCopy = STATE_SOURCE_COPY[datasetKey];
   const displayedRouteSummary = selectedRouteKind === 'bike-profile'
@@ -1073,6 +909,36 @@ export default function LtsLabPage() {
   useEffect(() => {
     metadataRef.current = metadata;
   }, [metadata]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 4000);
+    // Contact our own map host directly: the ausbug.app proxy otherwise locates
+    // the proxy server instead of the visitor. No GPS permission or third-party lookup.
+    const url = process.env.NODE_ENV === 'production'
+      ? 'https://australian-lts-lab.vercel.app/api/start-location'
+      : '/api/start-location';
+    fetch(url, { signal: controller.signal, cache: 'no-store', credentials: 'omit' })
+      .then(response => response.ok ? response.json() : null)
+      .then((hint: { dataset?: string; center?: [number, number] | null } | null) => {
+        if (controller.signal.aborted || startupInteractionRef.current || !hint?.dataset
+          || !Object.prototype.hasOwnProperty.call(DATASETS, hint.dataset)) return;
+        const dataset = hint.dataset as DatasetKey;
+        const center = hint.center && hint.center.length === 2 && hint.center.every(Number.isFinite)
+          ? hint.center : DATASETS[dataset].center;
+        startupViewRef.current = { dataset, center };
+        if (dataset === 'victoria') {
+          mapRef.current?.jumpTo({ center, zoom: 12 });
+          startupViewRef.current = null;
+        } else {
+          setMapLoading(true);
+          setDatasetKey(dataset);
+        }
+      })
+      .catch(() => { /* Keep the city fallback; location must never block the map. */ })
+      .finally(() => window.clearTimeout(timeout));
+    return () => { controller.abort(); window.clearTimeout(timeout); };
+  }, []);
 
   const refreshApprovedOverlay = useCallback(async () => {
     const params = new URLSearchParams({ dataset: datasetKey, approved: '1' });
@@ -1276,10 +1142,11 @@ export default function LtsLabPage() {
     const map = new maplibregl.Map({
         container: mapContainerRef.current,
         style: BASEMAP_STYLE,
-        center: activeDataset.center,
+        center: startupViewRef.current?.dataset === datasetKey ? startupViewRef.current.center : activeDataset.center,
         zoom: activeDataset.zoom,
       });
       mapRef.current = map;
+      startupViewRef.current = null;
       map.addControl(new maplibregl.NavigationControl({ showZoom: window.innerWidth >= 768 }), 'top-right');
 
       map.on('error', (event) => {
@@ -1738,9 +1605,9 @@ export default function LtsLabPage() {
         setShowAbout(false);
       }
       if (event.key === 'Tab') {
-        const controls = aboutDialogRef.current?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex="0"]',
-        );
+        const controls = Array.from(aboutDialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), summary, a[href], input:not([disabled]), select:not([disabled]), [tabindex="0"]',
+        ) || []).filter((element) => element.getClientRects().length > 0);
         if (!controls?.length) return;
         const first = controls[0];
         const last = controls[controls.length - 1];
@@ -1953,7 +1820,7 @@ export default function LtsLabPage() {
   };
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-slate-950 text-white">
+    <main className="relative h-[100dvh] overflow-hidden bg-slate-950 text-white" onPointerDownCapture={() => { startupInteractionRef.current = true; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
       {mapLoading && (
         <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/45">
@@ -2626,19 +2493,6 @@ export default function LtsLabPage() {
         </aside>
       )}
 
-      {showProjectLanding && (
-        <ProjectLanding
-          onExplore={() => setShowProjectLanding(false)}
-          onSearch={() => {
-            setShowProjectLanding(false);
-            setSearchExpanded(true);
-          }}
-          onLearn={() => {
-            setShowProjectLanding(false);
-            setShowAbout(true);
-          }}
-        />
-      )}
 
       {showAbout && (
         <div
@@ -2656,8 +2510,8 @@ export default function LtsLabPage() {
             <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur sm:px-5 sm:py-4 md:px-7">
               <div className="hidden rounded-xl bg-emerald-400/15 p-2.5 text-emerald-300 sm:block"><Info className="h-5 w-5" /></div>
               <div className="pr-10">
-                <h2 id="lts-about-title" className="text-lg font-bold sm:text-xl">LTS levels explained</h2>
-                <p className="mt-1 text-xs text-slate-400 sm:text-sm">How the stress map and experimental router are built, what data they use, and what they cannot claim yet.</p>
+                <h2 id="lts-about-title" className="text-lg font-bold sm:text-xl">About the AusBUG LTS map</h2>
+                <p className="mt-1 text-sm text-slate-400">Calmer streets. Better connections. Local knowledge.</p>
               </div>
               <button
                 type="button"
@@ -2668,24 +2522,40 @@ export default function LtsLabPage() {
               ><X className="h-5 w-5" /></button>
             </div>
 
-            <div className="space-y-6 px-4 py-5 text-sm leading-relaxed text-slate-300 sm:space-y-8 sm:px-5 sm:py-6 md:px-7 md:py-7">
+            <div className="lts-about-content space-y-6 px-4 py-5 text-base leading-relaxed text-slate-300 sm:px-5 sm:py-6 md:px-7 md:py-7">
+              <section aria-labelledby="about-purpose">
+                <h3 id="about-purpose" className="text-2xl font-bold text-white">Help build Australia’s unofficial bike highways</h3>
+                <p className="mt-3">Our aim is to connect quiet streets, bike paths and better crossings into everyday cycling corridors—to school, work and beyond. This is a community mapping project, not an officially designated network.</p>
+                <p className="mt-3">The data gives us a starting point. Local riders help reveal the missing links: a filtered street that bikes can pass through, a calmer crossing, or the better choice between two roads both rated LTS 2.</p>
+              </section>
+              <section className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-5" aria-labelledby="about-contribute">
+                <h3 id="about-contribute" className="text-lg font-bold text-white">Know a road better than the map? Vote.</h3>
+                <p className="mt-2">Select a road or path, sign in with your AusBUG account, and rate its traffic stress or rideability. Explain what you observed—reasons are required. Your display name and explanation are public; your email stays private.</p>
+                <p className="mt-2">A vote is evidence, not permission to ignore signs or override the scoring rules. Restrictions and high-speed safeguards still apply.</p>
+                <button type="button" onClick={() => { setShowAbout(false); setSearchExpanded(true); setMapPanelExpanded(false); }} className="mt-4 min-h-11 rounded-full bg-emerald-400 px-5 text-sm font-bold text-slate-950">Find a road and contribute</button>
+              </section>
               <section>
-                <h3 className="text-base font-bold text-white">What this map is</h3>
+                <h3 className="text-lg font-bold text-white">Read the map: traffic stress, not a safety guarantee</h3>
                 <p className="mt-2">
-                  This is an experimental Bicycle Level of Traffic Stress map. It classifies each rideable road or path from LTS 1 to LTS 4, aiming to describe how comfortable the link is likely to feel—not merely whether cycling is legally permitted.
+                  LTS means Level of Traffic Stress. It estimates the stress of interacting with motor traffic. It does not establish bicycle access, surface quality or whether a route is safe for a particular rider.
                 </p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {[1, 2, 3, 4].map((level) => (
+                  {[1, 1.5, 2, 3, 4].map((level) => (
                     <div key={level} className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-black text-white" style={{ background: LTS_COLOURS[level] }}>L{level}</span>
-                      <div><p className="font-semibold text-white">{LTS_LABELS[level]}</p><p className="text-xs text-slate-400">{level === 1 ? 'Traffic-free or child-suitable conditions' : level === 2 ? 'Generally tolerable to most adults' : level === 3 ? 'More confident riders and moderate interaction' : 'High-speed, high-volume or otherwise hostile conditions'}</p></div>
+                      <span className="lts-score-badge" style={{ background: LTS_COLOURS[level], color: level === 2 || level === 4 ? '#fff' : '#10202b' }}>L{level}</span>
+                      <div><p className="font-semibold text-white">{LTS_LABELS[level]}</p><p className="text-sm text-slate-400">{level === 1 ? 'Very little interaction with motor traffic' : level === 1.5 ? 'Community-identified quieter road, informed by local knowledge' : level === 2 ? 'Lower-stress conditions for many adults' : level === 3 ? 'More traffic interaction; confident riders' : 'High-speed, high-volume or otherwise stressful conditions'}</p></div>
                     </div>
                   ))}
                 </div>
               </section>
 
-              <section>
-                <h3 className="text-base font-bold text-white">Data being used</h3>
+              <section className="rounded-xl border border-white/10 p-4">
+                <p className="mt-3"><strong>Grey links:</strong> walk your bike where dismount is mapped. <strong>Rideability:</strong> a separate surface rating. <strong>Inferred:</strong> missing data has been filled using model assumptions, not verified on site.</p>
+                <p className="mt-3">Always check signs, access and current conditions. Low traffic stress does not guarantee a suitable surface, an open route or a safe crossing.</p>
+              </section>
+              <h3 className="text-lg font-bold text-white">Behind the map</h3>
+              <details className="about-detail">
+                <summary>Data sources and map symbols</summary>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="font-semibold text-white">OpenStreetMap road network</p>
@@ -2716,23 +2586,33 @@ export default function LtsLabPage() {
                     <a href="https://brouter.de/" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">About BRouter <ExternalLink className="h-3 w-3" /></a>
                   </div>
                 </div>
-              </section>
+              </details>
 
-              <section>
-                <h3 className="text-base font-bold text-white">How a road receives its score</h3>
+              <details className="about-detail">
+                <summary>How a road receives its score</summary>
+                <p className="mt-3">The same rules apply across Australia. Start here, then expand a section for the detail.</p>
+                <ol className="about-score-steps">
+                  <li><strong>Check access.</strong><span>Check whether cycling is permitted. Dismount links are grey and have no LTS score.</span></li>
+                  <li><strong>Assess each direction.</strong><span>Use speed, lanes and cycling facilities to set the base score.</span></li>
+                  <li><strong>Apply safeguards.</strong><span>Traffic volume can raise the score. Votes cannot bypass the high-speed floor.</span></li>
+                  <li><strong>Display the result.</strong><span>The map shows the worse direction. Your route uses the direction you ride.</span></li>
+                </ol>
+                <details className="about-subdetail"><summary>Access, directions and evidence</summary>
                 <div className="mt-3 space-y-2 text-slate-300">
                   <p>Every state and territory uses the same classifier and the exact rules below. What differs is which official datasets can fill gaps in OSM—not the meaning of an LTS level.</p>
                   <p>Each OSM way is assessed separately for the forward and backward cycling directions using Australian left-hand traffic. The map displays the more stressful permitted direction.</p>
                   <p>Direction matters because the two sides of a road can have different painted or protected cycle lanes, buffers, lane counts and speed tags. For Australian left-hand traffic, forward travel uses the left-side cycling treatment and backward travel uses the right-side treatment. Parking is currently a road-level door-zone flag rather than a fully directional input; its exact effect is stated below.</p>
                   <p>The background line deliberately shows the worse of the two permitted directions, while an active route shows the LTS for the direction being ridden. A route may therefore change a yellow background segment to blue when its side is safer, but the same shared classification should never change a blue background segment to yellow.</p>
-                  <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access and bicycle=no/private/dismount/use_sidepath are excluded. Footways without explicit bicycle permission are normally excluded; in the ACT, where cycling on ordinary paths is legally permitted unless signed otherwise, they remain cautious routing links but are hidden from the map by default. An ACT footway, path or forestry track tagged only bicycle=yes is treated as legal access rather than proof of a designated cycling facility; highway=cycleway, bicycle=designated or official bicycle-route evidence keeps a link visible. One-way tags decide which travel directions are scored.</p>
+                  <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access and bicycle=no/private/use_sidepath are excluded. Dismount links are excluded from LTS scoring but can remain as grey walk-bike routing connections. Footways without explicit bicycle permission are normally excluded; in the ACT, where cycling on ordinary paths is legally permitted unless signed otherwise, they remain cautious routing links but are hidden from the map by default. An ACT footway, path or forestry track tagged only bicycle=yes is treated as legal access rather than proof of a designated cycling facility; highway=cycleway, bicycle=designated or official bicycle-route evidence keeps a link visible. One-way tags decide which travel directions are scored.</p>
                   <p>For an included direction, the segment score can be changed by only these inputs: road/path class; directional or general speed limit; directional or total motor-traffic lane count; roundabout status; cycling-facility type and side; whether a painted lane has a mapped buffer; mapped kerbside parking beside a painted lane; and matched all-vehicle daily motor traffic. Each rule is deterministic and is applied in the order shown below.</p>
                   <p>Traffic records are matched to OSM geometry using road name or route reference, projected distance, local direction and line overlap. Directional counts are doubled for a two-way OSM centreline to approximate conventional two-way daily traffic.</p>
                   {stateSourceCopy.methodology.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
                   <p>Surface, trail suitability and MTB evidence are separate from traffic stress. A road is called unsealed only when OSM has an explicit value such as gravel, dirt, ground or compacted; a missing surface is not guessed. Generic <code>path</code>, <code>track</code> and <code>bridleway</code> links need explicit bicycle access or bicycle-route evidence before they are treated as verified cycling links. Every explicit MTB tag or MTB route membership remains visible, even when routing rules exclude it.</p>
                 </div>
+                </details>
+                <details className="about-subdetail"><summary>Base scores by road and cycling facility</summary>
                 <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
-                  <table className="min-w-[720px] w-full text-left text-xs">
+                  <table className="w-full text-left text-xs">
                     <thead className="bg-white/10 text-slate-300"><tr><th className="px-3 py-2">Facility or road context</th><th className="px-3 py-2">Exact base LTS rule</th></tr></thead>
                     <tbody className="divide-y divide-white/10 align-top">
                       <tr><td className="px-3 py-2 font-semibold text-slate-200">Traffic-free path or protected lane</td><td className="px-3 py-2">LTS 1. This includes mapped cycleways/paths and on-road cycling treatments tagged as track, protected, separate or separated.</td></tr>
@@ -2749,23 +2629,30 @@ export default function LtsLabPage() {
                     </tbody>
                   </table>
                 </div>
+                </details>
+                <details className="about-subdetail"><summary>Missing speed and lane data</summary>
                 <div className="mt-4 rounded-xl border border-slate-400/20 bg-slate-400/10 p-4 text-xs text-slate-200">
                   <h4 className="font-semibold text-white">When speed or lane data is missing</h4>
                   <p className="mt-2">The classifier marks the result as inferred and uses these explicit fallbacks: 20 km/h for living streets; 30 for service roads; 50 for residential, unclassified and generic roads; 60 for tertiary and secondary roads; 70 for primary roads; and 80 for trunk roads. Missing lanes default to two lanes per direction on primary/trunk roads and one on every other road. These are classification assumptions—not claims about the legal conditions on a particular street.</p>
                 </div>
+                </details>
+                <details className="about-subdetail"><summary>Traffic volume and community safeguards</summary>
+                <p className="mt-2">A floor is a minimum, not the final score. Speed, lanes or facilities can still make a quiet road score higher.</p>
                 <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-white/10 text-slate-300"><tr><th className="px-3 py-2">Approximate daily motor traffic</th><th className="px-3 py-2">Mixed-traffic floor</th></tr></thead>
                     <tbody className="divide-y divide-white/10">
-                      <tr><td className="px-3 py-2">Up to 2,000</td><td className="px-3 py-2 text-green-400">LTS 1</td></tr>
-                      <tr><td className="px-3 py-2">2,001–6,000</td><td className="px-3 py-2 text-blue-400">LTS 2</td></tr>
-                      <tr><td className="px-3 py-2">6,001–14,000</td><td className="px-3 py-2 text-amber-400">LTS 3</td></tr>
-                      <tr><td className="px-3 py-2">Above 14,000</td><td className="px-3 py-2 text-red-400">LTS 4</td></tr>
+                      <tr><td className="px-3 py-2">Up to 2,000</td><td className="px-3 py-2"><span className="lts-score-badge lts-score-badge-small" style={{ background: LTS_COLOURS[1] }}>L1</span></td></tr>
+                      <tr><td className="px-3 py-2">2,001–6,000</td><td className="px-3 py-2"><span className="lts-score-badge lts-score-badge-small" style={{ background: LTS_COLOURS[2], color: '#fff' }}>L2</span></td></tr>
+                      <tr><td className="px-3 py-2">6,001–14,000</td><td className="px-3 py-2"><span className="lts-score-badge lts-score-badge-small" style={{ background: LTS_COLOURS[3] }}>L3</span></td></tr>
+                      <tr><td className="px-3 py-2">Above 14,000</td><td className="px-3 py-2"><span className="lts-score-badge lts-score-badge-small" style={{ background: LTS_COLOURS[4], color: '#fff' }}>L4</span></td></tr>
                     </tbody>
                   </table>
                 </div>
                 <p className="mt-3 text-xs text-slate-400">Traffic volume is applied after the base rule. It may only raise a segment with no cycling facility, sharrows or a shoulder. It never lowers a score and currently does not alter a path, protected lane, buffered lane or painted lane. A low-confidence SCATS estimate may raise a segment by no more than one level.</p>
                 <p className="mt-2 text-xs text-slate-400">Community votes remain visible as local observations, but they cannot lower the published result below the classifier&apos;s facility-aware score when an explicit speed limit is 70 km/h or higher. The mapped speed or facility evidence must be corrected before that safety floor can change.</p>
+                </details>
+                <details className="about-subdetail"><summary>Crossings and what LTS does not measure</summary>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-xs text-sky-50">
                     <h4 className="font-semibold text-white">Crossing scores</h4>
@@ -2776,10 +2663,11 @@ export default function LtsLabPage() {
                     <p className="mt-2">Heavy-vehicle percentage is retained for inspection but does not yet change LTS. Surface, gravel, MTB difficulty, hiking evidence and elevation affect display, eligibility or routing penalties—not the traffic-stress score. Bicycle volumes, crash history, rider popularity, road width and time-of-day conditions are not currently inputs. Apart from roundabouts and explicit crossing tags, intersection form is not yet modelled.</p>
                   </div>
                 </div>
-              </section>
+              </details>
 
-              <section>
-                <h3 className="text-base font-bold text-white">{activeDataset.routable ? 'How BRouter chooses a route' : 'Routing status'}</h3>
+              </details>
+              <details className="about-detail">
+                <summary>{activeDataset.routable ? 'How BRouter chooses a route' : 'Routing status'}</summary>
                 {!activeDataset.routable && <p className="mt-2 rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-sky-100">The statewide {activeDataset.label} map is map-only. Its visual classification and official-data matches are being audited before any BRouter segment build. It cannot plan routes or change production navigation.</p>}
                 {activeDataset.routable && <>
                 <p className="mt-2">The planner accepts up to 26 ordered points labelled A–Z. BRouter connects them in sequence, and every edit—including Clear—can be undone or redone.</p>
@@ -2792,7 +2680,7 @@ export default function LtsLabPage() {
                 <p className="mt-2">A link explicitly tagged <code>bicycle=dismount</code> remains connected with a strong penalty so a station crossing or short passage does not break the route. It is shown grey without an LTS score because the mapped instruction is to walk the bike, not ride it. Rider reports that signage is missing are saved for access verification and do not silently erase the OSM restriction.</p>
                 <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-400/10 p-4">
                   <h4 className="font-semibold text-white">Handling unavoidable high-stress gaps</h4>
-                  <p className="mt-2 text-xs text-violet-50">The values 1.0, 1.8, 5.0 and 15.0 are deliberately separated experimental preference weights, not measured speeds, crash risks or final calibrated constants. Before other routing costs are considered, one kilometre at LTS 2, 3 or 4 therefore contributes roughly the same route cost as 1.8, 5 or 15 kilometres at LTS 1. The spacing makes the router mildly prefer LTS 1 over LTS 2, strongly avoid LTS 3 and treat LTS 4 as a last resort, while keeping every legal cycling connection available where the network has no practical alternative. These values still need comparison against routes chosen by riders.</p>
+                  <p className="mt-2 text-xs text-violet-50">The values 1.0, 1.4, 1.8, 5.0 and 15.0 are deliberately separated experimental preference weights, not measured speeds, crash risks or final calibrated constants. Before other routing costs are considered, one kilometre at LTS 2, 3 or 4 therefore contributes roughly the same route cost as 1.8, 5 or 15 kilometres at LTS 1. The spacing makes the router mildly prefer LTS 1 over LTS 2, strongly avoid LTS 3 and treat LTS 4 as a last resort, while keeping every legal cycling connection available where the network has no practical alternative. These values still need comparison against routes chosen by riders.</p>
                   <p className="mt-2 text-xs text-violet-50">The model normally assumes the rider remains on the bicycle. The sole explicit exception is an OSM <code>bicycle=dismount</code> connector: the router may use it with a strong penalty and the map marks it grey as a walk-bike section. The current travel-time estimate does not yet separately model walking speed, so riders should allow extra time. LTS 4 still represents riding a stressful link; it is not a walking estimate.</p>
                 </div>
                 <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-100">
@@ -2801,10 +2689,10 @@ export default function LtsLabPage() {
                     : 'This Lab uses isolated, state-specific BRouter segment sets containing the same matched traffic, official road evidence, directional LTS, surface and trail rules, crossing scores and elevation used by the map. The AusBUG iOS and Android BRouter service remains separate and unchanged.'}
                 </div>
                 </>}
-              </section>
+              </details>
 
-              <section>
-                <h3 className="text-base font-bold text-white">Current {activeDataset.label} coverage</h3>
+              <details className="about-detail">
+                <summary>Current {activeDataset.label} coverage</summary>
                 {metadata ? (
                   <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
                     <div className="rounded-xl bg-white/5 p-3"><p className="text-xl font-bold text-white">{metadata.segments.toLocaleString()}</p><p className="text-xs text-slate-400">road/path segments</p></div>
@@ -2838,10 +2726,10 @@ export default function LtsLabPage() {
                     {(metadata.trails.counts.routing_caution || 0).toLocaleString()} unverified paths/tracks remain connected with a penalty · {(metadata.trails.counts.routing_avoid || 0).toLocaleString()} hiking-difficulty ways excluded · {metadata.trails.bicycle_route_relations.toLocaleString()} bicycle route relations · {metadata.trails.hiking_route_relations.toLocaleString()} hiking/foot route relations
                   </p>
                 )}
-              </section>
+              </details>
 
-              <section>
-                <h3 className="text-base font-bold text-white">Important limitations</h3>
+              <details className="about-detail">
+                <summary>Important limitations</summary>
                 <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-300">
                   <li>This is a diagnostic model, not a guarantee that a road is safe or presently open.</li>
                   <li>{stateSourceCopy.trafficLimitation}</li>
@@ -2852,7 +2740,7 @@ export default function LtsLabPage() {
                   <li>Crossings influence the experimental router through point penalties; the values still need rider testing and calibration.</li>
                   <li>Temporary works, congestion at a particular time, driver behaviour, sight distance and pavement condition may not be represented.</li>
                 </ul>
-              </section>
+              </details>
 
               <footer className="flex flex-wrap gap-x-5 gap-y-1 border-t border-white/10 pt-4 text-xs text-slate-500">
                 <span>Map classifier: {metadata?.classifier_version || 'loading'}</span>

@@ -76,6 +76,22 @@ select {
   backdrop-filter: none;
 }
 .lts-search { background: transparent; box-shadow: none; }
+.lts-about-content .about-detail { border-top: 1px solid #dfe3e7; padding-top: 16px; }
+.lts-about-content .about-detail > summary { cursor: pointer; font-size: 16px; font-weight: 650; color: #20262d; padding: 8px 0; }
+.lts-about-content .about-detail[open] > summary { margin-bottom: 12px; }
+.lts-about-content .about-detail :is(p, li) { font-size: 1rem; line-height: 1.65; }
+.lts-about-content .about-detail :is(td, th) { font-size: .875rem; line-height: 1.6; }
+.lts-surface .lts-about-content :is(p, li, td, th, h3, h4) { color: #27313a; }
+.lts-surface .lts-about-content .lts-score-badge { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 3rem; height: 3rem; border-radius: .65rem; color: #10202b; font-size: 1rem; font-weight: 800; }
+.lts-surface .lts-about-content .lts-score-badge-small { width: 2.5rem; height: 2.5rem; }
+.lts-about-content .about-subdetail { margin-top: .75rem; border: 1px solid #dfe3e7; border-radius: .75rem; padding: .85rem 1rem; }
+.lts-about-content .about-subdetail > summary { cursor: pointer; color: #27313a; font-size: 1rem; font-weight: 650; }
+.lts-about-content .about-score-steps { display: grid; gap: .75rem; margin: 1rem 0; padding: 0; list-style: none; counter-reset: scoring; }
+.lts-about-content .about-score-steps li { display: grid; grid-template-columns: 2rem 1fr; column-gap: .75rem; padding: .75rem; background: #f4f6f7; border-radius: .75rem; }
+.lts-about-content .about-score-steps li::before { counter-increment: scoring; content: counter(scoring); grid-row: span 2; font-weight: 700; }
+.lts-about-content .about-score-steps span { grid-column: 2; }
+.lts-about-content { overflow-wrap: anywhere; }
+.lts-about-content table { table-layout: fixed; }
 .lts-surface :is([class*="bg-slate-9"], [class*="bg-slate-8"]) { background-color: #fff; }
 .lts-surface [class*="bg-white/"] { background-color: #f4f6f7; }
 .lts-surface [class*="border-white/"] { border-color: var(--panel-border); }
