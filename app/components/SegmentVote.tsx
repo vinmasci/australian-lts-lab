@@ -173,6 +173,14 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
 
   const saveVote = async () => {
     if (choice === null && rideability === null) return;
+    if (choice !== null && !ltsReason.trim()) {
+      setError('Please explain why you chose this LTS rating.');
+      return;
+    }
+    if (rideability !== null && !note.trim()) {
+      setError('Please describe what you observed to support your rideability rating.');
+      return;
+    }
     const currentUser = ausbugAuth.currentUser;
     if (!currentUser) {
       setError('Sign in with an AusBUG account to contribute.');
@@ -369,9 +377,10 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
                   ? <span>Published result: ceil(({segment.currentLts} + {choice}) ÷ 2) = <strong>LTS {choiceResult}</strong></span>
                   : <span>Published result: this segment becomes <strong>LTS {choiceResult}</strong></span>}
               </div>
-              <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-lts-reason">Why did you choose this LTS? <span className="normal-case tracking-normal text-cyan-300">Optional · public</span></label>
+              <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-lts-reason">Why did you choose this LTS? <span className="normal-case tracking-normal text-cyan-300">Required · public</span></label>
               <textarea
                 id="vote-lts-reason"
+                required
                 value={ltsReason}
                 onChange={(event) => setLtsReason(event.target.value.slice(0, 500))}
                 rows={2}
@@ -449,9 +458,10 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
             </div>
           )}
 
-          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-observation">What did you observe? <span className="normal-case tracking-normal text-cyan-300">Optional · public</span></label>
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-observation">{rideability !== null ? 'Why did you choose this rideability rating?' : 'Additional observations'} <span className="normal-case tracking-normal text-cyan-300">{rideability !== null ? 'Required · public' : 'Public'}</span></label>
           <textarea
             id="vote-observation"
+            required={rideability !== null}
             value={note}
             onChange={(event) => setNote(event.target.value.slice(0, 500))}
             rows={2}
@@ -475,7 +485,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
           <button
             type="button"
             onClick={saveVote}
-            disabled={(choice === null && rideability === null) || saving}
+            disabled={(choice === null && rideability === null) || (choice !== null && !ltsReason.trim()) || (rideability !== null && !note.trim()) || saving}
             className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-45"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Vote className="h-4 w-4" />}

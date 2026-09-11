@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
+const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development'
+  && process.env.NEXT_PUBLIC_LTS_USE_LOCAL_ROUTER === 'true';
 const DEFAULT_BROUTER_ROUTE_URL = process.env.LTS_BROUTER_URL
   || (USING_LOCAL_ENRICHED_ROUTER ? 'http://127.0.0.1:17780/brouter' : 'https://valhalla.vicbug.app/brouter');
 const ROUTER_URLS = {

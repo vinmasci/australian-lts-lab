@@ -234,6 +234,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Choose an LTS rating, a rideability rating, or both.' }, { status: 400 });
     }
 
+    if (isLtsVoteLevel(body.targetLts) && (typeof body.ltsReason !== 'string' || !body.ltsReason.trim())) {
+      return NextResponse.json({ error: 'Please explain why you chose this LTS rating.' }, { status: 400 });
+    }
+    if (isRideabilityLevel(body.rideability) && (typeof body.note !== 'string' || !body.note.trim())) {
+      return NextResponse.json({ error: 'Please describe what you observed to support your rideability rating.' }, { status: 400 });
+    }
+
     await enforceVoteRateLimit(request, contributor.uid);
 
     const vote: StoredLtsVote = {

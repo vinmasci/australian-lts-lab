@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { promisify } from 'node:util';
 import { gzip as gzipCallback } from 'node:zlib';
 import { PMTiles, SharedPromiseCache } from 'pmtiles';
+import { applyTileApprovals } from '@/lib/lts-community-tiles';
+import { communityTileRatings } from '@/lib/lts-tile-approval-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -67,19 +69,28 @@ export async function GET(
   }
 
   try {
-    const tile = await archiveFor(path.dataset).getZxy(z, x, y, request.signal);
+    const [tile, ratings] = await Promise.all([
+      archiveFor(path.dataset).getZxy(z, x, y, request.signal),
+      communityTileRatings(path.dataset),
+    ]);
     if (!tile) return new Response(null, { status: 204 });
 
     // PMTiles transparently expands its internally compressed tile payloads.
     // Recompress the MVT for HTTP delivery: metropolitan low-zoom tiles can be
     // several megabytes raw, while mobile map SDKs natively accept gzip.
-    const encodedTile = await gzip(tile.data, { level: 6 });
+    let data = new Uint8Array(tile.data);
+    try {
+      data = new Uint8Array(applyTileApprovals(data, ratings));
+    } catch (error) {
+      console.error('[LTS tiles] community merge failed; serving base tile', error);
+    }
+    const encodedTile = await gzip(data, { level: 6 });
 
     return new Response(new Uint8Array(encodedTile), {
       headers: {
         'Content-Type': 'application/vnd.mapbox-vector-tile',
         'Content-Encoding': 'gzip',
-        'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000',
+        'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60',
         'Access-Control-Allow-Origin': '*',
         'Vary': 'Accept-Encoding',
       },

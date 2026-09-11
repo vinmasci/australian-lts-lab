@@ -16,7 +16,8 @@ import { assessBikeAccess, orderedOsmTags, type OsmFeatureDetails } from '@/lib/
 
 
 const DATASET_VERSION = 'au-lts-v0.5-council-traffic';
-const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development';
+const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development'
+  && process.env.NEXT_PUBLIC_LTS_USE_LOCAL_ROUTER === 'true';
 interface PlaceSearchResult {
   id: string;
   name: string;
@@ -206,7 +207,7 @@ const DATASETS = {
   victoria: {
     label: 'Victoria',
     title: 'AusBUG LTS Map · Victoria',
-    dataUrl: process.env.NEXT_PUBLIC_VICTORIA_PMTILES_URL || '/data/lts/victoria-lts.pmtiles',
+    dataUrl: process.env.NEXT_PUBLIC_VICTORIA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/victoria-lts-5a1325e7.pmtiles',
     metadataUrl: `/data/lts/victoria-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [145.15, -36.75] as [number, number],
     zoom: 7.1,
@@ -215,7 +216,7 @@ const DATASETS = {
   nsw: {
     label: 'New South Wales',
     title: 'AusBUG LTS Map · NSW',
-    dataUrl: process.env.NEXT_PUBLIC_NSW_PMTILES_URL || '/data/lts/nsw-lts.pmtiles',
+    dataUrl: process.env.NEXT_PUBLIC_NSW_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/nsw-lts-d4fdc970.pmtiles',
     metadataUrl: `/data/lts/nsw-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [147.2, -32.7] as [number, number],
     zoom: 7,
@@ -1051,7 +1052,10 @@ export default function LtsLabPage() {
   const [routeClassifier, setRouteClassifier] = useState<string | null>(null);
   const [showProjectLanding, setShowProjectLanding] = useState(true);
   const [showAbout, setShowAbout] = useState(false);
+  const aboutDialogRef = useRef<HTMLDivElement>(null);
+  const aboutCloseRef = useRef<HTMLButtonElement>(null);
   const [mapPanelExpanded, setMapPanelExpanded] = useState(false);
+  const [panelFocus, setPanelFocus] = useState<'route' | 'layers'>('layers');
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [placeQuery, setPlaceQuery] = useState('');
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
@@ -1726,11 +1730,34 @@ export default function LtsLabPage() {
 
   useEffect(() => {
     if (!showAbout) return undefined;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    aboutCloseRef.current?.focus();
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setShowAbout(false);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowAbout(false);
+      }
+      if (event.key === 'Tab') {
+        const controls = aboutDialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex="0"]',
+        );
+        if (!controls?.length) return;
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      previousFocus?.focus();
+    };
   }, [showAbout]);
 
   useEffect(() => {
@@ -1829,6 +1856,7 @@ export default function LtsLabPage() {
             : `${routePoints.length}-point route calculated`;
 
   const toggleRoutePlanning = () => {
+    setPanelFocus('route');
     const next = !routeMode;
     setRouteMode(next);
     setMapPanelExpanded(false);
@@ -1947,11 +1975,10 @@ export default function LtsLabPage() {
         </div>
       )}
 
-      <header className="mobile-map-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2.5 shadow-2xl backdrop-blur md:left-4 md:right-auto md:min-w-[440px] md:flex-nowrap md:gap-3 md:px-4 md:py-3">
-        <div className="shrink-0 rounded-lg bg-emerald-500/15 p-2 text-emerald-400"><Bike className="h-5 w-5" /></div>
+      <header className="lts-surface mobile-map-header lts-open-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 shadow-2xl md:left-4 md:right-4 md:flex-nowrap md:gap-3 md:px-4">
+        <div className="shrink-0"><img src={ltsAppPath('/ausbug-logo.png')} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-bold md:text-base">{activeDataset.title}</h1>
-          <p className="hidden text-xs text-slate-400 sm:block">{activeDataset.routable ? 'Experimental low-stress map and routing' : 'Experimental statewide diagnostic map'}</p>
+          <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>AusBUG <span className="font-normal text-slate-400">LTS map</span></h1>
         </div>
         <select
           value={datasetKey}
@@ -1975,14 +2002,17 @@ export default function LtsLabPage() {
             setLocationError(null);
           }}
           aria-label="LTS dataset"
-          className="order-last w-full rounded-lg border border-white/10 bg-slate-900 px-2.5 py-2 text-xs font-semibold text-slate-100 md:order-none md:ml-auto md:w-auto"
+          className="lts-region rounded-lg border border-white/10 bg-slate-900 px-2.5 py-2 text-xs font-semibold text-slate-100 md:ml-auto"
         >
           {Object.entries(DATASETS).map(([key, dataset]) => <option key={key} value={key}>{dataset.label}</option>)}
         </select>
         <button
           type="button"
-          onClick={() => setShowProjectLanding(true)}
-          aria-label="About the AusBUG LTS project"
+          onClick={() => setShowAbout(true)}
+          aria-label="About LTS levels and scoring"
+          aria-haspopup="dialog"
+          aria-expanded={showAbout}
+          aria-controls={showAbout ? 'lts-about-dialog' : undefined}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-200 hover:bg-white/10 sm:w-auto sm:gap-1.5 sm:px-2.5"
         >
           <Info className="h-4 w-4" />
@@ -1990,7 +2020,16 @@ export default function LtsLabPage() {
         </button>
       </header>
 
-      <section className={`absolute left-3 top-[7.25rem] z-10 md:left-[22rem] md:top-24 ${searchExpanded ? 'right-14 md:right-16 md:max-w-md' : ''}`} aria-label="Find a place on the map">
+      <nav className="lts-surface lts-action-pill" aria-label="Map actions">
+        <button type="button" aria-expanded={searchExpanded} onClick={() => { setSearchExpanded(!searchExpanded); setMapPanelExpanded(false); }}><Search className="h-4 w-4" /><span>Search</span></button>
+        <button type="button" aria-expanded={mapPanelExpanded && panelFocus === 'route'} disabled={!activeDataset.routable} onClick={() => { if (!routeMode) toggleRoutePlanning(); setPanelFocus('route'); setMapPanelExpanded(true); setSearchExpanded(false); }}><RouteIcon className="h-4 w-4" /><span>Plan route</span></button>
+        <button type="button" aria-expanded={mapPanelExpanded && panelFocus === 'layers'} onClick={() => { setMapPanelExpanded(!(mapPanelExpanded && panelFocus === 'layers')); setPanelFocus('layers'); setSearchExpanded(false); }}><Layers3 className="h-4 w-4" /><span>Layers</span></button>
+      </nav>
+
+      <button type="button" className="lts-surface lts-locate" onClick={findCurrentLocation} disabled={locating} aria-label="Find my location">{locating ? <Loader2 className="h-5 w-5 animate-spin" /> : <LocateFixed className="h-5 w-5" />}</button>
+
+      {searchExpanded &&
+      <section className={`lts-surface lts-search absolute left-3 top-[7.25rem] z-10 md:left-[22rem] md:top-24 ${searchExpanded ? 'right-14 md:right-16 md:max-w-md' : ''}`} aria-label="Find a place on the map">
         {searchExpanded ? (
           <form onSubmit={searchPlaces} className="rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur">
             <div className="flex items-center gap-1.5">
@@ -2090,9 +2129,9 @@ export default function LtsLabPage() {
             </button>
           </div>
         )}
-      </section>
+      </section>}
 
-      <aside className={`mobile-map-panel absolute left-3 z-10 md:bottom-auto md:left-4 md:top-24 ${mapPanelExpanded ? 'max-h-[calc(100dvh-8rem)] w-[calc(100%-1.5rem)] max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl backdrop-blur md:w-80 md:overflow-y-auto md:rounded-xl md:p-4' : 'w-auto rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur'}`}>
+      {(mapPanelExpanded || routeMode) && <aside className={`lts-surface mobile-map-panel ${mapPanelExpanded ? 'lts-panel-open' : 'lts-route-chip'} absolute left-3 z-10 md:bottom-auto md:left-4 md:top-24 ${mapPanelExpanded ? 'max-h-[calc(100dvh-8rem)] w-[calc(100%-1.5rem)] max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl backdrop-blur md:w-80 md:overflow-y-auto md:rounded-xl md:p-4' : 'w-auto rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur'}`}>
         {!mapPanelExpanded ? (
           <button
             type="button"
@@ -2138,7 +2177,7 @@ export default function LtsLabPage() {
 
         <div id="map-controls" className="mt-2 block max-h-[calc(100dvh-15rem)] overflow-y-auto px-1 pb-1 md:mt-0 md:max-h-none md:overflow-visible md:px-0 md:pb-0">
         <div className="mb-3 hidden items-center justify-between gap-3 md:flex">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Map controls</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Map & route</p>
           <button
             type="button"
             onClick={() => setMapPanelExpanded(false)}
@@ -2161,7 +2200,7 @@ export default function LtsLabPage() {
           </div>
         )}
 
-        <section className="mb-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+        {panelFocus === 'layers' && <section className="mb-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
           <div className="flex items-center justify-between gap-3">
             <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-200">
               <input
@@ -2188,10 +2227,10 @@ export default function LtsLabPage() {
           />
           <div className="mt-1 flex justify-between text-[9px] uppercase tracking-wide text-slate-500"><span>Transparent</span><span>Opaque</span></div>
           {!MAPBOX_PUBLIC_TOKEN && <p className="mt-2 text-[10px] text-amber-300">Satellite imagery is not configured in this environment.</p>}
-        </section>
+        </section>}
 
-        {routeMode && (
-          <section className="mb-4 rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-3">
+        {routeMode && panelFocus === 'route' && (
+          <section className="planner-route mb-4 rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-emerald-300">
@@ -2257,7 +2296,7 @@ export default function LtsLabPage() {
             </div>
 
             {routeLoading && <div className="mt-3 h-1 overflow-hidden rounded bg-white/10"><div className="h-full w-1/2 animate-pulse rounded bg-emerald-400" /></div>}
-            {routeError && <p className="mt-3 rounded-lg bg-red-500/15 p-2 text-xs text-red-300">{routeError}</p>}
+            {routeError && <div className="mt-3 rounded-lg bg-red-500/15 p-3 text-sm text-red-300"><p>{routeError}</p><button type="button" onClick={() => void requestRoute(routePoints)} className="mt-2 min-h-11 rounded-lg border px-3">Try again</button></div>}
 
             {displayedRouteSummary && (
               <div className="mt-3">
@@ -2367,6 +2406,8 @@ export default function LtsLabPage() {
           </section>
         )}
 
+        <button type="button" onClick={() => setShowAbout(true)} className="mb-3 min-h-11 text-sm font-semibold text-cyan-300">What do these colours mean?</button>
+        {panelFocus === 'layers' && <>
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <h2 className="font-semibold">Stress levels</h2>
@@ -2449,14 +2490,15 @@ export default function LtsLabPage() {
             )}
           </div>
         )}
+        </>}
         {mapError && <p className="mt-3 rounded-lg bg-red-500/15 p-2 text-xs text-red-300">{mapError}</p>}
         </div>
           </>
         )}
-      </aside>
+      </aside>}
 
       {!routeMode && selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)) && (
-        <aside className="absolute bottom-3 right-3 top-auto z-20 max-h-[70vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl border border-white/10 bg-slate-950/95 p-5 shadow-2xl backdrop-blur md:bottom-auto md:right-4 md:top-4 md:w-96">
+        <aside className="lts-surface absolute bottom-3 right-3 top-auto z-20 max-h-[70vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl border border-white/10 bg-slate-950/95 p-5 shadow-2xl backdrop-blur md:bottom-auto md:right-4 md:top-24 md:w-96">
           <button
             onClick={() => {
               setSelected(null);
@@ -2600,6 +2642,8 @@ export default function LtsLabPage() {
 
       {showAbout && (
         <div
+          id="lts-about-dialog"
+          ref={aboutDialogRef}
           className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-0 backdrop-blur-sm sm:p-3 md:p-8"
           role="dialog"
           aria-modal="true"
@@ -2608,16 +2652,17 @@ export default function LtsLabPage() {
             if (event.currentTarget === event.target) setShowAbout(false);
           }}
         >
-          <section className="relative h-full max-h-full w-full max-w-4xl overflow-y-auto border border-white/10 bg-slate-950 shadow-2xl sm:h-auto sm:rounded-2xl">
+          <section className="lts-surface relative h-full max-h-full w-full max-w-4xl overflow-y-auto border border-white/10 bg-slate-950 shadow-2xl sm:h-auto sm:rounded-2xl">
             <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur sm:px-5 sm:py-4 md:px-7">
               <div className="hidden rounded-xl bg-emerald-400/15 p-2.5 text-emerald-300 sm:block"><Info className="h-5 w-5" /></div>
               <div className="pr-10">
-                <h2 id="lts-about-title" className="text-lg font-bold sm:text-xl">About the {activeDataset.title}</h2>
+                <h2 id="lts-about-title" className="text-lg font-bold sm:text-xl">LTS levels explained</h2>
                 <p className="mt-1 text-xs text-slate-400 sm:text-sm">How the stress map and experimental router are built, what data they use, and what they cannot claim yet.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAbout(false)}
+                ref={aboutCloseRef}
                 className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white sm:right-4 sm:top-4"
                 aria-label="Close about panel"
               ><X className="h-5 w-5" /></button>
