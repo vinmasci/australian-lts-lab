@@ -1518,7 +1518,20 @@ export default function LtsLabPage() {
           let feature = extending
             ? candidates.find((candidate) => voteSegmentFromFeature(candidate, datasetKey, metadataRef.current) !== null)
             : exactHits[0] ?? nearbyHits[0];
-          const segment = feature ? voteSegmentFromFeature(feature, datasetKey, metadataRef.current) : null;
+          let segment = feature ? voteSegmentFromFeature(feature, datasetKey, metadataRef.current) : null;
+          if (feature && segment) {
+            // Vector tiles clip the same OSM way into multiple features. Gather
+            // every loaded fragment, not just the one under the pointer.
+            const parts = map.querySourceFeatures('lts-network', { sourceLayer: 'lts' })
+              .filter((part) => voteSegmentFromFeature(part, datasetKey, metadataRef.current)?.segmentId === segment!.segmentId);
+            const lines = parts.flatMap((part) => part.geometry.type === 'LineString' ? [part.geometry.coordinates]
+              : part.geometry.type === 'MultiLineString' ? part.geometry.coordinates : []);
+            if (lines.length) {
+              const unique = [...new Map(lines.map((line) => [JSON.stringify(line), line])).values()];
+              feature = { ...feature, geometry: { type: 'MultiLineString', coordinates: unique } } as MapGeoJSONFeature;
+              segment = { ...segment, geometry: feature.geometry };
+            }
+          }
           if (extending) {
             if (!feature || !segment) return;
             selectionRef.current = toggleSegment(selectionRef.current, { segment, feature });
@@ -2468,9 +2481,9 @@ export default function LtsLabPage() {
           {selectedVoteSegment && <>
             <div className="mb-3 rounded-lg border border-white/15 p-3 text-sm" role="status">
               <strong>{voteSelection.length} {voteSelection.length === 1 ? 'segment' : 'segments'} selected</strong>
-              <p className="mt-1 text-xs">Hold Shift and click roads to add or remove segments (up to {MAX_SELECTED_SEGMENTS}). Click without Shift to start again.</p>
+              <p className="mt-1 text-xs">Hold Shift and click roads to add segments (up to {MAX_SELECTED_SEGMENTS}). Parts of the same OSM segment stay selected together. Click without Shift to start again.</p>
               <button type="button" disabled={selectionSaving} aria-pressed={multiSelect} className="mt-2 rounded-lg border px-3 py-2 text-xs font-bold" onClick={() => { multiSelectRef.current = !multiSelect; setMultiSelect(!multiSelect); }}>{multiSelect ? 'Finish selecting' : 'Select multiple segments'}</button>
-              {multiSelect && <p className="mt-1 text-xs">Selection mode is on: click or tap segments to add/remove them, then choose Finish selecting.</p>}
+              {multiSelect && <p className="mt-1 text-xs">Selection mode is on: click or tap segments to add them, then choose Finish selecting. Close this panel to clear the selection.</p>}
               {voteSelection.length >= MAX_SELECTED_SEGMENTS && <p className="mt-1 text-xs">Selection limit reached. Submit these before selecting more.</p>}
               {voteSelection.length > 1 && <p className="mt-1 text-xs">{[...new Set(voteSelection.map((item) => item.name))].join(' · ')}. The same ratings and explanation will apply to every selected segment.</p>}
             </div>
