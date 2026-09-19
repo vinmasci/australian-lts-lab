@@ -6,9 +6,9 @@ export const segmentKey = (segment: VoteSegment) => `${segment.dataset}/${segmen
 export function toggleSegment<T extends { segment: VoteSegment }>(current: T[], item: T): T[] {
   const key = segmentKey(item.segment);
   if (current.some((entry) => segmentKey(entry.segment) === key)) {
-    // Multiple tile fragments can represent one road. Re-clicking another
-    // fragment must not remove the road or replace its selected geometry.
-    return current;
+    // The map highlights loaded fragments together; toggle the complete
+    // underlying segment without disturbing the other selected roads.
+    return current.filter((entry) => segmentKey(entry.segment) !== key);
   }
   return current.length < MAX_SELECTED_SEGMENTS ? [...current, item] : current;
 }
