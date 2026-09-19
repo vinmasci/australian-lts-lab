@@ -283,6 +283,7 @@ export async function POST(request: NextRequest) {
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
       vote.rideability = previous?.rideability ?? null;
       vote.rideabilityIssues = previous?.rideabilityIssues ?? [];
+      vote.note = previous?.note ?? '';
     }
     await saveCommunityVote(vote);
     const result = await summary(vote.dataset, vote.segmentId, contributor.uid);

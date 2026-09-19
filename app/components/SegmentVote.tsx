@@ -508,7 +508,6 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
             </div>
           )}
 
-          </div>
           <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-observation">Additional observations <span className="normal-case tracking-normal text-cyan-300">Public</span></label>
           <textarea
             id="vote-observation"
@@ -519,7 +518,7 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
             placeholder="For example: very little traffic; bluestone is rough and slippery when wet. Don’t include personal information."
             className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 text-xs text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/60"
           />
-
+          </div>
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-slate-950/45 p-2.5">
             <UserRound className="h-4 w-4 shrink-0 text-cyan-300" aria-hidden="true" />
             <div className="min-w-0 flex-1">
