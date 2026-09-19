@@ -50,7 +50,7 @@ export function CommunityActivity({ onShowRoad }: { onShowRoad: (dataset: string
           <button type="button" aria-label="Close community activity" className="p-2" onClick={() => dialog.current?.close()}><X className="h-5 w-5" /></button>
         </header>
         <div className="activity-body p-5">
-          <p className="mb-3 text-xs">Nearby segments of the same road are grouped together. Expand a road for votes and locations. Scores show the current published result, not a complete edit history.</p>
+          <p className="mb-3 text-xs">Select a road to go to its location on the map. Expand votes and segments for more details. Scores show the current published result, not a complete edit history.</p>
           <button type="button" className="mb-4 border px-3 py-2 text-sm" disabled={loading} onClick={() => void load()}>Refresh activity</button>
           {error && <p role="alert" className="mb-4 text-red-700">{error}</p>}
           {!loading && !error && !items.length && <p>No public community activity yet.</p>}
@@ -71,9 +71,11 @@ export function CommunityActivity({ onShowRoad }: { onShowRoad: (dataset: string
                   else votes.set(key, { vote, segments: new Set([item.id]) });
                 }
               }
-              return <li key={`${first.dataset}/${first.id}`}>
-                <details className="rounded-xl border">
-                  <summary className="cursor-pointer p-3">
+              return <li key={`${first.dataset}/${first.id}`} className="overflow-hidden rounded-xl border">
+                  <button type="button" className="block w-full cursor-pointer p-3 text-left hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] disabled:cursor-default"
+                    disabled={!first.center}
+                    aria-label={first.center ? `Show ${first.name} on map` : `${first.name}: location unavailable`}
+                    onClick={() => { if (first.center) { onShowRoad(first.dataset, first.center); dialog.current?.close(); } }}>
                     <span className="font-bold">{first.name}</span><span className="ml-2 text-xs">{group.length} {group.length === 1 ? 'segment' : 'segments'}</span>
                     <span className="mt-1 block text-xs"><span className="capitalize">{first.dataset.replaceAll('_', ' ')}</span> · <time dateTime={first.updatedAt}>{new Date(first.updatedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}</time></span>
                     <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
@@ -82,7 +84,9 @@ export function CommunityActivity({ onShowRoad }: { onShowRoad: (dataset: string
                         {group.length > 1 && <span>({count})</span>}
                       </span>)}
                     </span>
-                  </summary>
+                  </button>
+                <details className="border-t">
+                  <summary className="cursor-pointer p-3 text-xs font-semibold">Votes and segments</summary>
                   <div className="space-y-3 border-t p-3 text-sm">
                     {[...votes].map(([key, { vote, segments }]) => <div key={key}>
                       <p className="text-xs font-bold">{vote.contributorName}{vote.targetLts !== null ? ` · voted LTS ${vote.targetLts}` : ''}{segments.size > 1 ? ` · ${segments.size} segments` : ''}</p>

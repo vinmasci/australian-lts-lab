@@ -908,7 +908,7 @@ export default function LtsLabPage() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [datasetKey, setDatasetKey] = useState<DatasetKey>('victoria');
   const startupInteractionRef = useRef(false);
-  const startupViewRef = useRef<{ dataset: DatasetKey; center: [number, number] } | null>(null);
+  const startupViewRef = useRef<{ dataset: DatasetKey; center: [number, number]; zoom?: number } | null>(null);
   const activeDataset = DATASETS[datasetKey];
   const stateSourceCopy = STATE_SOURCE_COPY[datasetKey];
   const displayedRouteSummary = selectedRouteKind === 'bike-profile'
@@ -1153,7 +1153,7 @@ export default function LtsLabPage() {
         style: BASEMAP_STYLE,
         boxZoom: false,
         center: startupViewRef.current?.dataset === datasetKey ? startupViewRef.current.center : activeDataset.center,
-        zoom: activeDataset.zoom,
+        zoom: startupViewRef.current?.dataset === datasetKey ? (startupViewRef.current.zoom ?? activeDataset.zoom) : activeDataset.zoom,
       });
       mapRef.current = map;
       startupViewRef.current = null;
@@ -1942,15 +1942,20 @@ export default function LtsLabPage() {
           setShowAbout(false);
           setMapPanelExpanded(false);
           setSearchExpanded(false);
+          setRouteMode(false);
+          resetRouteHistory();
+          setSelected(null);
+          multiSelectRef.current = false;
+          setMultiSelect(false);
+          selectionRef.current = [];
+          setVoteSelection([]);
+          setSelectedVoteSegment(null);
+          setSelectedDismountSegment(null);
+          setSelectedStreetViewPoint(null);
           if (dataset === datasetKey) {
             mapRef.current?.flyTo({ center, zoom: 16 });
           } else {
-            startupViewRef.current = { dataset: dataset as DatasetKey, center };
-            setRouteMode(false);
-            resetRouteHistory();
-            setSelected(null);
-            selectionRef.current = [];
-            setVoteSelection([]);
+            startupViewRef.current = { dataset: dataset as DatasetKey, center, zoom: 16 };
             setMapLoading(true);
             setDatasetKey(dataset as DatasetKey);
           }
