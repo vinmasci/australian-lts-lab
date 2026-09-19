@@ -549,7 +549,7 @@ function geometryFingerprint(geometry: GeoJSON.Geometry): string {
   return (value >>> 0).toString(36);
 }
 
-function voteSegmentFromFeature(feature: MapGeoJSONFeature, dataset: DatasetKey, metadata?: LtsMetadata | null): VoteSegment | null {
+function voteSegmentFromFeature(feature: Pick<MapGeoJSONFeature, 'properties' | 'geometry' | 'id'>, dataset: DatasetKey, metadata?: LtsMetadata | null): VoteSegment | null {
   const properties = feature.properties as FeatureProperties;
   const currentLts = Number(properties.lts);
   if (!Number.isInteger(currentLts) || currentLts < 1 || currentLts > 4) return null;
