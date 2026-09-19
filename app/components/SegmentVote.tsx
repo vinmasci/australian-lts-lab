@@ -83,7 +83,7 @@ function RideabilitySymbol({ level, className = 'h-9 w-12' }: { level: Rideabili
   );
 }
 
-export function SegmentVote({ segment, segments, onSavingChange, onPublished }: { segment: VoteSegment; segments?: VoteSegment[]; onSavingChange?: (saving: boolean) => void; onPublished?: () => void | Promise<void> }) {
+export function SegmentVote({ segment, segments, onSavingChange, onPublished, onSaved }: { segment: VoteSegment; segments?: VoteSegment[]; onSavingChange?: (saving: boolean) => void; onPublished?: () => void | Promise<void>; onSaved?: (count: number, mapRefreshed: boolean) => void }) {
   const targets = segments?.length ? segments : [segment];
   const bulk = targets.length > 1;
   const completedRef = useRef(new Set<string>());
@@ -182,13 +182,9 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished }: 
   }, [help]);
 
   const saveVote = async () => {
-    if (choice === null && rideability === null) return;
+    if (choice === null) return;
     if (choice !== null && !ltsReason.trim()) {
       setError('Please explain why you chose this LTS rating.');
-      return;
-    }
-    if (rideability !== null && !note.trim()) {
-      setError('Please describe what you observed to support your rideability rating.');
       return;
     }
     const currentUser = ausbugAuth.currentUser;
@@ -211,7 +207,7 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished }: 
         const response = await fetch(ltsAppPath('/api/lts-votes'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ segment: target, targetLts: choice, ltsReason, rideability, rideabilityIssues, note, website }),
+          body: JSON.stringify({ segment: target, targetLts: choice, ltsReason, preserveRideability: true, note, website }),
         });
         const result = await response.json() as SegmentVoteSummary & { error?: string };
         if (!response.ok) throw new Error(result.error || 'Vote could not be saved.');
@@ -225,11 +221,14 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished }: 
         }
       });
       setMessage(`Your contribution was saved for ${targets.length} ${targets.length === 1 ? 'segment' : 'segments'}. You can change it at any time.`);
+      let mapRefreshed = true;
       try {
         await onPublished?.();
       } catch {
+        mapRefreshed = false;
         setError('Your contribution was published, but the map overlay could not refresh. Reload the map to see it.');
       }
+      onSaved?.(targets.length, mapRefreshed);
     } catch (caught) {
       const saved = targets.filter((target) => completedRef.current.has(segmentKey(target))).length;
       setError(`${saved} of ${targets.length} segments saved. ${caught instanceof Error ? caught.message : 'Vote could not be saved.'} Retry without changing the form to submit only the remaining segments.`);
@@ -331,7 +330,7 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished }: 
           </div>
         </section>
       )}
-      {!loading && !bulk && <p className="mt-3 text-sm">{summary.total} traffic-stress votes · {summary.rideabilityTotal} rideability ratings</p>}
+      {!loading && !bulk && <p className="mt-3 text-sm">{summary.total} traffic-stress votes</p>}
       {!loading && summary.total > 0 && <p className="mt-1 text-sm">{Object.entries(summary.counts).filter(([, count]) => count > 0).map(([level, count]) => `LTS ${level}: ${count}`).join(' · ')}</p>}
       {!loading && summary.total > 0 && !summary.publicContributions.length && <p className="mt-1 text-sm">Voter names are not available in this public record.</p>}
       {error && <p role="alert" className="mt-2 text-sm text-rose-700">{error}</p>}
@@ -440,6 +439,7 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished }: 
             </>
           )}
 
+          <div hidden>
           <div className="my-4 h-px bg-white/10" />
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-2">
@@ -508,10 +508,11 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished }: 
             </div>
           )}
 
-          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-observation">{rideability !== null ? 'Why did you choose this rideability rating?' : 'Additional observations'} <span className="normal-case tracking-normal text-cyan-300">{rideability !== null ? 'Required · public' : 'Public'}</span></label>
+          </div>
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-observation">Additional observations <span className="normal-case tracking-normal text-cyan-300">Public</span></label>
           <textarea
             id="vote-observation"
-            required={rideability !== null}
+            required={false}
             value={note}
             onChange={(event) => setNote(event.target.value.slice(0, 500))}
             rows={2}
@@ -535,7 +536,7 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished }: 
           <button
             type="button"
             onClick={saveVote}
-            disabled={(choice === null && rideability === null) || (choice !== null && !ltsReason.trim()) || (rideability !== null && !note.trim()) || saving}
+            disabled={choice === null || !ltsReason.trim() || saving}
             className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-45"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Vote className="h-4 w-4" />}

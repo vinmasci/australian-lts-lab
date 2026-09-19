@@ -863,6 +863,7 @@ export default function LtsLabPage() {
   const [voteSelection, setVoteSelection] = useState<VoteSegment[]>([]);
   const selectionSavingRef = useRef(false);
   const [selectionSaving, setSelectionSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const multiSelectRef = useRef(false);
   const [multiSelect, setMultiSelect] = useState(false);
   const [selectedDismountSegment, setSelectedDismountSegment] = useState<DismountReportSegment | null>(null);
@@ -1873,6 +1874,12 @@ export default function LtsLabPage() {
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-slate-950 text-white" onPointerDownCapture={() => { startupInteractionRef.current = true; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
+      {saveNotice && (
+        <div className="lts-surface absolute left-3 right-3 top-24 z-30 mx-auto flex max-w-lg items-start gap-3 rounded-xl border border-emerald-600 bg-white p-4 text-slate-900 shadow-xl">
+          <p role="status" aria-live="polite" className="flex-1 text-sm font-semibold">{saveNotice}</p>
+          <button type="button" aria-label="Dismiss save confirmation" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border" onClick={() => setSaveNotice(null)}><X className="h-4 w-4" /></button>
+        </div>
+      )}
       {mapLoading && (
         <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/45">
           <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/90 px-5 py-4 text-sm font-semibold text-slate-100 shadow-2xl">
@@ -2487,7 +2494,18 @@ export default function LtsLabPage() {
               {voteSelection.length >= MAX_SELECTED_SEGMENTS && <p className="mt-1 text-xs">Selection limit reached. Submit these before selecting more.</p>}
               {voteSelection.length > 1 && <p className="mt-1 text-xs">{[...new Set(voteSelection.map((item) => item.name))].join(' · ')}. The same ratings and explanation will apply to every selected segment.</p>}
             </div>
-            <SegmentVote segment={selectedVoteSegment} segments={voteSelection} onSavingChange={(saving) => { selectionSavingRef.current = saving; setSelectionSaving(saving); }} onPublished={refreshApprovedOverlay} />
+            <SegmentVote segment={selectedVoteSegment} segments={voteSelection} onSavingChange={(saving) => { selectionSavingRef.current = saving; setSelectionSaving(saving); if (saving) setSaveNotice(null); }} onPublished={refreshApprovedOverlay} onSaved={(count, mapRefreshed) => {
+              multiSelectRef.current = false;
+              setMultiSelect(false);
+              selectionRef.current = [];
+              setVoteSelection([]);
+              setSelected(null);
+              setSelectedVoteSegment(null);
+              setSelectedDismountSegment(null);
+              setSelectedStreetViewPoint(null);
+              (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
+              setSaveNotice(`Saved successfully for ${count} ${count === 1 ? 'segment' : 'segments'}. ${mapRefreshed ? 'Selection cleared. The map now shows the published scores under the community voting rules.' : 'Selection cleared, but the map could not refresh. Reload to see the published scores.'}`);
+            }} />
           </>}
           {selectedDismountSegment && <DismountReport segment={selectedDismountSegment} />}
           <div className="mt-3 rounded-lg bg-white/5 p-3">

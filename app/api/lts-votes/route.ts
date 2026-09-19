@@ -219,6 +219,7 @@ export async function POST(request: NextRequest) {
       targetLts?: unknown;
       rideability?: unknown;
       rideabilityIssues?: unknown;
+      preserveRideability?: boolean;
       ltsReason?: unknown;
       note?: unknown;
       website?: unknown;
@@ -275,6 +276,14 @@ export async function POST(request: NextRequest) {
       segment: body.segment,
       updatedAt: new Date().toISOString(),
     };
+    // The temporarily LTS-only form must not erase existing surface ratings.
+    if (body.preserveRideability === true) {
+      const previous = (await communityVotes(vote.dataset, vote.segmentId))
+        .filter((item) => item.voterKey === vote.voterKey)
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+      vote.rideability = previous?.rideability ?? null;
+      vote.rideabilityIssues = previous?.rideabilityIssues ?? [];
+    }
     await saveCommunityVote(vote);
     const result = await summary(vote.dataset, vote.segmentId, contributor.uid);
     const targetLts = result.leadingTarget ?? (vote.segment.currentLts as LtsVoteLevel);
