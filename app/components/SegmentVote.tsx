@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { segmentKey, submitSelectedSegments } from '@/lib/lts-multi-select';
 import {
   GoogleAuthProvider,
   OAuthProvider,
@@ -82,7 +83,11 @@ function RideabilitySymbol({ level, className = 'h-9 w-12' }: { level: Rideabili
   );
 }
 
-export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; onPublished?: () => void | Promise<void> }) {
+export function SegmentVote({ segment, segments, onSavingChange, onPublished }: { segment: VoteSegment; segments?: VoteSegment[]; onSavingChange?: (saving: boolean) => void; onPublished?: () => void | Promise<void> }) {
+  const targets = segments?.length ? segments : [segment];
+  const bulk = targets.length > 1;
+  const completedRef = useRef(new Set<string>());
+  const submissionRef = useRef('');
   const [summary, setSummary] = useState<SegmentVoteSummary>(blankSummary);
   const [choice, setChoice] = useState<LtsVoteLevel | null>(null);
   const [ltsReason, setLtsReason] = useState('');
@@ -126,6 +131,11 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
       setRideability(null);
       setRideabilityIssues([]);
       setNote('');
+      setSummary(blankSummary());
+      if (bulk) {
+        setLoading(false);
+        return;
+      }
       try {
         const observation = await fetch(ltsAppPath('/api/lts-votes'), {
           method: 'PUT',
@@ -160,7 +170,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
     };
     void load();
     return () => { cancelled = true; };
-  }, [authReady, segment, user]);
+  }, [authReady, segment, user, bulk]);
 
   useEffect(() => {
     if (!help) return undefined;
@@ -187,33 +197,46 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
       return;
     }
     setSaving(true);
+    onSavingChange?.(true);
     setMessage(null);
     setError(null);
     try {
       const token = await currentUser.getIdToken();
-      const response = await fetch(ltsAppPath('/api/lts-votes'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ segment, targetLts: choice, ltsReason, rideability, rideabilityIssues, note, website }),
+      const signature = JSON.stringify({ uid: currentUser.uid, ids: targets.map(segmentKey).sort(), choice, ltsReason, rideability, rideabilityIssues, note });
+      if (submissionRef.current !== signature) {
+        completedRef.current.clear();
+        submissionRef.current = signature;
+      }
+      await submitSelectedSegments(targets, completedRef.current, async (target) => {
+        const response = await fetch(ltsAppPath('/api/lts-votes'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ segment: target, targetLts: choice, ltsReason, rideability, rideabilityIssues, note, website }),
+        });
+        const result = await response.json() as SegmentVoteSummary & { error?: string };
+        if (!response.ok) throw new Error(result.error || 'Vote could not be saved.');
+        if (!bulk) {
+          setSummary(result);
+          setChoice(result.yourVote);
+          setLtsReason(result.yourLtsReason);
+          setRideability(result.yourRideability);
+          setRideabilityIssues(result.yourRideabilityIssues);
+          setNote(result.yourObservation);
+        }
       });
-      const result = await response.json() as SegmentVoteSummary & { error?: string };
-      if (!response.ok) throw new Error(result.error || 'Vote could not be saved.');
-      setSummary(result);
-      setChoice(result.yourVote);
-      setLtsReason(result.yourLtsReason);
-      setRideability(result.yourRideability);
-      setRideabilityIssues(result.yourRideabilityIssues);
-      setNote(result.yourObservation);
-      setMessage('Your contribution is published on the map. You can change it at any time.');
+      setMessage(`Your contribution was saved for ${targets.length} ${targets.length === 1 ? 'segment' : 'segments'}. You can change it at any time.`);
       try {
         await onPublished?.();
       } catch {
         setError('Your contribution was published, but the map overlay could not refresh. Reload the map to see it.');
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Vote could not be saved.');
+      const saved = targets.filter((target) => completedRef.current.has(segmentKey(target))).length;
+      setError(`${saved} of ${targets.length} segments saved. ${caught instanceof Error ? caught.message : 'Vote could not be saved.'} Retry without changing the form to submit only the remaining segments.`);
+      if (saved) { try { await onPublished?.(); } catch { /* Preserve the actionable save error. */ } }
     } finally {
       setSaving(false);
+      onSavingChange?.(false);
     }
   };
 
@@ -280,7 +303,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
       <div className="flex items-start gap-2">
         <Vote className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
         <div>
-          <h3 id="segment-vote-title" className="text-sm font-bold text-white">Vote on this segment</h3>
+          <h3 id="segment-vote-title" className="text-sm font-bold text-white">{bulk ? `Vote on ${targets.length} selected segments` : 'Vote on this segment'}</h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-300">Anyone can read published votes. Sign in to contribute. Your display name and explanation appear after review; your email stays private.</p>
         </div>
       </div>
@@ -308,7 +331,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
           </div>
         </section>
       )}
-      {!loading && <p className="mt-3 text-sm">{summary.total} traffic-stress votes · {summary.rideabilityTotal} rideability ratings</p>}
+      {!loading && !bulk && <p className="mt-3 text-sm">{summary.total} traffic-stress votes · {summary.rideabilityTotal} rideability ratings</p>}
       {!loading && summary.total > 0 && <p className="mt-1 text-sm">{Object.entries(summary.counts).filter(([, count]) => count > 0).map(([level, count]) => `LTS ${level}: ${count}`).join(' · ')}</p>}
       {!loading && summary.total > 0 && !summary.publicContributions.length && <p className="mt-1 text-sm">Voter names are not available in this public record.</p>}
       {error && <p role="alert" className="mt-2 text-sm text-rose-700">{error}</p>}
@@ -360,7 +383,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
       ) : loading ? (
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading votes…</div>
       ) : (
-        <>
+        <fieldset disabled={saving} className="min-w-0 border-0 p-0">
           <div className="mt-3 flex items-center justify-between gap-3">
             <div>
               <h4 className="text-xs font-bold text-white">Optional traffic stress</h4>
@@ -389,7 +412,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
                   title={`LTS ${level}: ${LTS_VOTE_LABELS[level]}`}
                 >
                   <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-white" style={{ background: LTS_VOTE_COLOURS[level] }}>L{level}</span>
-                  <span className="mt-1 block text-[10px] font-semibold text-slate-300">{summary.counts[String(level)] || 0}</span>
+                  {!bulk && <span className="mt-1 block text-[10px] font-semibold text-slate-300">{summary.counts[String(level)] || 0}</span>}
                   {summary.yourVote === level && <Check className="absolute right-1 top-1 h-3 w-3 text-white" aria-label="Your saved vote" />}
                 </button>
               );
@@ -400,7 +423,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
             <>
               <div className="mt-2 flex items-center gap-2 rounded-lg bg-slate-950/45 p-2 text-xs text-slate-200">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: LTS_VOTE_COLOURS[choiceResult] }} />
-                {choice >= 3
+                {bulk ? <span>Each segment is assessed separately using its existing score and the usual community rules.</span> : choice >= 3
                   ? <span>Published result: ceil(({segment.currentLts} + {choice}) ÷ 2) = <strong>LTS {choiceResult}</strong></span>
                   : <span>Published result: this segment becomes <strong>LTS {choiceResult}</strong></span>}
               </div>
@@ -455,7 +478,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
                   <RideabilitySymbol level={level} className="h-8 w-10" />
                   <span>
                     <span className="block text-[11px] font-bold text-slate-200">R{level} · {RIDEABILITY_LABELS[level]}</span>
-                    <span className="block text-[10px] text-slate-500">{summary.rideabilityCounts[String(level)] || 0} votes</span>
+                    {!bulk && <span className="block text-[10px] text-slate-500">{summary.rideabilityCounts[String(level)] || 0} votes</span>}
                   </span>
                   {summary.yourRideability === level && <Check className="absolute right-1.5 top-1.5 h-3 w-3 text-violet-200" aria-label="Your saved rideability rating" />}
                 </button>
@@ -516,7 +539,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
             className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-45"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Vote className="h-4 w-4" />}
-            {summary.yourVote || summary.yourRideability ? 'Update my contribution' : 'Save my contribution'}
+            {saving ? 'Saving contributions…' : bulk ? `Apply to ${targets.length} selected segments` : summary.yourVote || summary.yourRideability ? 'Update my contribution' : 'Save my contribution'}
           </button>
 
           {summary.total > 0 && summary.leadingTarget !== null && (
@@ -544,7 +567,7 @@ export function SegmentVote({ segment, onPublished }: { segment: VoteSegment; on
           )}
           {message && <p className="mt-2 text-xs font-semibold text-emerald-300">{message}</p>}
           {error && <p className="mt-2 text-xs font-semibold text-rose-300">{error}</p>}
-        </>
+        </fieldset>
       )}
 
 

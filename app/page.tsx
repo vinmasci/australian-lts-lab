@@ -8,6 +8,7 @@ import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, Loc
 import { Protocol } from 'pmtiles';
 import { DismountReport } from '@/app/components/DismountReport';
 import { SegmentVote } from '@/app/components/SegmentVote';
+import { MAX_SELECTED_SEGMENTS, toggleSegment } from '@/lib/lts-multi-select';
 import { CommunityActivity } from '@/app/components/CommunityActivity';
 import { ltsAppPath } from '@/lib/client-path';
 import type { DismountReportSegment } from '@/lib/dismount-reporting';
@@ -858,6 +859,12 @@ export default function LtsLabPage() {
   const [metadata, setMetadata] = useState<LtsMetadata | null>(null);
   const [selected, setSelected] = useState<FeatureProperties | null>(null);
   const [selectedVoteSegment, setSelectedVoteSegment] = useState<VoteSegment | null>(null);
+  const selectionRef = useRef<{ segment: VoteSegment; feature: MapGeoJSONFeature }[]>([]);
+  const [voteSelection, setVoteSelection] = useState<VoteSegment[]>([]);
+  const selectionSavingRef = useRef(false);
+  const [selectionSaving, setSelectionSaving] = useState(false);
+  const multiSelectRef = useRef(false);
+  const [multiSelect, setMultiSelect] = useState(false);
   const [selectedDismountSegment, setSelectedDismountSegment] = useState<DismountReportSegment | null>(null);
   const [selectedStreetViewPoint, setSelectedStreetViewPoint] = useState<Coordinate | null>(null);
   const [osmFeatureDetails, setOsmFeatureDetails] = useState<OsmFeatureDetails | null>(null);
@@ -1143,6 +1150,7 @@ export default function LtsLabPage() {
     const map = new maplibregl.Map({
         container: mapContainerRef.current,
         style: BASEMAP_STYLE,
+        boxZoom: false,
         center: startupViewRef.current?.dataset === datasetKey ? startupViewRef.current.center : activeDataset.center,
         zoom: activeDataset.zoom,
       });
@@ -1496,14 +1504,27 @@ export default function LtsLabPage() {
             routeClickRef.current([event.lngLat.lng, event.lngLat.lat]);
             return;
           }
+          if (selectionSavingRef.current) return;
           const layers = availableInteractiveLayers();
-          const feature = layers.length > 0 ? map.queryRenderedFeatures(event.point, { layers })[0] : undefined;
+          let feature = layers.length > 0 ? map.queryRenderedFeatures(event.point, { layers })[0] : undefined;
+          const segment = feature ? voteSegmentFromFeature(feature, datasetKey, metadataRef.current) : null;
+          if (event.originalEvent.shiftKey || multiSelectRef.current) {
+            if (!feature || !segment) return;
+            selectionRef.current = toggleSegment(selectionRef.current, { segment, feature });
+            feature = selectionRef.current[0]?.feature;
+          } else {
+            selectionRef.current = feature && segment ? [{ segment, feature }] : [];
+          }
+          setVoteSelection(selectionRef.current.map((entry) => entry.segment));
           setSelected(feature ? feature.properties as FeatureProperties : null);
-          setSelectedVoteSegment(feature ? voteSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
+          setSelectedVoteSegment(selectionRef.current[0]?.segment ?? null);
           setSelectedDismountSegment(feature ? dismountReportSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
           setSelectedStreetViewPoint(feature ? [event.lngLat.lng, event.lngLat.lat] : null);
           (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
-            .setData(selectedGeoJson(feature));
+            .setData(selectionRef.current.length ? {
+              type: 'FeatureCollection',
+              features: selectionRef.current.flatMap((entry) => selectedGeoJson(entry.feature).features),
+            } : selectedGeoJson(feature));
         });
         const approvedParams = new URLSearchParams({ dataset: datasetKey, approved: '1' });
         fetch(ltsAppPath(`/api/lts-votes?${approvedParams}`), { cache: 'no-store' })
@@ -1724,11 +1745,16 @@ export default function LtsLabPage() {
             : `${routePoints.length}-point route calculated`;
 
   const toggleRoutePlanning = () => {
+    if (selectionSavingRef.current) return;
+    multiSelectRef.current = false;
+    setMultiSelect(false);
     setPanelFocus('route');
     const next = !routeMode;
     setRouteMode(next);
     setMapPanelExpanded(false);
     setSelected(null);
+    selectionRef.current = [];
+    setVoteSelection([]);
     setSelectedVoteSegment(null);
     setSelectedDismountSegment(null);
     setSelectedStreetViewPoint(null);
@@ -1851,6 +1877,9 @@ export default function LtsLabPage() {
         <select
           value={datasetKey}
           onChange={(event) => {
+            if (selectionSavingRef.current) return;
+            multiSelectRef.current = false;
+            setMultiSelect(false);
             setMapLoading(true);
             setMetadata(null);
             metadataRef.current = null;
@@ -1862,6 +1891,8 @@ export default function LtsLabPage() {
             setSearchExpanded(false);
             resetRouteHistory();
             setSelected(null);
+            selectionRef.current = [];
+            setVoteSelection([]);
             setSelectedVoteSegment(null);
             setSelectedDismountSegment(null);
             setSelectedStreetViewPoint(null);
@@ -1875,6 +1906,7 @@ export default function LtsLabPage() {
           {Object.entries(DATASETS).map(([key, dataset]) => <option key={key} value={key}>{dataset.label}</option>)}
         </select>
         <CommunityActivity onShowRoad={(dataset, center) => {
+          if (selectionSavingRef.current) return;
           if (!Object.prototype.hasOwnProperty.call(DATASETS, dataset)) return;
           setShowAbout(false);
           setMapPanelExpanded(false);
@@ -1886,6 +1918,8 @@ export default function LtsLabPage() {
             setRouteMode(false);
             resetRouteHistory();
             setSelected(null);
+            selectionRef.current = [];
+            setVoteSelection([]);
             setMapLoading(true);
             setDatasetKey(dataset as DatasetKey);
           }
@@ -2385,7 +2419,12 @@ export default function LtsLabPage() {
         <aside className="lts-surface absolute bottom-3 right-3 top-auto z-20 max-h-[70vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl border border-white/10 bg-slate-950/95 p-5 shadow-2xl backdrop-blur md:bottom-auto md:right-4 md:top-24 md:w-96">
           <button
             onClick={() => {
+              if (selectionSavingRef.current) return;
+              multiSelectRef.current = false;
+              setMultiSelect(false);
               setSelected(null);
+              selectionRef.current = [];
+              setVoteSelection([]);
               setSelectedVoteSegment(null);
               setSelectedDismountSegment(null);
               setSelectedStreetViewPoint(null);
@@ -2394,6 +2433,7 @@ export default function LtsLabPage() {
             }}
             className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
             aria-label="Close details"
+            disabled={selectionSaving}
           ><X className="h-5 w-5" /></button>
           <div className="mb-4 flex items-center gap-3 pr-8">
             <span className={`flex h-12 w-12 items-center justify-center rounded-xl font-black text-white ${selectedIsDismount ? 'text-xs' : 'text-lg'}`} style={{ background: selectedLts ? LTS_COLOURS[selectedLts] : selectedIsDismount ? '#6b7280' : '#a855f7' }}>{selectedLts ? `L${selectedLts}` : selectedIsDismount ? 'WALK' : 'MTB'}</span>
@@ -2414,7 +2454,17 @@ export default function LtsLabPage() {
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}
-          {selectedVoteSegment && <SegmentVote segment={selectedVoteSegment} onPublished={refreshApprovedOverlay} />}
+          {selectedVoteSegment && <>
+            <div className="mb-3 rounded-lg border border-white/15 p-3 text-sm" role="status">
+              <strong>{voteSelection.length} {voteSelection.length === 1 ? 'segment' : 'segments'} selected</strong>
+              <p className="mt-1 text-xs">Hold Shift and click roads to add or remove segments (up to {MAX_SELECTED_SEGMENTS}). Click without Shift to start again.</p>
+              <button type="button" disabled={selectionSaving} aria-pressed={multiSelect} className="mt-2 rounded-lg border px-3 py-2 text-xs font-bold" onClick={() => { multiSelectRef.current = !multiSelect; setMultiSelect(!multiSelect); }}>{multiSelect ? 'Finish selecting' : 'Select multiple segments'}</button>
+              {multiSelect && <p className="mt-1 text-xs">Selection mode is on: click or tap segments to add/remove them, then choose Finish selecting.</p>}
+              {voteSelection.length >= MAX_SELECTED_SEGMENTS && <p className="mt-1 text-xs">Selection limit reached. Submit these before selecting more.</p>}
+              {voteSelection.length > 1 && <p className="mt-1 text-xs">{[...new Set(voteSelection.map((item) => item.name))].join(' · ')}. The same ratings and explanation will apply to every selected segment.</p>}
+            </div>
+            <SegmentVote segment={selectedVoteSegment} segments={voteSelection} onSavingChange={(saving) => { selectionSavingRef.current = saving; setSelectionSaving(saving); }} onPublished={refreshApprovedOverlay} />
+          </>}
           {selectedDismountSegment && <DismountReport segment={selectedDismountSegment} />}
           <div className="mt-3 rounded-lg bg-white/5 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{selectedIsDismount ? 'Why this is grey' : 'Why this score'}</p>
