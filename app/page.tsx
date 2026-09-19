@@ -1506,9 +1506,20 @@ export default function LtsLabPage() {
           }
           if (selectionSavingRef.current) return;
           const layers = availableInteractiveLayers();
-          let feature = layers.length > 0 ? map.queryRenderedFeatures(event.point, { layers })[0] : undefined;
+          const extending = event.originalEvent.shiftKey || multiSelectRef.current;
+          // Endpoint circles sit above roads. In multi-select, ignore these
+          // non-votable hits and use a small forgiving road hit area instead.
+          const exactHits = layers.length > 0 ? map.queryRenderedFeatures(event.point, { layers }) : [];
+          const nearbyHits = layers.length > 0 ? map.queryRenderedFeatures([
+            [event.point.x - 7, event.point.y - 7],
+            [event.point.x + 7, event.point.y + 7],
+          ], { layers }) : [];
+          const candidates = [...exactHits, ...nearbyHits];
+          let feature = extending
+            ? candidates.find((candidate) => voteSegmentFromFeature(candidate, datasetKey, metadataRef.current) !== null)
+            : exactHits[0] ?? nearbyHits[0];
           const segment = feature ? voteSegmentFromFeature(feature, datasetKey, metadataRef.current) : null;
-          if (event.originalEvent.shiftKey || multiSelectRef.current) {
+          if (extending) {
             if (!feature || !segment) return;
             selectionRef.current = toggleSegment(selectionRef.current, { segment, feature });
             feature = selectionRef.current[0]?.feature;
