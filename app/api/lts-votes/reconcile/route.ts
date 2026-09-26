@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { reconcileCommunityDataset, registerCommunityDataset } from '@/lib/lts-community-store';
-import type { VoteSegment } from '@/lib/lts-voting';
+import { isLtsVoteLevel, type VoteSegment } from '@/lib/lts-voting';
 import { reconciliationAuthorised } from '@/lib/lts-review-auth';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +16,7 @@ function validSegment(value: unknown, dataset: string): value is VoteSegment {
   return segment.dataset === dataset
     && typeof segment.segmentId === 'string' && segment.segmentId.length > 0 && segment.segmentId.length <= 160
     && typeof segment.name === 'string' && segment.name.length <= 160
-    && Number.isInteger(segment.currentLts) && segment.currentLts >= 1 && segment.currentLts <= 4
+    && isLtsVoteLevel(segment.currentLts)
     && Boolean(segment.geometry && ['Point', 'LineString', 'MultiLineString'].includes(segment.geometry.type));
 }
 

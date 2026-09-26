@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { PathCorrectionReview } from '@/app/components/PathCorrectionReview';
 import {
   onAuthStateChanged,
   GoogleAuthProvider,
@@ -379,6 +380,7 @@ export function ReviewQueue() {
           <button type="button" onClick={() => void loadQueue()} disabled={loading} className="mt-auto flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/10 px-4 text-sm font-bold text-slate-200 hover:bg-white/10 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh</button>
         </section>
 
+        <PathCorrectionReview authorisedFetch={authorisedFetch} status={status} dataset={dataset} />
         {error && <p className="mt-4 rounded-lg bg-rose-300/10 p-3 text-sm font-semibold text-rose-200">{error}</p>}
         {loading && !items.length ? <div className="mt-10 flex items-center justify-center text-slate-400"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading contributions…</div> : (
           <div className="mt-5 space-y-4">

@@ -1,3 +1,5 @@
+import { mergePathCorrections } from '@/lib/path-corrections';
+import { currentPublishedPaths } from '@/lib/path-correction-osm';
 import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -65,7 +67,7 @@ function validSegment(value: unknown): value is VoteSegment {
     && validIdentifier(segment.segmentId, 160)
     && typeof segment.name === 'string' && segment.name.length <= 160
     && typeof segment.featureKind === 'string' && segment.featureKind.length <= 40
-    && Number.isInteger(segment.currentLts) && segment.currentLts >= 1 && segment.currentLts <= 4
+    && isLtsVoteLevel(segment.currentLts)
     && validGeometry(segment.geometry)
     && (segment.osmId === undefined || validIdentifier(segment.osmId, 40))
     && (segment.direction === undefined || validIdentifier(segment.direction, 30))
@@ -147,9 +149,9 @@ export async function GET(request: NextRequest) {
     if (!DATASETS.has(dataset)) return NextResponse.json({ error: 'Unknown dataset.' }, { status: 400 });
 
     if (request.nextUrl.searchParams.get('approved') === '1') {
-      const approvals = await publishedCommunityApprovals(dataset);
-      return NextResponse.json({
-        type: 'FeatureCollection',
+      const [approvals, paths] = await Promise.all([publishedCommunityApprovals(dataset), currentPublishedPaths(dataset)]);
+      const collection = {
+        type: 'FeatureCollection' as const,
         features: approvals
           .filter((approval) => approval.dataset === dataset && isLtsVoteLevel(approval.approvedLts))
           .map((approval) => {
@@ -161,20 +163,25 @@ export async function GET(request: NextRequest) {
               segment?.maxspeed,
             );
             return ({
-            type: 'Feature',
+            type: 'Feature' as const,
             id: String(approval.segmentId),
             properties: {
               segment_id: approval.segmentId,
+              osm_id: segment?.osmId,
+              highway: segment?.highway,
+              trail_routing: segment?.trailRouting,
+              is_mtb: segment?.isMtb,
               lts: publishedLts,
               rideability: approval.approvedRideability ?? null,
               target_lts: approval.targetLts,
               approved_at: approval.approvedAt,
               reconciliation_status: approval.status || 'current',
             },
-            geometry: approval.geometry || segment?.geometry,
+            geometry: (approval.geometry || segment?.geometry) as GeoJSON.Geometry,
           });
           }),
-      }, { headers: { 'Cache-Control': 'no-store' } });
+      };
+      return NextResponse.json(mergePathCorrections(collection as GeoJSON.FeatureCollection, paths), { headers: { 'Cache-Control': 'no-store' } });
     }
 
     const segmentId = request.nextUrl.searchParams.get('segmentId') || '';

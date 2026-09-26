@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import { gzip as gzipCallback } from 'node:zlib';
 import { PMTiles, SharedPromiseCache } from 'pmtiles';
 import { applyTileApprovals } from '@/lib/lts-community-tiles';
-import { communityTileRatings } from '@/lib/lts-tile-approval-cache';
+import { communityTileRatings, communityTilePaths } from '@/lib/lts-tile-approval-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -69,9 +69,10 @@ export async function GET(
   }
 
   try {
-    const [tile, ratings] = await Promise.all([
+    const [tile, ratings, paths] = await Promise.all([
       archiveFor(path.dataset).getZxy(z, x, y, request.signal),
       communityTileRatings(path.dataset),
+      communityTilePaths(path.dataset),
     ]);
     if (!tile) return new Response(null, { status: 204 });
 
@@ -80,7 +81,7 @@ export async function GET(
     // several megabytes raw, while mobile map SDKs natively accept gzip.
     let data = new Uint8Array(tile.data);
     try {
-      data = new Uint8Array(applyTileApprovals(data, ratings));
+      data = new Uint8Array(applyTileApprovals(data, ratings, paths));
     } catch (error) {
       console.error('[LTS tiles] community merge failed; serving base tile', error);
     }

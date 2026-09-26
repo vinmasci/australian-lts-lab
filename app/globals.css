@@ -107,6 +107,8 @@ select {
 .lts-surface :is([class*="text-red-"], [class*="text-rose-"]) { color: #b42332; }
 .lts-surface [class*="text-amber-"] { color: #85510a; }
 .lts-surface [class*="text-purple-"] { color: #713b9b; }
+.lts-surface [class*="text-pink-"] { color: #9d245f; }
+.lts-surface input[type="radio"] { accent-color: #9d245f; }
 .lts-surface input:not([type="range"]):not([type="checkbox"]),
 .lts-surface select, .lts-surface textarea { color: #112c30; background-color: #f5f6ef; border-color: #dce1d7; }
 .lts-surface input::placeholder, .lts-surface textarea::placeholder { color: #737d87; }

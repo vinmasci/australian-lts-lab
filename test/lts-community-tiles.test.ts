@@ -52,3 +52,23 @@ test('empty / nonmatching approval snapshots return byte-identical base tiles', 
   assert.equal(applyTileApprovals(data, new Map()), data);
   assert.equal(applyTileApprovals(data, new Map([['w9999', 1]])), data);
 });
+
+test('reviewed pink paths change classification without changing geometry or unrelated roads', () => {
+  const data = fromGeojsonVt({ lts: { features: [
+    { id: 10, type: 2, geometry: [[[1,2],[30,80]]], tags: { feature_kind: 'segment', osm_id: 'w10', highway: 'path', lts: 1, trail_routing: 'caution', is_mtb: false } },
+    { id: 11, type: 2, geometry: [[[10,2],[40,80]]], tags: { feature_kind: 'segment', osm_id: 'w11', highway: 'path', lts: 1, trail_routing: 'caution', is_mtb: false } },
+    { id: 12, type: 2, geometry: [[[20,2],[50,80]]], tags: { feature_kind: 'segment', osm_id: 'w12', highway: 'path', lts: 1, trail_routing: 'caution', is_mtb: false } },
+    { id: 13, type: 2, geometry: [[[30,2],[60,80]]], tags: { feature_kind: 'segment', osm_id: 'w13', highway: 'residential', lts: 2, trail_routing: 'normal' } },
+  ] } } as unknown as Parameters<typeof fromGeojsonVt>[0]);
+  const paths = ['cycling','walking','mtb','cycling'].map((pathType,index) => ({ pathType, segment: { osmId: `w${10+index}` }, approvedAt: 'now', osmVersion: 7 })) as import('@/lib/path-corrections').PublishedPathCorrection[];
+  const original = new VectorTile(new Pbf(data)).layers.lts;
+  const output = new VectorTile(new Pbf(applyTileApprovals(data, new Map(), paths))).layers.lts;
+  for (let i = 0; i < 4; i++) assert.deepEqual(output.feature(i).loadGeometry(), original.feature(i).loadGeometry());
+  assert.equal(output.feature(0).properties.trail_routing, 'normal');
+  assert.equal(output.feature(0).properties.lts, 1);
+  assert.equal(output.feature(1).properties.feature_kind, 'dismount');
+  assert.equal(output.feature(1).properties.bicycle, 'dismount');
+  assert.equal(output.feature(1).properties.lts, undefined);
+  assert.equal(output.feature(2).properties.is_mtb, true);
+  assert.deepEqual(output.feature(3).properties, original.feature(3).properties);
+});

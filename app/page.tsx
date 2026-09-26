@@ -7,13 +7,15 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, Search, Trash2, Undo2, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 import { DismountReport } from '@/app/components/DismountReport';
+import { PathCorrection } from '@/app/components/PathCorrection';
+import { canCorrectPath } from '@/lib/path-corrections';
 import { SegmentVote } from '@/app/components/SegmentVote';
 import { MAX_SELECTED_SEGMENTS, toggleSegment } from '@/lib/lts-multi-select';
 import { CommunityActivity } from '@/app/components/CommunityActivity';
 import { ltsAppPath } from '@/lib/client-path';
 import type { DismountReportSegment } from '@/lib/dismount-reporting';
 import { googleStreetViewUrl } from '@/lib/google-maps';
-import { LTS_VOTE_COLOURS, type VoteSegment } from '@/lib/lts-voting';
+import { isLtsVoteLevel, LTS_VOTE_COLOURS, type VoteSegment } from '@/lib/lts-voting';
 import { assessBikeAccess, orderedOsmTags, type OsmFeatureDetails } from '@/lib/osm-tags';
 
 
@@ -552,7 +554,7 @@ function geometryFingerprint(geometry: GeoJSON.Geometry): string {
 function voteSegmentFromFeature(feature: Pick<MapGeoJSONFeature, 'properties' | 'geometry' | 'id'>, dataset: DatasetKey, metadata?: LtsMetadata | null): VoteSegment | null {
   const properties = feature.properties as FeatureProperties;
   const currentLts = Number(properties.lts);
-  if (!Number.isInteger(currentLts) || currentLts < 1 || currentLts > 4) return null;
+  if (!isLtsVoteLevel(currentLts)) return null;
   const featureKind = String(properties.feature_kind || 'segment');
   if (featureKind !== 'segment') return null;
   const osmId = properties.osm_id ? String(properties.osm_id) : undefined;
@@ -569,6 +571,9 @@ function voteSegmentFromFeature(feature: Pick<MapGeoJSONFeature, 'properties' | 
     name: String(properties.name || 'Unnamed road/path').slice(0, 160),
     featureKind,
     currentLts,
+    highway: String(properties.highway || ''),
+    trailRouting: String(properties.trail_routing || ''),
+    isMtb: propertyIsTrue(properties.is_mtb),
     geometry: JSON.parse(JSON.stringify(feature.geometry)) as GeoJSON.Geometry,
     osmId,
     direction: direction ? String(direction).slice(0, 30) : undefined,
@@ -1191,6 +1196,9 @@ export default function LtsLabPage() {
         ];
         const approvedColourExpression: maplibregl.ExpressionSpecification = [
           'case',
+          ['==', ['get', 'path_type'], 'walking'], '#6b7280',
+          ['==', ['get', 'path_type'], 'mtb'], '#8b5cf6',
+          ['all', ['!', ['has', 'path_type']], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]], '#ec4899',
           ['==', ['get', 'lts'], 1], LTS_VOTE_COLOURS[1],
           ['==', ['get', 'lts'], 1.5], LTS_VOTE_COLOURS[1.5],
           ['==', ['get', 'lts'], 2], LTS_VOTE_COLOURS[2],
@@ -1541,7 +1549,9 @@ export default function LtsLabPage() {
             selectionRef.current = feature && segment ? [{ segment, feature }] : [];
           }
           setVoteSelection(selectionRef.current.map((entry) => entry.segment));
-          setSelected(feature ? feature.properties as FeatureProperties : null);
+          const publishedPath = feature && map.queryRenderedFeatures(event.point, { layers: ['lts-approved-line'] })
+            .find(part => part.properties?.segment_id === segment?.segmentId && part.properties?.path_type);
+          setSelected(feature ? { ...feature.properties, ...(publishedPath ? { reviewed_path_type: publishedPath.properties.path_type } : {}) } as FeatureProperties : null);
           setSelectedVoteSegment(selectionRef.current[0]?.segment ?? null);
           setSelectedDismountSegment(feature ? dismountReportSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
           setSelectedStreetViewPoint(feature ? [event.lngLat.lng, event.lngLat.lat] : null);
@@ -2512,6 +2522,8 @@ export default function LtsLabPage() {
               setSaveNotice(`Saved successfully for ${count} ${count === 1 ? 'segment' : 'segments'}. ${mapRefreshed ? 'Selection cleared. The map now shows the published scores under the community voting rules.' : 'Selection cleared, but the map could not refresh. Reload to see the published scores.'}`);
             }} />
           </>}
+          {selected.reviewed_path_type && <p className="mt-3 rounded-lg border border-pink-300/20 p-3 text-xs text-pink-200">Saved path type: {String(selected.reviewed_path_type) === 'cycling' ? 'Suitable for cycling' : String(selected.reviewed_path_type) === 'walking' ? 'Walking only / dismount' : 'MTB trail'}. Routing updates with the next community graph refresh.</p>}
+          {selectedVoteSegment && voteSelection.length === 1 && canCorrectPath(selectedVoteSegment) && <PathCorrection key={`${selectedVoteSegment.dataset}:${selectedVoteSegment.segmentId}`} segment={selectedVoteSegment} onPublished={refreshApprovedOverlay} onSavingChange={saving => { selectionSavingRef.current = saving; setSelectionSaving(saving); }} />}
           {selectedDismountSegment && <DismountReport segment={selectedDismountSegment} />}
           <div className="mt-3 rounded-lg bg-white/5 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{selectedIsDismount ? 'Why this is grey' : 'Why this score'}</p>

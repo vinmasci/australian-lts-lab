@@ -1,3 +1,4 @@
+import type { PublishedPathCorrection } from './path-corrections';
 import { VectorTile } from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import { fromVectorTileJs } from 'vt-pbf';
@@ -22,23 +23,47 @@ const colours: Record<LtsVoteLevel, string> = {
 };
 
 /** Change properties, never reconstruct/simplify road geometry or join crossings. */
-export function applyTileApprovals(data: Uint8Array, ratings: ReadonlyMap<string, LtsVoteLevel>): Uint8Array {
-  if (!ratings.size) return data;
+export function applyTileApprovals(data: Uint8Array, ratings: ReadonlyMap<string, LtsVoteLevel>, paths: PublishedPathCorrection[] = []): Uint8Array {
+  if (!ratings.size && !paths.length) return data;
   const tile = new VectorTile(new Pbf(data));
   const layer = tile.layers.lts;
   if (!layer) return data;
+  const corrections = new Map(paths.map(record => [record.segment.osmId, record]));
   let changed = false;
   const features = Array.from({ length: layer.length }, (_, index) => {
     const feature = layer.feature(index);
     const p = feature.properties;
     const rating = p.feature_kind === 'segment' ? ratings.get(String(p.osm_id)) : undefined;
-    if (rating === undefined) return feature;
+    const correction = p.feature_kind === 'segment' && ['caution', 'avoid'].includes(String(p.trail_routing))
+      && ['path', 'track', 'bridleway'].includes(String(p.highway)) && p.is_mtb !== true
+      ? corrections.get(String(p.osm_id)) : undefined;
+    if (correction) {
+      const pathType = correction.pathType;
+      feature.properties = { ...p, community_path_type: pathType, trail_routing: 'normal',
+        trail_reason: 'Path type supplied by a signed-in AusBUG contributor.', is_ambiguous_trail: false,
+        is_mtb: pathType === 'mtb', mtb_routing: pathType === 'mtb' ? 'caution' : 'normal',
+      };
+      if (pathType === 'walking') {
+        feature.properties.feature_kind = 'dismount';
+        feature.properties.bicycle = 'dismount';
+        feature.properties.access_status = 'dismount';
+        feature.properties.routable_walk_bike = true;
+        feature.properties.colour = '#6b7280';
+        feature.properties.reason = 'Community correction: walking only / dismount.';
+        for (const key of ['lts', 'lts_forward', 'lts_backward']) delete feature.properties[key];
+      } else if (pathType === 'mtb') {
+        feature.properties.colour = '#a855f7';
+        feature.properties.mtb_reason = 'Community correction: MTB trail.';
+      }
+      changed = true;
+    }
+    if (rating === undefined || correction?.pathType === 'walking') return feature;
     // Recheck against the CURRENT tile's speed, not just the saved vote snapshot.
     const speed = Math.max(Number(p.maxspeed) || 0, Number(p.official_speed_forward) || 0, Number(p.official_speed_backward) || 0);
     const base = Number(p.lts);
     if (!Number.isFinite(base)) return feature;
     const lts = applyHardSpeedRuleFloor(base, rating, speed);
-    feature.properties = { ...p, base_lts: base, lts,
+    feature.properties = { ...feature.properties, base_lts: base, lts,
       lts_forward: applyHardSpeedRuleFloor(Number(p.lts_forward ?? base), rating, speed),
       lts_backward: applyHardSpeedRuleFloor(Number(p.lts_backward ?? base), rating, speed),
       colour: colours[lts], community_lts: true,

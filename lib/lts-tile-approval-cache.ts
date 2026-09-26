@@ -34,3 +34,28 @@ export async function communityTileRatings(dataset: string): Promise<Map<string,
     if (timeout) clearTimeout(timeout);
   }
 }
+
+
+// Path access changes fail closed when verification is unavailable. Unlike LTS
+// scores, an expired permissive classification is never used as a fallback.
+import { currentPublishedPaths } from './path-correction-osm';
+import type { PublishedPathCorrection } from './path-corrections';
+const pathSnapshots = new Map<string, { paths: PublishedPathCorrection[]; expires: number }>();
+const pathPending = new Map<string, Promise<PublishedPathCorrection[]>>();
+export async function communityTilePaths(dataset: string): Promise<PublishedPathCorrection[]> {
+  const cached = pathSnapshots.get(dataset);
+  if (cached && cached.expires > Date.now()) return cached.paths;
+  let read = pathPending.get(dataset);
+  if (!read) {
+    read = currentPublishedPaths(dataset).then(paths => {
+      pathSnapshots.set(dataset, { paths, expires: Date.now() + 300_000 });
+      return paths;
+    }).catch(error => { console.error('[LTS path tile corrections]', error); return []; })
+      .finally(() => pathPending.delete(dataset));
+    pathPending.set(dataset, read);
+  }
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([read, new Promise<PublishedPathCorrection[]>(resolve => { timeout = setTimeout(() => resolve([]), 1500); })]);
+  } finally { if (timeout) clearTimeout(timeout); }
+}

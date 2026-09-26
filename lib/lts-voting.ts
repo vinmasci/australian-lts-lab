@@ -66,6 +66,9 @@ export interface VoteSegment {
   datasetVersion?: string;
   classifierVersion?: string;
   osmSnapshotDate?: string;
+  highway?: string;
+  trailRouting?: string;
+  isMtb?: boolean;
 }
 
 export type ReconciliationStatus = 'current' | 'carried_forward' | 'needs_review' | 'orphaned';
