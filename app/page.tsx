@@ -1882,7 +1882,7 @@ export default function LtsLabPage() {
   };
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-slate-950 text-white" onPointerDownCapture={() => { startupInteractionRef.current = true; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
+    <main className="lts-app relative h-[100dvh] overflow-hidden bg-slate-950 text-white" onPointerDownCapture={() => { startupInteractionRef.current = true; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
       {saveNotice && (
         <div className="lts-surface absolute left-3 right-3 top-24 z-30 mx-auto flex max-w-lg items-start gap-3 rounded-xl border border-emerald-600 bg-white p-4 text-slate-900 shadow-xl">
@@ -1891,8 +1891,8 @@ export default function LtsLabPage() {
         </div>
       )}
       {mapLoading && (
-        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/45">
-          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/90 px-5 py-4 text-sm font-semibold text-slate-100 shadow-2xl">
+        <div className="lts-loading pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/45">
+          <div className="lts-loading-panel flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/90 px-5 py-4 text-sm font-semibold text-slate-100 shadow-2xl">
             <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
             Loading the full-resolution LTS network…
           </div>
@@ -1912,8 +1912,9 @@ export default function LtsLabPage() {
 
       <header className="lts-surface mobile-map-header lts-open-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 shadow-2xl md:left-4 md:right-4 md:flex-nowrap md:gap-3 md:px-4">
         <div className="shrink-0"><img src={process.env.NODE_ENV === 'production' ? 'https://australian-lts-lab.vercel.app/ausbug-logo-transparent.png' : '/ausbug-logo-transparent.png'} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>AusBUG <span className="font-normal text-slate-400">LTS map</span></h1>
+        <div className="lts-brand-copy min-w-0 flex-1">
+          <span className="lts-brand-kicker">AusBUG tools</span>
+          <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>Traffic stress map</h1>
         </div>
         <select
           value={datasetKey}
