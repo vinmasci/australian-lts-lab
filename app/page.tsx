@@ -17,6 +17,7 @@ import type { DismountReportSegment } from '@/lib/dismount-reporting';
 import { googleStreetViewUrl } from '@/lib/google-maps';
 import { isLtsVoteLevel, LTS_VOTE_COLOURS, type VoteSegment } from '@/lib/lts-voting';
 import { assessBikeAccess, orderedOsmTags, type OsmFeatureDetails } from '@/lib/osm-tags';
+import type { LtsRelease } from '@/lib/lts-release';
 
 
 const DATASET_VERSION = 'au-lts-v0.5-council-traffic';
@@ -914,7 +915,20 @@ export default function LtsLabPage() {
   const [datasetKey, setDatasetKey] = useState<DatasetKey>('victoria');
   const startupInteractionRef = useRef(false);
   const startupViewRef = useRef<{ dataset: DatasetKey; center: [number, number]; zoom?: number } | null>(null);
-  const activeDataset = DATASETS[datasetKey];
+  const [publishedRelease, setPublishedRelease] = useState<LtsRelease | null>(null);
+  const releaseDataset = publishedRelease?.datasets[datasetKey];
+  const activeDataset = releaseDataset ? {
+    ...DATASETS[datasetKey], dataUrl: releaseDataset.archive_url, metadataUrl: releaseDataset.metadata_url,
+  } : DATASETS[datasetKey];
+
+  useEffect(() => {
+    const abort = new AbortController();
+    fetch(ltsAppPath('/api/lts-release'), { cache: 'no-store', signal: abort.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(setPublishedRelease)
+      .catch(error => { if (!abort.signal.aborted) console.error('[LTS release]', error); });
+    return () => abort.abort();
+  }, []);
   const stateSourceCopy = STATE_SOURCE_COPY[datasetKey];
   const displayedRouteSummary = selectedRouteKind === 'bike-profile'
     ? routeComparison?.stress?.summary || null
@@ -1139,13 +1153,15 @@ export default function LtsLabPage() {
   });
 
   useEffect(() => {
-    fetch(ltsAppPath(activeDataset.metadataUrl), { cache: 'no-store' })
+    const abort = new AbortController();
+    fetch(ltsAppPath(activeDataset.metadataUrl), { cache: 'no-store', signal: abort.signal })
       .then((response) => {
         if (!response.ok) throw new Error(`Metadata returned ${response.status}`);
         return response.json();
       })
       .then(setMetadata)
-      .catch((error) => setMapError(`LTS metadata is unavailable: ${error.message}`));
+      .catch((error) => { if (!abort.signal.aborted) setMapError(`LTS metadata is unavailable: ${error.message}`); });
+    return () => abort.abort();
   }, [activeDataset.metadataUrl]);
 
   useEffect(() => {

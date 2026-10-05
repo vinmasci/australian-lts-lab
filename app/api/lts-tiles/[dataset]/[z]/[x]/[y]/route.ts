@@ -4,6 +4,7 @@ import { gzip as gzipCallback } from 'node:zlib';
 import { PMTiles, SharedPromiseCache } from 'pmtiles';
 import { applyTileApprovals } from '@/lib/lts-community-tiles';
 import { communityTileRatings, communityTilePaths } from '@/lib/lts-tile-approval-cache';
+import { currentLtsRelease } from '@/lib/lts-release';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,14 +33,16 @@ type Dataset = keyof typeof ARCHIVE_URLS;
 // Reuse archive directory reads across warm serverless requests. Tile bodies are
 // cached at the HTTP edge and by the mobile map SDKs.
 const directoryCache = new SharedPromiseCache(256);
-const archives = new Map<Dataset, PMTiles>();
+const archives = new Map<Dataset, { url: string; archive: PMTiles }>();
 const gzip = promisify(gzipCallback);
 
-function archiveFor(dataset: Dataset): PMTiles {
+async function archiveFor(dataset: Dataset): Promise<PMTiles> {
+  const release = await currentLtsRelease();
+  const url = release?.datasets[dataset].archive_url || ARCHIVE_URLS[dataset];
   const existing = archives.get(dataset);
-  if (existing) return existing;
-  const archive = new PMTiles(ARCHIVE_URLS[dataset], directoryCache);
-  archives.set(dataset, archive);
+  if (existing?.url === url) return existing.archive;
+  const archive = new PMTiles(url, directoryCache);
+  archives.set(dataset, { url, archive });
   return archive;
 }
 
@@ -70,7 +73,7 @@ export async function GET(
 
   try {
     const [tile, ratings, paths] = await Promise.all([
-      archiveFor(path.dataset).getZxy(z, x, y, request.signal),
+      archiveFor(path.dataset).then(archive => archive.getZxy(z, x, y, request.signal)),
       communityTileRatings(path.dataset),
       communityTilePaths(path.dataset),
     ]);
