@@ -5,6 +5,7 @@ import { PMTiles, SharedPromiseCache } from 'pmtiles';
 import { applyTileApprovals } from '@/lib/lts-community-tiles';
 import { communityTileRatings, communityTilePaths } from '@/lib/lts-tile-approval-cache';
 import { currentLtsRelease } from '@/lib/lts-release';
+import { removeInferredWalkingContext } from '@/lib/lts-mobile-tiles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -82,7 +83,9 @@ export async function GET(
     // PMTiles transparently expands its internally compressed tile payloads.
     // Recompress the MVT for HTTP delivery: metropolitan low-zoom tiles can be
     // several megabytes raw, while mobile map SDKs natively accept gzip.
-    let data = new Uint8Array(tile.data);
+    // This is mandatory for existing mobile clients, which automatically draw
+    // routable dismount features. Never fall back to the unfiltered archive.
+    let data = new Uint8Array(removeInferredWalkingContext(new Uint8Array(tile.data)));
     try {
       data = new Uint8Array(applyTileApprovals(data, ratings, paths));
     } catch (error) {
