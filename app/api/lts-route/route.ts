@@ -1,4 +1,5 @@
 import { ltsFromCost, precomputedLtsFromWayTags, hasPlaceholder } from '@/lib/lts-route-ratings';
+import { currentLtsRelease } from '@/lib/lts-release';
 import { NextRequest, NextResponse } from 'next/server';
 
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development'
@@ -312,6 +313,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Low-stress routing is not enabled for that dataset.' }, { status: 400 });
     }
     const comparisonPromise = requestComparisonRoute(points, allowGravel);
+    const releasePromise = currentLtsRelease();
 
     const upstreamUrl = new URL(ROUTER_URLS[dataset]);
     upstreamUrl.searchParams.set(
@@ -351,10 +353,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const comparison = await comparisonPromise;
+    const [comparison, release] = await Promise.all([comparisonPromise, releasePromise]);
+    const publishedVersion = release?.datasets[dataset].metadata.classifier_version;
 
     return NextResponse.json({
-      classifier_version: ROUTING_CLASSIFIER_VERSION,
+      classifier_version: typeof publishedVersion === 'string'
+        ? publishedVersion : ROUTING_CLASSIFIER_VERSION,
       dataset,
       engine: 'BRouter',
       profile: 'cyalts',
