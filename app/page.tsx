@@ -881,7 +881,7 @@ export default function LtsLabPage() {
   const [showCrossings, setShowCrossings] = useState(true);
   const [showLowConfidence, setShowLowConfidence] = useState(true);
   const [showMtbTrails, setShowMtbTrails] = useState(true);
-  const [showDismountLinks, setShowDismountLinks] = useState(true);
+  const [showDismountLinks, setShowDismountLinks] = useState(false);
   const [showUnverifiedTrails, setShowUnverifiedTrails] = useState(true);
   const [showActAccessOnlyTrails, setShowActAccessOnlyTrails] = useState(false);
   const [satelliteEnabled, setSatelliteEnabled] = useState(false);
@@ -1376,7 +1376,7 @@ export default function LtsLabPage() {
           'source-layer': 'lts',
           filter: ['==', ['get', 'feature_kind'], 'dismount'],
           minzoom: 10,
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' },
           paint: {
             'line-color': '#ffffff',
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2.2, 14, 5.5, 18, 11],
@@ -1390,7 +1390,7 @@ export default function LtsLabPage() {
           'source-layer': 'lts',
           filter: ['==', ['get', 'feature_kind'], 'dismount'],
           minzoom: 10,
-          layout: { 'line-cap': 'butt', 'line-join': 'round' },
+          layout: { 'line-cap': 'butt', 'line-join': 'round', visibility: 'none' },
           paint: {
             'line-color': '#6b7280',
             'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.2, 14, 3.2, 18, 7],
@@ -2433,7 +2433,7 @@ export default function LtsLabPage() {
         <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showDismountLinks} onChange={(event) => setShowDismountLinks(event.target.checked)} className="h-4 w-4" />
           <span className="relative h-1.5 w-8 shrink-0 rounded-full bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-slate-500" /></span>
-          <span>Dismount / walk-bike link</span>
+          <span>Dismount / walk-bike links (optional)</span>
         </label>
         <div className="grid grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm text-slate-200">
           <span className="h-4 w-4" aria-hidden="true" />
@@ -2760,7 +2760,7 @@ export default function LtsLabPage() {
                     <thead className="bg-white/10 text-slate-300"><tr><th className="px-3 py-2">Facility or road context</th><th className="px-3 py-2">Exact base LTS rule</th></tr></thead>
                     <tbody className="divide-y divide-white/10 align-top">
                       <tr><td className="px-3 py-2 font-semibold text-slate-200">Traffic-free path or protected lane</td><td className="px-3 py-2">LTS 1. This includes mapped cycleways/paths and on-road cycling treatments tagged as track, protected, separate or separated.</td></tr>
-                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Dismount / walk-bike link</td><td className="px-3 py-2">No LTS score. A way tagged <code>bicycle=dismount</code> is shown grey and may remain routable with a strong penalty, but is not represented as permission to ride.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Dismount / walk-bike link</td><td className="px-3 py-2">No LTS score. A way tagged <code>bicycle=dismount</code> can be shown grey using the optional layer and may remain routable with a strong penalty, but is not represented as permission to ride.</td></tr>
                       <tr><td className="px-3 py-2 font-semibold text-slate-200">Slow local street</td><td className="px-3 py-2">A living street, or a local road at 30 km/h or less: LTS 1 with one lane per direction; LTS 2 with more. Roundabouts do not receive this shortcut.</td></tr>
                       <tr><td className="px-3 py-2 font-semibold text-slate-200">Buffered painted lane</td><td className="px-3 py-2">LTS 2 at no more than 50 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4.</td></tr>
                       <tr><td className="px-3 py-2 font-semibold text-slate-200">Unbuffered painted lane</td><td className="px-3 py-2">LTS 2 at no more than 40 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4. Any mapped adjacent kerbside parking then adds one LTS level, capped at LTS 4.</td></tr>
