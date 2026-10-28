@@ -59,7 +59,7 @@ function authMessage(error: unknown, fallback: string): string {
 }
 
 function ReviewCard({ item, authorisedFetch, onReviewed }: { item: ReviewQueueItem; authorisedFetch: AuthorisedFetch; onReviewed: () => void }) {
-  const [targetLts, setTargetLts] = useState<LtsVoteLevel>(item.approval?.targetLts || item.leadingTarget || Math.max(1, Math.min(4, item.segment.currentLts)) as LtsVoteLevel);
+  const [targetLts, setTargetLts] = useState<LtsVoteLevel>(item.approval?.targetLts || item.leadingTarget || Math.max(1, Math.min(4.5, item.segment.currentLts)) as LtsVoteLevel);
   const [rideability, setRideability] = useState<RideabilityLevel | null>(item.approval?.approvedRideability ?? item.communityRideability);
   const [reviewNote, setReviewNote] = useState('');
   const [saving, setSaving] = useState<'approve' | 'reject' | null>(null);

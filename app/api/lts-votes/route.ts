@@ -169,6 +169,7 @@ export async function GET(request: NextRequest) {
             id: String(approval.segmentId),
             properties: {
               segment_id: approval.segmentId,
+              feature_kind: segment?.featureKind,
               osm_id: segment?.osmId,
               highway: segment?.highway,
               trail_routing: segment?.trailRouting,

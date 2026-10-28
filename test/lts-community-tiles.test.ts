@@ -15,6 +15,36 @@ function fixture() {
   return fromGeojsonVt({ lts: { features } } as unknown as Parameters<typeof fromGeojsonVt>[0], { version: 2, extent: 4096 });
 }
 
+test('published 4.5 is preserved in tiles and both directions without changing access or geometry', () => {
+  const input = fixture();
+  const before = new VectorTile(new Pbf(input)).layers.lts;
+  const after = new VectorTile(new Pbf(applyTileApprovals(input, new Map([['w70', 4.5]])))).layers.lts;
+  const feature = after.feature(2);
+  assert.equal(feature.properties.lts, 4.5);
+  assert.equal(feature.properties.lts_forward, 4.5);
+  assert.equal(feature.properties.lts_backward, 4.5);
+  assert.equal(feature.properties.colour, '#7f1d1d');
+  assert.equal(feature.properties.bicycle, before.feature(2).properties.bicycle);
+  assert.deepEqual(feature.loadGeometry(), before.feature(2).loadGeometry());
+});
+
+test('crossing exclusions match node IDs and cannot be bypassed by a walking correction', () => {
+  const data = fromGeojsonVt({ lts: { features: [
+    { id: 1, type: 1, geometry: [[30, 80]], tags: { feature_kind: 'crossing', osm_id: 'n70', lts: 3 } },
+    { id: 2, type: 2, geometry: [[[1, 2], [30, 80]]], tags: { feature_kind: 'segment', osm_id: 'w70', highway: 'path', lts: 1, trail_routing: 'caution', is_mtb: false } },
+  ] } } as unknown as Parameters<typeof fromGeojsonVt>[0]);
+  const ratings = tileApprovals('victoria', [
+    { dataset: 'victoria', segmentId: 'crossing:n70', approvedLts: 4.5, targetLts: 4.5, baseLts: 3, status: 'current' },
+    { dataset: 'victoria', segmentId: 'segment:w70', approvedLts: 4.5, targetLts: 4.5, baseLts: 1, status: 'current' },
+  ]);
+  const paths = [{ pathType: 'walking', segment: { osmId: 'w70' } }] as import('@/lib/path-corrections').PublishedPathCorrection[];
+  const output = new VectorTile(new Pbf(applyTileApprovals(data, ratings, paths))).layers.lts;
+  assert.equal(output.feature(0).properties.lts, 4.5);
+  assert.equal(output.feature(1).properties.lts, 4.5);
+  assert.equal(output.feature(1).properties.feature_kind, 'segment');
+  assert.equal(output.feature(1).properties.bicycle, undefined);
+});
+
 test('shared tile changes published roads, preserves geometry, crossings, access and unrated roads', () => {
   const input = fixture();
   const original = new VectorTile(new Pbf(input)).layers.lts;

@@ -66,6 +66,8 @@ export function mergePathCorrections(collection: GeoJSON.FeatureCollection, corr
   for (const correction of corrections) {
     const s = correction.segment;
     const previous = byId.get(s.segmentId);
+    // A walking/path correction cannot bypass a published hostile crossing.
+    if (previous?.properties?.lts === 4.5) continue;
     byId.set(s.segmentId, {
       type: 'Feature', id: s.segmentId, geometry: s.geometry,
       properties: { ...previous?.properties, segment_id: s.segmentId,

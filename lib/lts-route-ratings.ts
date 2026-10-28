@@ -8,6 +8,7 @@ export function ltsFromCost(costPerKm: number): number {
 
 export function precomputedLtsFromWayTags(wayTags: string): number | null {
   const reversed = wayTags.includes('reversedirection=yes');
+  if (hasPlaceholder(wayTags, reversed ? 23 : 22)) return 4.5;
   const communityLts15Tag = reversed ? 19 : 18;
   if (hasPlaceholder(wayTags, communityLts15Tag)) return 1.5;
   const firstTag = reversed ? 8 : 4;
