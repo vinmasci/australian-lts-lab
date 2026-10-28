@@ -46,8 +46,7 @@ Set the PMTiles URLs in `.env.local`. Generated PMTiles archives are intentional
 ## Map interface
 
 Search and Map display are the primary controls. Road selection opens a full-height
-left sidebar with a sticky heading and close button. The desktop sidebar adapts
-from 440 to 520 pixels wide, with aligned road facts, compact LTS choices and
+left sidebar with a sticky heading and close button. The desktop sidebar stays 440 pixels wide, with aligned road facts, compact LTS choices and
 expandable account details. On desktop the map reserves
 space beside it and resizes when the sidebar opens or closes. Narrow screens use
 a left drawer. Rating/correction controls, community feedback, source data, extra
