@@ -142,6 +142,7 @@ async function publishApproval(db: Firestore, documentId: string, approval: LtsA
     status,
     statusReason: reason,
     approvedAt: approval.approvedAt,
+    ...(approval.minimumRatingOverride ? { minimumRatingOverride: approval.minimumRatingOverride } : {}),
     approvedAgainstVersion: approval.approvedAgainstVersion || null,
     currentDatasetVersion: segment.datasetVersion || null,
     lastReconciledAt: new Date().toISOString(),

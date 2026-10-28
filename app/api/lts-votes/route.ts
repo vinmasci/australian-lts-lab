@@ -1,5 +1,6 @@
 import { mergePathCorrections } from '@/lib/path-corrections';
 import { currentPublishedPaths } from '@/lib/path-correction-osm';
+import { hasReviewedMinimumOverride } from '@/lib/lts-minimum-override';
 import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -109,7 +110,7 @@ async function summary(dataset: string, segmentId: string, contributorUid?: stri
   const rideabilityTotal = Object.values(rideabilityCounts).reduce((sum, count) => sum + count, 0);
   const publicApproval = approval ? {
     ...approval,
-    approvedLts: projectApprovedLts(
+    approvedLts: hasReviewedMinimumOverride(approval) ? approval.approvedLts : projectApprovedLts(
       approval.baseLts,
       approval.targetLts,
       approval.segment?.maxspeed,
@@ -157,7 +158,8 @@ export async function GET(request: NextRequest) {
           .map((approval) => {
             const segment = approval.segment as VoteSegment | undefined;
             const baseLts = Number(approval.baseLts ?? segment?.currentLts);
-            const publishedLts = projectApprovedLts(
+            const reviewedOverride = hasReviewedMinimumOverride(approval);
+            const publishedLts = reviewedOverride ? approval.approvedLts : projectApprovedLts(
               Number.isFinite(baseLts) ? baseLts : Number(approval.approvedLts),
               (approval.targetLts ?? approval.approvedLts) as LtsVoteLevel,
               segment?.maxspeed,
@@ -172,6 +174,7 @@ export async function GET(request: NextRequest) {
               trail_routing: segment?.trailRouting,
               is_mtb: segment?.isMtb,
               lts: publishedLts,
+              ...(reviewedOverride ? { minimum_rating_override: true } : {}),
               rideability: approval.approvedRideability ?? null,
               target_lts: approval.targetLts,
               approved_at: approval.approvedAt,
@@ -193,7 +196,7 @@ export async function GET(request: NextRequest) {
       const result = await response.json() as SegmentVoteSummary;
       if (result.approval) {
         const approval = result.approval;
-        approval.approvedLts = projectApprovedLts(approval.baseLts, approval.targetLts, approval.segment?.maxspeed);
+        if (!hasReviewedMinimumOverride(approval)) approval.approvedLts = projectApprovedLts(approval.baseLts, approval.targetLts, approval.segment?.maxspeed);
       }
       return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
     }

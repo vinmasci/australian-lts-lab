@@ -53,6 +53,32 @@ test('empty / nonmatching approval snapshots return byte-identical base tiles', 
   assert.equal(applyTileApprovals(data, new Map([['w9999', 1]])), data);
 });
 
+test('an explicit reviewed exception waives the floor only for its exact current approval', () => {
+  const input = fixture();
+  const record = { dataset: 'victoria', segmentId: 'segment:w70', approvedLts: 1.5,
+    approvedAt: '2026-10-28T04:16:20.650Z', status: 'current', baseLts: 4,
+    minimumRatingOverride: { approvedLts: 1.5, approvedAt: '2026-10-28T04:16:20.650Z', reason: 'Explicit road-specific owner review' } };
+  const render = (value: Record<string, unknown>) => new VectorTile(new Pbf(applyTileApprovals(input, tileApprovals('victoria', [value])))).layers.lts;
+  const output = render(record);
+  assert.equal(output.feature(2).properties.lts, 1.5);
+  assert.equal(output.feature(2).properties.lts_forward, 1.5);
+  assert.equal(output.feature(2).properties.lts_backward, 1.5);
+  assert.equal(output.feature(2).properties.community_minimum_override, true);
+  const original = new VectorTile(new Pbf(input)).layers.lts;
+  for (let i = 0; i < output.length; i++) {
+    assert.deepEqual(output.feature(i).loadGeometry(), original.feature(i).loadGeometry());
+    if (i !== 2) assert.deepEqual(output.feature(i).properties, original.feature(i).properties);
+  }
+  for (const changed of [
+    { ...record, approvedAt: 'new-approval' },
+    { ...record, approvedLts: 2 },
+    { ...record, status: 'carried_forward' },
+    { ...record, minimumRatingOverride: undefined },
+    { ...record, minimumRatingOverride: { ...record.minimumRatingOverride, reason: '' } },
+  ]) assert.equal(render(changed).feature(2).properties.lts, 3);
+  assert.equal(render({ ...record, status: 'needs_review' }).feature(2).properties.lts, 4);
+});
+
 test('reviewed pink paths change classification without changing geometry or unrelated roads', () => {
   const data = fromGeojsonVt({ lts: { features: [
     { id: 10, type: 2, geometry: [[[1,2],[30,80]]], tags: { feature_kind: 'segment', osm_id: 'w10', highway: 'path', lts: 1, trail_routing: 'caution', is_mtb: false } },

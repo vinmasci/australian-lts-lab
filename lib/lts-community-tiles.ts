@@ -3,14 +3,22 @@ import { VectorTile } from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import { fromVectorTileJs } from 'vt-pbf';
 import { applyHardSpeedRuleFloor, projectApprovedLts, isLtsVoteLevel, type LtsVoteLevel } from './lts-voting';
+import { hasReviewedMinimumOverride } from './lts-minimum-override';
 
-export function tileApprovals(dataset: string, records: Array<Record<string, unknown>>): Map<string, LtsVoteLevel> {
-  const ratings = new Map<string, LtsVoteLevel>();
+type ReviewedTileRatings = ReadonlyMap<string, LtsVoteLevel> & { minimumOverrides?: ReadonlySet<string> };
+
+export function tileApprovals(dataset: string, records: Array<Record<string, unknown>>) {
+  const ratings = Object.assign(new Map<string, LtsVoteLevel>(), { minimumOverrides: new Set<string>() });
   for (const record of records) {
     if (record.dataset !== dataset || !isLtsVoteLevel(record.approvedLts)) continue;
     if (record.status && !['current', 'carried_forward'].includes(String(record.status))) continue;
     const id = /^segment:(w[1-9][0-9]*)$/.exec(String(record.segmentId));
     if (!id) continue;
+    if (hasReviewedMinimumOverride(record)) {
+      ratings.set(id[1], record.approvedLts);
+      ratings.minimumOverrides.add(id[1]);
+      continue;
+    }
     const segment = record.segment as { maxspeed?: number; currentLts?: number } | undefined;
     const base = Number(record.baseLts ?? segment?.currentLts ?? record.approvedLts);
     ratings.set(id[1], base >= 4 ? projectApprovedLts(base, isLtsVoteLevel(record.targetLts) ? record.targetLts : record.approvedLts, segment?.maxspeed) : applyHardSpeedRuleFloor(base, record.approvedLts, segment?.maxspeed));
@@ -23,7 +31,7 @@ const colours: Record<LtsVoteLevel, string> = {
 };
 
 /** Change properties, never reconstruct/simplify road geometry or join crossings. */
-export function applyTileApprovals(data: Uint8Array, ratings: ReadonlyMap<string, LtsVoteLevel>, paths: PublishedPathCorrection[] = []): Uint8Array {
+export function applyTileApprovals(data: Uint8Array, ratings: ReviewedTileRatings, paths: PublishedPathCorrection[] = []): Uint8Array {
   if (!ratings.size && !paths.length) return data;
   const tile = new VectorTile(new Pbf(data));
   const layer = tile.layers.lts;
@@ -62,10 +70,13 @@ export function applyTileApprovals(data: Uint8Array, ratings: ReadonlyMap<string
     const speed = Math.max(Number(p.maxspeed) || 0, Number(p.official_speed_forward) || 0, Number(p.official_speed_backward) || 0);
     const base = Number(p.lts);
     if (!Number.isFinite(base)) return feature;
-    const lts = applyHardSpeedRuleFloor(base, rating, speed);
+    const reviewedOverride = ratings.minimumOverrides?.has(String(p.osm_id)) === true;
+    const rate = (value: number) => reviewedOverride ? rating : applyHardSpeedRuleFloor(value, rating, speed);
+    const lts = rate(base);
     feature.properties = { ...feature.properties, base_lts: base, lts,
-      lts_forward: applyHardSpeedRuleFloor(Number(p.lts_forward ?? base), rating, speed),
-      lts_backward: applyHardSpeedRuleFloor(Number(p.lts_backward ?? base), rating, speed),
+      lts_forward: rate(Number(p.lts_forward ?? base)),
+      lts_backward: rate(Number(p.lts_backward ?? base)),
+      ...(reviewedOverride ? { community_minimum_override: true } : {}),
       colour: colours[lts], community_lts: true,
     };
     changed = true;

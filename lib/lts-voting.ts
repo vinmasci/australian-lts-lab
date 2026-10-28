@@ -107,6 +107,7 @@ export interface LtsApproval {
   baseLts: number;
   segment: VoteSegment;
   approvedAt: string;
+  minimumRatingOverride?: { approvedLts: LtsVoteLevel; approvedAt: string; reason: string };
   voteCountAtApproval: number;
   status?: ReconciliationStatus;
   statusReason?: string;
