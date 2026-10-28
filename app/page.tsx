@@ -4,7 +4,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, Search, Trash2, Undo2, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Search, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 import { DismountReport } from '@/app/components/DismountReport';
 import { PathCorrection } from '@/app/components/PathCorrection';
@@ -21,8 +21,6 @@ import type { LtsRelease } from '@/lib/lts-release';
 
 
 const DATASET_VERSION = 'au-lts-v0.5-council-traffic';
-const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development'
-  && process.env.NEXT_PUBLIC_LTS_USE_LOCAL_ROUTER === 'true';
 interface PlaceSearchResult {
   id: string;
   name: string;
@@ -51,7 +49,6 @@ const DATASETS = {
     metadataUrl: `/data/lts/victoria-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [144.9631, -37.8136] as [number, number],
     zoom: 12,
-    routable: true,
   },
   nsw: {
     label: 'New South Wales',
@@ -60,7 +57,6 @@ const DATASETS = {
     metadataUrl: `/data/lts/nsw-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [151.2093, -33.8688] as [number, number],
     zoom: 12,
-    routable: true,
   },
   queensland: {
     label: 'Queensland',
@@ -69,7 +65,6 @@ const DATASETS = {
     metadataUrl: `/data/lts/queensland-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [153.03, -27.47] as [number, number],
     zoom: 12,
-    routable: true,
   },
   western_australia: {
     label: 'Western Australia',
@@ -78,7 +73,6 @@ const DATASETS = {
     metadataUrl: `/data/lts/western-australia-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [115.86, -31.95] as [number, number],
     zoom: 12,
-    routable: true,
   },
   south_australia: {
     label: 'South Australia',
@@ -87,7 +81,6 @@ const DATASETS = {
     metadataUrl: `/data/lts/south-australia-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [138.60, -34.93] as [number, number],
     zoom: 12,
-    routable: true,
   },
   act: {
     label: 'Australian Capital Territory',
@@ -96,7 +89,6 @@ const DATASETS = {
     metadataUrl: `/data/lts/act-lts-metadata.json?v=${DATASET_VERSION}-166671dc`,
     center: [149.13, -35.28] as [number, number],
     zoom: 12,
-    routable: true,
   },
   tasmania: {
     label: 'Tasmania',
@@ -105,7 +97,6 @@ const DATASETS = {
     metadataUrl: `/data/lts/tasmania-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [147.33, -42.88] as [number, number],
     zoom: 12,
-    routable: true,
   },
   northern_territory: {
     label: 'Northern Territory',
@@ -114,7 +105,6 @@ const DATASETS = {
     metadataUrl: `/data/lts/northern-territory-lts-metadata.json?v=${DATASET_VERSION}`,
     center: [130.85, -12.46] as [number, number],
     zoom: 12,
-    routable: true,
   },
 } as const;
 type DatasetKey = keyof typeof DATASETS;
@@ -259,7 +249,6 @@ const STATE_SOURCE_COPY: Record<DatasetKey, StateSourceCopy> = {
     speedLimitation: 'No current reusable territory-wide speed-zone line layer is included, so missing OSM speeds use clearly labelled classifier fallbacks.',
   },
 };
-const MAX_ROUTE_POINTS = 26;
 const MAPBOX_PUBLIC_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 const SATELLITE_SOURCE_ID = 'mapbox-satellite';
 const SATELLITE_LAYER_ID = 'mapbox-satellite-layer';
@@ -325,7 +314,7 @@ const LTS_LABELS: Record<number, string> = {
   4: 'High stress',
   4.5: 'Avoid cycling',
 };
-const ROUTE_LTS_LEVELS = [1, 1.5, 2, 3, 4, 4.5] as const;
+const LTS_LEVELS = [1, 1.5, 2, 3, 4, 4.5] as const;
 
 function syncSatelliteOverlay(map: maplibregl.Map, enabled: boolean, opacity: number) {
   if (!enabled || !MAPBOX_PUBLIC_TOKEN) {
@@ -420,53 +409,6 @@ interface LtsMetadata {
 type FeatureProperties = Record<string, string | number | boolean | null | undefined>;
 type Coordinate = [number, number];
 
-interface LtsRouteSummary {
-  distance_m: number;
-  time_ms: number;
-  distance_by_lts_m: Record<string, number>;
-  percentage_by_lts: Record<string, number>;
-  highest_lts: number;
-  known_unsealed_distance_m: number;
-  mtb_caution_distance_m: number;
-  technical_mtb_distance_m: number;
-  unverified_trail_distance_m: number;
-  hiking_only_distance_m: number;
-}
-
-interface BRouterComparison {
-  label: string;
-  profile: string;
-  route: GeoJSON.LineString;
-  summary: {
-    distance_m: number;
-    time_ms: number;
-  };
-  stress?: ComparisonStressResult;
-}
-
-interface ComparisonStressResult {
-  segments: GeoJSON.FeatureCollection<GeoJSON.LineString>;
-  summary: LtsRouteSummary;
-  coverage_pct: number;
-  unknown_distance_m: number;
-}
-
-interface PrimaryStressRoute {
-  route: GeoJSON.LineString;
-  segments: GeoJSON.FeatureCollection<GeoJSON.LineString>;
-  summary: LtsRouteSummary;
-}
-
-interface LtsRouteResponse {
-  classifier_version: string;
-  route: GeoJSON.LineString;
-  segments: GeoJSON.FeatureCollection<GeoJSON.LineString>;
-  summary: LtsRouteSummary;
-  comparison?: BRouterComparison | null;
-  comparison_error?: string;
-  error?: string;
-}
-
 function emptyFeatureCollection(): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
@@ -484,39 +426,6 @@ function unverifiedTrailFilter(hideAccessOnlyTrails = false): maplibregl.FilterS
 const ACT_ACCESS_ONLY_TRAIL_FILTER: maplibregl.FilterSpecification = [
   '==', ['get', 'is_access_only_trail'], true,
 ];
-
-function routeLineGeoJson(route?: GeoJSON.LineString): GeoJSON.FeatureCollection<GeoJSON.LineString> {
-  return route ? {
-    type: 'FeatureCollection',
-    features: [{ type: 'Feature', properties: {}, geometry: route }],
-  } : emptyFeatureCollection() as GeoJSON.FeatureCollection<GeoJSON.LineString>;
-}
-
-function routePointsGeoJson(points: Coordinate[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
-  return {
-    type: 'FeatureCollection',
-    features: points.map((coordinate, index) => ({
-      type: 'Feature',
-      properties: {
-        role: index === 0 ? 'start' : index === points.length - 1 ? 'finish' : 'via',
-        label: String.fromCharCode(65 + index),
-      },
-      geometry: { type: 'Point', coordinates: coordinate },
-    })),
-  };
-}
-
-function formatRouteDistance(metres: number): string {
-  return metres < 1000 ? `${Math.round(metres)} m` : `${(metres / 1000).toFixed(1)} km`;
-}
-
-function formatRouteTime(milliseconds: number): string {
-  const minutes = Math.max(1, Math.round(milliseconds / 60_000));
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  return remainder ? `${hours} h ${remainder} min` : `${hours} h`;
-}
 
 function simplifyBaseMap(map: maplibregl.Map) {
   for (const layer of map.getStyle()?.layers || []) {
@@ -622,222 +531,6 @@ function propertyIsTrue(value: FeatureProperties[string]): boolean {
   return value === true || value === 1 || value === '1' || value === 'true';
 }
 
-function routeCoordinateDistance(a: GeoJSON.Position, b: GeoJSON.Position): number {
-  const latitude1 = a[1] * Math.PI / 180;
-  const latitude2 = b[1] * Math.PI / 180;
-  const latitudeDelta = latitude2 - latitude1;
-  const longitudeDelta = (b[0] - a[0]) * Math.PI / 180;
-  const value = Math.sin(latitudeDelta / 2) ** 2
-    + Math.cos(latitude1) * Math.cos(latitude2) * Math.sin(longitudeDelta / 2) ** 2;
-  return 6_371_000 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-}
-
-function scoreComparisonAgainstMap(
-  route: GeoJSON.LineString,
-  sourceFeatures: maplibregl.GeoJSONFeature[],
-  distanceMetres: number,
-  timeMilliseconds: number,
-): ComparisonStressResult | null {
-  if (route.coordinates.length < 2) return null;
-
-  const referenceLatitude = route.coordinates.reduce((sum, coordinate) => sum + coordinate[1], 0)
-    / route.coordinates.length;
-  const metresPerLongitudeDegree = 111_320 * Math.cos(referenceLatitude * Math.PI / 180);
-  const toMetres = (coordinate: GeoJSON.Position): [number, number] => [
-    coordinate[0] * metresPerLongitudeDegree,
-    coordinate[1] * 111_320,
-  ];
-
-  interface NetworkSegment {
-    start: [number, number];
-    end: [number, number];
-    properties: FeatureProperties;
-  }
-
-  const networkSegments: NetworkSegment[] = [];
-  const grid = new Map<string, number[]>();
-  const gridSize = 80;
-  const addLine = (coordinates: GeoJSON.Position[], properties: FeatureProperties) => {
-    for (let index = 1; index < coordinates.length; index += 1) {
-      const start = toMetres(coordinates[index - 1]);
-      const end = toMetres(coordinates[index]);
-      if (start[0] === end[0] && start[1] === end[1]) continue;
-      const segmentIndex = networkSegments.push({ start, end, properties }) - 1;
-      const minX = Math.floor(Math.min(start[0], end[0]) / gridSize);
-      const maxX = Math.floor(Math.max(start[0], end[0]) / gridSize);
-      const minY = Math.floor(Math.min(start[1], end[1]) / gridSize);
-      const maxY = Math.floor(Math.max(start[1], end[1]) / gridSize);
-      for (let x = minX; x <= maxX; x += 1) {
-        for (let y = minY; y <= maxY; y += 1) {
-          const key = `${x}:${y}`;
-          const values = grid.get(key);
-          if (values) values.push(segmentIndex); else grid.set(key, [segmentIndex]);
-        }
-      }
-    }
-  };
-
-  for (const feature of sourceFeatures) {
-    const properties = feature.properties as FeatureProperties;
-    if (properties.feature_kind !== 'segment') continue;
-    if (feature.geometry.type === 'LineString') {
-      addLine(feature.geometry.coordinates, properties);
-    } else if (feature.geometry.type === 'MultiLineString') {
-      for (const line of feature.geometry.coordinates) addLine(line, properties);
-    }
-  }
-  if (networkSegments.length === 0) return null;
-
-  const distanceByLts: Record<string, number> = { '1': 0, '1.5': 0, '2': 0, '3': 0, '4': 0, '4.5': 0 };
-  let knownDistance = 0;
-  let unknownDistance = 0;
-  let knownUnsealedDistance = 0;
-  let mtbCautionDistance = 0;
-  let technicalMtbDistance = 0;
-  let unverifiedTrailDistance = 0;
-  let hikingOnlyDistance = 0;
-  const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
-
-  const pointSegmentDistanceSquared = (
-    point: [number, number],
-    start: [number, number],
-    end: [number, number],
-  ) => {
-    const dx = end[0] - start[0];
-    const dy = end[1] - start[1];
-    const lengthSquared = dx * dx + dy * dy;
-    const ratio = lengthSquared === 0 ? 0 : Math.max(0, Math.min(1,
-      ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / lengthSquared,
-    ));
-    const offsetX = point[0] - (start[0] + ratio * dx);
-    const offsetY = point[1] - (start[1] + ratio * dy);
-    return offsetX * offsetX + offsetY * offsetY;
-  };
-
-  for (let index = 1; index < route.coordinates.length; index += 1) {
-    const routeStartCoordinate = route.coordinates[index - 1];
-    const routeEndCoordinate = route.coordinates[index];
-    const sectionDistance = routeCoordinateDistance(routeStartCoordinate, routeEndCoordinate);
-    if (sectionDistance < 0.05) continue;
-    const routeStart = toMetres(routeStartCoordinate);
-    const routeEnd = toMetres(routeEndCoordinate);
-    const midpoint: [number, number] = [
-      (routeStart[0] + routeEnd[0]) / 2,
-      (routeStart[1] + routeEnd[1]) / 2,
-    ];
-    const cellX = Math.floor(midpoint[0] / gridSize);
-    const cellY = Math.floor(midpoint[1] / gridSize);
-    const candidateIndexes = new Set<number>();
-    for (let x = cellX - 1; x <= cellX + 1; x += 1) {
-      for (let y = cellY - 1; y <= cellY + 1; y += 1) {
-        for (const candidate of grid.get(`${x}:${y}`) || []) candidateIndexes.add(candidate);
-      }
-    }
-
-    const routeDx = routeEnd[0] - routeStart[0];
-    const routeDy = routeEnd[1] - routeStart[1];
-    const routeLength = Math.hypot(routeDx, routeDy);
-    let matched: NetworkSegment | null = null;
-    let matchedScore = Number.POSITIVE_INFINITY;
-    for (const candidateIndex of candidateIndexes) {
-      const candidate = networkSegments[candidateIndex];
-      const candidateDx = candidate.end[0] - candidate.start[0];
-      const candidateDy = candidate.end[1] - candidate.start[1];
-      const candidateLength = Math.hypot(candidateDx, candidateDy);
-      const directionSimilarity = routeLength && candidateLength
-        ? Math.abs((routeDx * candidateDx + routeDy * candidateDy) / (routeLength * candidateLength))
-        : 0;
-      const distance = Math.sqrt(pointSegmentDistanceSquared(midpoint, candidate.start, candidate.end));
-      const score = distance + (1 - directionSimilarity) * 18;
-      if (distance <= 35 && score < matchedScore) {
-        matched = candidate;
-        matchedScore = score;
-      }
-    }
-
-    let lts = 0;
-    let matchedProperties: FeatureProperties = { confidence: 'unmatched' };
-    if (matched) {
-      matchedProperties = matched.properties;
-      const featureDx = matched.end[0] - matched.start[0];
-      const featureDy = matched.end[1] - matched.start[1];
-      const aligned = routeDx * featureDx + routeDy * featureDy >= 0;
-      const directional = Number(aligned
-        ? matched.properties.lts_forward ?? matched.properties.lts
-        : matched.properties.lts_backward ?? matched.properties.lts);
-      lts = ROUTE_LTS_LEVELS.includes(directional as (typeof ROUTE_LTS_LEVELS)[number]) ? directional : Number(matched.properties.lts || 0);
-    }
-
-    if (ROUTE_LTS_LEVELS.includes(lts as (typeof ROUTE_LTS_LEVELS)[number])) {
-      distanceByLts[String(lts)] += sectionDistance;
-      knownDistance += sectionDistance;
-      if (propertyIsTrue(matchedProperties.is_unsealed)) knownUnsealedDistance += sectionDistance;
-      if (matchedProperties.mtb_routing === 'caution') mtbCautionDistance += sectionDistance;
-      if (matchedProperties.mtb_routing === 'avoid') technicalMtbDistance += sectionDistance;
-      if (matchedProperties.trail_routing === 'caution') unverifiedTrailDistance += sectionDistance;
-      if (matchedProperties.trail_routing === 'avoid') hikingOnlyDistance += sectionDistance;
-    } else {
-      unknownDistance += sectionDistance;
-    }
-
-    const featureProperties = {
-      lts,
-      confidence: matchedProperties.confidence || 'unmatched',
-      is_unsealed: propertyIsTrue(matchedProperties.is_unsealed),
-      mtb_routing: matchedProperties.mtb_routing || 'normal',
-      trail_routing: matchedProperties.trail_routing || 'normal',
-    };
-    const previous = features.at(-1);
-    if (
-      previous
-      && previous.properties?.lts === featureProperties.lts
-      && previous.properties?.is_unsealed === featureProperties.is_unsealed
-      && previous.properties?.mtb_routing === featureProperties.mtb_routing
-      && previous.properties?.trail_routing === featureProperties.trail_routing
-    ) {
-      previous.geometry.coordinates.push(routeEndCoordinate);
-    } else {
-      features.push({
-        type: 'Feature',
-        properties: featureProperties,
-        geometry: { type: 'LineString', coordinates: [routeStartCoordinate, routeEndCoordinate] },
-      });
-    }
-  }
-
-  const measuredDistance = knownDistance + unknownDistance;
-  const denominator = distanceMetres || measuredDistance;
-  const percentages = Object.fromEntries(
-    Object.entries(distanceByLts).map(([lts, metres]) => [
-      lts,
-      denominator > 0 ? Math.round((metres / denominator) * 1000) / 10 : 0,
-    ]),
-  );
-
-  return {
-    segments: { type: 'FeatureCollection', features },
-    coverage_pct: measuredDistance > 0 ? Math.round((knownDistance / measuredDistance) * 1000) / 10 : 0,
-    unknown_distance_m: Math.round(unknownDistance),
-    summary: {
-      distance_m: distanceMetres || measuredDistance,
-      time_ms: timeMilliseconds,
-      distance_by_lts_m: Object.fromEntries(
-        Object.entries(distanceByLts).map(([lts, metres]) => [lts, Math.round(metres)]),
-      ),
-      percentage_by_lts: percentages,
-      highest_lts: Math.max(
-        ...Object.entries(distanceByLts).filter(([, metres]) => metres > 0).map(([lts]) => Number(lts)),
-        1,
-      ),
-      known_unsealed_distance_m: Math.round(knownUnsealedDistance),
-      mtb_caution_distance_m: Math.round(mtbCautionDistance),
-      technical_mtb_distance_m: Math.round(technicalMtbDistance),
-      unverified_trail_distance_m: Math.round(unverifiedTrailDistance),
-      hiking_only_distance_m: Math.round(hikingOnlyDistance),
-    },
-  };
-}
-
 function trafficFreshness(value: FeatureProperties[string]): { label: string; className: string } | null {
   const year = Number(value);
   if (!Number.isInteger(year) || year < 1900) return null;
@@ -853,12 +546,6 @@ export default function LtsLabPage() {
   const searchMarkerRef = useRef<maplibregl.Marker | null>(null);
   const locationMarkerRef = useRef<maplibregl.Marker | null>(null);
   const placeSearchRequestIdRef = useRef(0);
-  const routeModeRef = useRef(false);
-  const routePointsRef = useRef<Coordinate[]>([]);
-  const routeClickRef = useRef<(coordinate: Coordinate) => void>(() => undefined);
-  const routeRequestIdRef = useRef(0);
-  const routeHistoryRef = useRef<Coordinate[][]>([[]]);
-  const routeHistoryIndexRef = useRef(0);
   const satelliteEnabledRef = useRef(false);
   const satelliteOpacityRef = useRef(0.55);
   const metadataRef = useRef<LtsMetadata | null>(null);
@@ -888,28 +575,12 @@ export default function LtsLabPage() {
   const [showActAccessOnlyTrails, setShowActAccessOnlyTrails] = useState(false);
   const [satelliteEnabled, setSatelliteEnabled] = useState(false);
   const [satelliteOpacity, setSatelliteOpacity] = useState(0.55);
-  const [allowGravel, setAllowGravel] = useState(true);
-  const [routeMode, setRouteMode] = useState(false);
-  const [routePoints, setRoutePoints] = useState<Coordinate[]>([]);
-  const [routeHistoryIndex, setRouteHistoryIndex] = useState(0);
-  const [routeHistoryLength, setRouteHistoryLength] = useState(1);
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [routeError, setRouteError] = useState<string | null>(null);
-  const [routeSummary, setRouteSummary] = useState<LtsRouteSummary | null>(null);
-  const [primaryStressRoute, setPrimaryStressRoute] = useState<PrimaryStressRoute | null>(null);
-  const [routeComparison, setRouteComparison] = useState<BRouterComparison | null>(null);
-  const [routeComparisonError, setRouteComparisonError] = useState<string | null>(null);
-  const [comparisonScoring, setComparisonScoring] = useState(false);
-  const [selectedRouteKind, setSelectedRouteKind] = useState<'low-stress' | 'bike-profile'>('low-stress');
-  const [transparentRoutes, setTransparentRoutes] = useState(false);
-  const [routeClassifier, setRouteClassifier] = useState<string | null>(null);
   const [showAbout, setShowAbout] = useState(false);
   const aboutDialogRef = useRef<HTMLDivElement>(null);
   const aboutCloseRef = useRef<HTMLButtonElement>(null);
   const moreMenuRef = useRef<HTMLDetailsElement>(null);
   const [contributionExpanded, setContributionExpanded] = useState(false);
   const [mapPanelExpanded, setMapPanelExpanded] = useState(false);
-  const [panelFocus, setPanelFocus] = useState<'route' | 'layers'>('layers');
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [placeQuery, setPlaceQuery] = useState('');
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
@@ -935,10 +606,6 @@ export default function LtsLabPage() {
     return () => abort.abort();
   }, []);
   const stateSourceCopy = STATE_SOURCE_COPY[datasetKey];
-  const displayedRouteSummary = selectedRouteKind === 'bike-profile'
-    ? routeComparison?.stress?.summary || null
-    : routeSummary;
-
   useEffect(() => {
     metadataRef.current = metadata;
   }, [metadata]);
@@ -981,182 +648,6 @@ export default function LtsLabPage() {
     (mapRef.current?.getSource('lts-approved') as maplibregl.GeoJSONSource | undefined)?.setData(approved);
   }, [datasetKey]);
 
-  const setRoutePointSource = (points: Coordinate[]) => {
-    const source = mapRef.current?.getSource('lts-route-points') as maplibregl.GeoJSONSource | undefined;
-    source?.setData(routePointsGeoJson(points));
-  };
-
-  const clearRoute = (keepPoints: Coordinate[] = []) => {
-    routeRequestIdRef.current += 1;
-    routePointsRef.current = keepPoints;
-    setRoutePoints(keepPoints);
-    setRouteSummary(null);
-    setPrimaryStressRoute(null);
-    setRouteComparison(null);
-    setRouteComparisonError(null);
-    setComparisonScoring(false);
-    setSelectedRouteKind('low-stress');
-    setRouteClassifier(null);
-    setRouteError(null);
-    setRouteLoading(false);
-    setRoutePointSource(keepPoints);
-    const source = mapRef.current?.getSource('lts-route') as maplibregl.GeoJSONSource | undefined;
-    source?.setData(emptyFeatureCollection());
-    const comparisonSource = mapRef.current?.getSource('lts-comparison-route') as maplibregl.GeoJSONSource | undefined;
-    comparisonSource?.setData(emptyFeatureCollection());
-  };
-
-  const displayRoute = (
-    kind: 'low-stress' | 'bike-profile',
-    primary = primaryStressRoute,
-    comparison = routeComparison,
-  ) => {
-    if (!primary || (kind === 'bike-profile' && !comparison?.stress)) return;
-    const colouredSource = mapRef.current?.getSource('lts-route') as maplibregl.GeoJSONSource | undefined;
-    const greySource = mapRef.current?.getSource('lts-comparison-route') as maplibregl.GeoJSONSource | undefined;
-    if (kind === 'bike-profile' && comparison?.stress) {
-      colouredSource?.setData(comparison.stress.segments);
-      greySource?.setData(routeLineGeoJson(primary.route));
-    } else {
-      colouredSource?.setData(primary.segments);
-      greySource?.setData(routeLineGeoJson(comparison?.route));
-    }
-    setSelectedRouteKind(kind);
-  };
-
-  const requestRoute = async (points: Coordinate[], gravelAllowed = allowGravel) => {
-    const requestId = ++routeRequestIdRef.current;
-    setRouteLoading(true);
-    setRouteError(null);
-    setRouteSummary(null);
-    setPrimaryStressRoute(null);
-    setRouteComparison(null);
-    setRouteComparisonError(null);
-    setComparisonScoring(false);
-    setSelectedRouteKind('low-stress');
-    try {
-      const response = await fetch(ltsAppPath('/api/lts-route'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ points, allow_gravel: gravelAllowed, dataset: datasetKey }),
-      });
-      const result = await response.json() as LtsRouteResponse;
-      if (!response.ok || result.error) throw new Error(result.error || `Router returned ${response.status}`);
-      if (requestId !== routeRequestIdRef.current) return;
-
-      const primary: PrimaryStressRoute = {
-        route: result.route,
-        segments: result.segments,
-        summary: result.summary,
-      };
-      const source = mapRef.current?.getSource('lts-route') as maplibregl.GeoJSONSource | undefined;
-      source?.setData(primary.segments);
-      const comparisonSource = mapRef.current?.getSource('lts-comparison-route') as maplibregl.GeoJSONSource | undefined;
-      comparisonSource?.setData(routeLineGeoJson(result.comparison?.route));
-      setRouteSummary(result.summary);
-      setPrimaryStressRoute(primary);
-      setRouteComparison(result.comparison || null);
-      setRouteComparisonError(result.comparison_error || null);
-      setComparisonScoring(Boolean(result.comparison));
-      setSelectedRouteKind('low-stress');
-      setRouteClassifier(result.classifier_version);
-
-      if (result.route.coordinates.length > 1 && mapRef.current) {
-        const bounds = result.route.coordinates.reduce(
-          (value, coordinate) => value.extend(coordinate as Coordinate),
-          new maplibregl.LngLatBounds(result.route.coordinates[0] as Coordinate, result.route.coordinates[0] as Coordinate),
-        );
-        mapRef.current.fitBounds(bounds, { padding: { top: 100, right: 80, bottom: 80, left: 360 }, maxZoom: 15 });
-      }
-
-      if (result.comparison?.route && mapRef.current) {
-        const map = mapRef.current;
-        let completed = false;
-        let bestStress: ComparisonStressResult | null = null;
-        const scoreComparison = (acceptPartial = false) => {
-          if (completed || requestId !== routeRequestIdRef.current) return;
-          const features = map.querySourceFeatures('lts-network', { sourceLayer: 'lts' });
-          const stress = scoreComparisonAgainstMap(
-            result.comparison!.route,
-            features,
-            result.comparison!.summary.distance_m,
-            result.comparison!.summary.time_ms,
-          );
-          if (!stress) return;
-          if (!bestStress || stress.coverage_pct > bestStress.coverage_pct) bestStress = stress;
-          if (bestStress.coverage_pct === 0) return;
-          if (!acceptPartial && bestStress.coverage_pct < 80) return;
-          completed = true;
-          setRouteComparison({ ...result.comparison!, stress: bestStress });
-          setComparisonScoring(false);
-        };
-        map.once('idle', () => scoreComparison());
-        window.setTimeout(() => scoreComparison(), 2_000);
-        window.setTimeout(() => scoreComparison(true), 7_000);
-        window.setTimeout(() => {
-          if (completed || requestId !== routeRequestIdRef.current) return;
-          setComparisonScoring(false);
-          setRouteComparisonError('The AusBUG Bike Paths route loaded, but its LTS map tiles were not available for scoring.');
-        }, 9_000);
-      }
-    } catch (error) {
-      if (requestId !== routeRequestIdRef.current) return;
-      setRouteError(error instanceof Error ? error.message : 'The LTS route could not be calculated.');
-    } finally {
-      if (requestId === routeRequestIdRef.current) setRouteLoading(false);
-    }
-  };
-
-  const applyRoutePoints = (points: Coordinate[]) => {
-    clearRoute(points);
-    if (points.length >= 2) void requestRoute(points);
-  };
-
-  const commitRoutePoints = (points: Coordinate[]) => {
-    const nextHistory = routeHistoryRef.current
-      .slice(0, routeHistoryIndexRef.current + 1)
-      .concat([[...points]]);
-    routeHistoryRef.current = nextHistory;
-    routeHistoryIndexRef.current = nextHistory.length - 1;
-    setRouteHistoryIndex(routeHistoryIndexRef.current);
-    setRouteHistoryLength(nextHistory.length);
-    applyRoutePoints(points);
-  };
-
-  const undoRouteEdit = () => {
-    if (routeHistoryIndexRef.current === 0) return;
-    routeHistoryIndexRef.current -= 1;
-    setRouteHistoryIndex(routeHistoryIndexRef.current);
-    applyRoutePoints(routeHistoryRef.current[routeHistoryIndexRef.current]);
-  };
-
-  const redoRouteEdit = () => {
-    if (routeHistoryIndexRef.current >= routeHistoryRef.current.length - 1) return;
-    routeHistoryIndexRef.current += 1;
-    setRouteHistoryIndex(routeHistoryIndexRef.current);
-    applyRoutePoints(routeHistoryRef.current[routeHistoryIndexRef.current]);
-  };
-
-  const resetRouteHistory = () => {
-    routeHistoryRef.current = [[]];
-    routeHistoryIndexRef.current = 0;
-    setRouteHistoryIndex(0);
-    setRouteHistoryLength(1);
-    clearRoute();
-  };
-
-  useEffect(() => {
-    routeModeRef.current = routeMode;
-    routeClickRef.current = (coordinate: Coordinate) => {
-      const current = routePointsRef.current;
-      if (current.length >= MAX_ROUTE_POINTS) {
-        setRouteError(`A route can contain up to ${MAX_ROUTE_POINTS} points.`);
-        return;
-      }
-      commitRoutePoints([...current, coordinate]);
-    };
-  });
-
   useEffect(() => {
     const abort = new AbortController();
     fetch(ltsAppPath(activeDataset.metadataUrl), { cache: 'no-store', signal: abort.signal })
@@ -1182,6 +673,8 @@ export default function LtsLabPage() {
         zoom: startupViewRef.current?.dataset === datasetKey ? (startupViewRef.current.zoom ?? activeDataset.zoom) : activeDataset.zoom,
       });
       mapRef.current = map;
+      const resizeObserver = new ResizeObserver(() => map.resize());
+      resizeObserver.observe(mapContainerRef.current);
       startupViewRef.current = null;
       map.addControl(new maplibregl.NavigationControl({ showZoom: window.innerWidth >= 768 }), 'top-right');
 
@@ -1202,9 +695,6 @@ export default function LtsLabPage() {
         });
         map.addSource('lts-approved', { type: 'geojson', data: emptyFeatureCollection() });
         map.addSource('lts-selected', { type: 'geojson', data: selectedGeoJson() });
-        map.addSource('lts-comparison-route', { type: 'geojson', data: emptyFeatureCollection() });
-        map.addSource('lts-route', { type: 'geojson', data: emptyFeatureCollection() });
-        map.addSource('lts-route-points', { type: 'geojson', data: routePointsGeoJson(routePointsRef.current) });
 
         const colourExpression: maplibregl.ExpressionSpecification = [
           'case',
@@ -1456,61 +946,6 @@ export default function LtsLabPage() {
           },
         });
         map.addLayer({
-          id: 'lts-comparison-route-line',
-          type: 'line',
-          source: 'lts-comparison-route',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: {
-            'line-color': '#475569',
-            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 14, 6, 18, 10],
-            'line-opacity': 0.62,
-          },
-        });
-        map.addLayer({
-          id: 'lts-route-casing',
-          type: 'line',
-          source: 'lts-route',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: {
-            'line-color': '#ffffff',
-            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 5, 14, 10, 18, 16],
-            'line-opacity': 0.94,
-          },
-        });
-        map.addLayer({
-          id: 'lts-route-line',
-          type: 'line',
-          source: 'lts-route',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: {
-            'line-color': colourExpression,
-            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 14, 6, 18, 11],
-            'line-opacity': 1,
-          },
-        });
-        map.addLayer({
-          id: 'lts-route-point-circles',
-          type: 'circle',
-          source: 'lts-route-points',
-          paint: {
-            'circle-color': ['match', ['get', 'role'], 'start', '#16a34a', 'finish', '#dc2626', '#2563eb'],
-            'circle-radius': 12,
-            'circle-stroke-color': '#ffffff',
-            'circle-stroke-width': 3,
-          },
-        });
-        map.addLayer({
-          id: 'lts-route-point-labels',
-          type: 'symbol',
-          source: 'lts-route-points',
-          layout: {
-            'text-field': ['get', 'label'],
-            'text-size': 12,
-            'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-          },
-          paint: { 'text-color': '#ffffff' },
-        });
-        map.addLayer({
           id: 'lts-selected-line',
           type: 'line',
           source: 'lts-selected',
@@ -1527,15 +962,11 @@ export default function LtsLabPage() {
         const availableInteractiveLayers = () => interactiveLayers.filter((layerId) => Boolean(map.getLayer(layerId)));
         map.on('mousemove', (event) => {
           const layers = availableInteractiveLayers();
-          map.getCanvas().style.cursor = routeModeRef.current || (layers.length > 0 && map.queryRenderedFeatures(event.point, { layers }).length > 0)
+          map.getCanvas().style.cursor = layers.length > 0 && map.queryRenderedFeatures(event.point, { layers }).length > 0
             ? 'pointer'
             : '';
         });
         map.on('click', (event: MapMouseEvent) => {
-          if (routeModeRef.current) {
-            routeClickRef.current([event.lngLat.lng, event.lngLat.lat]);
-            return;
-          }
           if (selectionSavingRef.current) return;
           const layers = availableInteractiveLayers();
           const extending = event.originalEvent.shiftKey || multiSelectRef.current;
@@ -1596,6 +1027,7 @@ export default function LtsLabPage() {
             return response.json();
           })
           .then((approved: GeoJSON.FeatureCollection) => {
+            if (mapRef.current !== map) return;
             (map.getSource('lts-approved') as maplibregl.GeoJSONSource | undefined)?.setData(approved);
           })
           .catch((error) => console.warn('[LTS approved overlay]', error));
@@ -1604,6 +1036,7 @@ export default function LtsLabPage() {
     });
 
     return () => {
+      resizeObserver.disconnect();
       searchMarkerRef.current?.remove();
       searchMarkerRef.current = null;
       locationMarkerRef.current?.remove();
@@ -1671,14 +1104,6 @@ export default function LtsLabPage() {
     if (!map?.getLayer('road-labels')) return;
     syncSatelliteOverlay(map, satelliteEnabled, satelliteOpacity);
   }, [satelliteEnabled, satelliteOpacity]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map?.getLayer('lts-route-line')) return;
-    map.setPaintProperty('lts-route-line', 'line-opacity', transparentRoutes ? 0.48 : 1);
-    map.setPaintProperty('lts-route-casing', 'line-opacity', transparentRoutes ? 0.26 : 0.94);
-    map.setPaintProperty('lts-comparison-route-line', 'line-opacity', transparentRoutes ? 0.34 : 0.62);
-  }, [transparentRoutes]);
 
   useEffect(() => {
     if (!showAbout) return undefined;
@@ -1799,36 +1224,6 @@ export default function LtsLabPage() {
       : selectedBikeAccess?.kind === 'prohibited'
         ? 'border-red-300/30 bg-red-300/10 text-red-100'
         : 'border-amber-300/30 bg-amber-300/10 text-amber-100';
-  const mobileRouteStatus = routeLoading
-    ? 'Finding the lowest-stress route…'
-    : routeError
-      ? 'Route failed — open controls for details'
-      : routePoints.length === 0
-        ? 'Tap the map to place starting point A'
-        : routePoints.length === 1
-          ? 'Tap the map to place destination B'
-          : displayedRouteSummary
-            ? `${formatRouteDistance(displayedRouteSummary.distance_m)} · ${formatRouteTime(displayedRouteSummary.time_ms)}`
-            : `${routePoints.length}-point route calculated`;
-
-  const toggleRoutePlanning = () => {
-    if (selectionSavingRef.current) return;
-    multiSelectRef.current = false;
-    setMultiSelect(false);
-    setPanelFocus('route');
-    const next = !routeMode;
-    setRouteMode(next);
-    setMapPanelExpanded(false);
-    setSelected(null);
-    selectionRef.current = [];
-    setVoteSelection([]);
-    setSelectedVoteSegment(null);
-    setSelectedDismountSegment(null);
-    setSelectedStreetViewPoint(null);
-    (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
-    resetRouteHistory();
-  };
-
   const clearRoadSelection = () => {
     if (selectionSavingRef.current) return;
     multiSelectRef.current = false;
@@ -1927,9 +1322,27 @@ export default function LtsLabPage() {
     );
   };
 
+  const sidebarOpen = mapPanelExpanded || Boolean(selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)));
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.resize();
+      if (sidebarOpen && selectedStreetViewPoint && !multiSelectRef.current) {
+        const point = map.project(selectedStreetViewPoint);
+        const canvas = map.getCanvas();
+        if (point.x < 32 || point.x > canvas.clientWidth - 32 || point.y < 32 || point.y > canvas.clientHeight - 32) {
+          map.easeTo({ center: selectedStreetViewPoint, duration: 200 });
+        }
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [sidebarOpen, selectedStreetViewPoint]);
+
   return (
-    <main className="lts-app relative h-[100dvh] overflow-hidden bg-slate-950 text-white" onPointerDownCapture={(event) => { startupInteractionRef.current = true; if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) moreMenuRef.current.open = false; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
-      <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
+    <main className={`lts-app ${sidebarOpen ? 'lts-sidebar-open' : ''} relative h-[100dvh] overflow-hidden bg-slate-950 text-white`} onPointerDownCapture={(event) => { startupInteractionRef.current = true; if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) moreMenuRef.current.open = false; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
+      <div ref={mapContainerRef} className="lts-map-canvas" />
       {saveNotice && (
         <div className="lts-surface absolute left-3 right-3 top-24 z-30 mx-auto flex max-w-lg items-start gap-3 rounded-xl border border-emerald-600 bg-white p-4 text-slate-900 shadow-xl">
           <p role="status" aria-live="polite" className="flex-1 text-sm font-semibold">{saveNotice}</p>
@@ -1973,10 +1386,8 @@ export default function LtsLabPage() {
             setMapError(null);
             setDatasetKey(event.target.value as DatasetKey);
             setShowActAccessOnlyTrails(false);
-            setRouteMode(false);
             setMapPanelExpanded(false);
             setSearchExpanded(false);
-            resetRouteHistory();
             setSelected(null);
             selectionRef.current = [];
             setVoteSelection([]);
@@ -2002,8 +1413,6 @@ export default function LtsLabPage() {
           setShowAbout(false);
           setMapPanelExpanded(false);
           setSearchExpanded(false);
-          setRouteMode(false);
-          resetRouteHistory();
           setSelected(null);
           multiSelectRef.current = false;
           setMultiSelect(false);
@@ -2026,12 +1435,11 @@ export default function LtsLabPage() {
 
       <nav className="lts-surface lts-action-pill" aria-label="Map actions">
         <button type="button" disabled={selectionSaving} aria-expanded={searchExpanded} onClick={() => { clearRoadSelection(); setSearchExpanded(!searchExpanded); setMapPanelExpanded(false); }}><Search className="h-4 w-4" /><span>Search</span></button>
-        <button type="button" aria-expanded={mapPanelExpanded && panelFocus === 'route'} disabled={!activeDataset.routable || selectionSaving} onClick={() => { if (!routeMode) toggleRoutePlanning(); setPanelFocus('route'); setMapPanelExpanded(!(mapPanelExpanded && panelFocus === 'route')); setSearchExpanded(false); }}><RouteIcon className="h-4 w-4" /><span>Plan route</span></button>
-        <button type="button" disabled={selectionSaving} aria-expanded={mapPanelExpanded && panelFocus === 'layers'} onClick={() => { clearRoadSelection(); setMapPanelExpanded(!(mapPanelExpanded && panelFocus === 'layers')); setPanelFocus('layers'); setSearchExpanded(false); }}><Layers3 className="h-4 w-4" /><span>Map display</span></button>
+        <button type="button" disabled={selectionSaving} aria-expanded={mapPanelExpanded} onClick={() => { clearRoadSelection(); setMapPanelExpanded(!mapPanelExpanded); setSearchExpanded(false); }}><Layers3 className="h-4 w-4" /><span>Map display</span></button>
       </nav>
 
-      {!mapPanelExpanded && !selected && !searchExpanded && !routeMode && <button type="button" className="lts-surface lts-compact-legend" aria-label="Show stress colours and map layers" onClick={() => { setPanelFocus('layers'); setMapPanelExpanded(true); }}>
-        <span>Traffic stress</span><span className="lts-legend-scale" aria-hidden="true">{ROUTE_LTS_LEVELS.map(level => <i key={level} style={{ backgroundColor: LTS_COLOURS[level] }} />)}</span><span>Low → High</span><ChevronUp className="h-3.5 w-3.5" />
+      {!mapPanelExpanded && !selected && !searchExpanded && <button type="button" className="lts-surface lts-compact-legend" aria-label="Show stress colours and map layers" onClick={() => { setMapPanelExpanded(true); }}>
+        <span>Traffic stress</span><span className="lts-legend-scale" aria-hidden="true">{LTS_LEVELS.map(level => <i key={level} style={{ backgroundColor: LTS_COLOURS[level] }} />)}</span><span>Low → High</span><ChevronUp className="h-3.5 w-3.5" />
       </button>}
 
       <button type="button" className="lts-surface lts-locate" onClick={findCurrentLocation} disabled={locating} aria-label="Find my location">{locating ? <Loader2 className="h-5 w-5 animate-spin" /> : <LocateFixed className="h-5 w-5" />}</button>
@@ -2054,18 +1462,9 @@ export default function LtsLabPage() {
         </form>
       </section>}
 
-      {(mapPanelExpanded || routeMode) && <aside className={`lts-surface lts-tool-panel ${mapPanelExpanded ? 'lts-panel-open' : 'lts-route-chip'}`} aria-label={panelFocus === 'route' ? 'Route planner' : 'Map display'}>
-        {!mapPanelExpanded ? (
-          <button type="button" onClick={() => { setPanelFocus('route'); setMapPanelExpanded(true); }} className="lts-route-resume" aria-expanded="false">
-            <RouteIcon className="h-4 w-4" /><span>{mobileRouteStatus}</span><ChevronUp className="h-4 w-4" />
-          </button>
-        ) : <>
-          <div className="lts-panel-heading">
-            <h2>{panelFocus === 'route' ? 'Plan a route' : 'Map display'}</h2>
-            <button type="button" onClick={() => setMapPanelExpanded(false)} aria-label={panelFocus === 'route' ? 'Minimise route planner' : 'Close map display'}><X className="h-4 w-4" /></button>
-          </div>
-          <div id="map-controls" className="lts-panel-body">
-            {panelFocus === 'layers' && <>
+      {mapPanelExpanded && <aside className="lts-surface lts-tool-panel lts-panel-open" aria-label="Map display">
+        <div className="lts-panel-heading"><h2>Map display</h2><button type="button" onClick={() => setMapPanelExpanded(false)} aria-label="Close map display"><X className="h-4 w-4" /></button></div>
+        <div id="map-controls" className="lts-panel-body">
               <div className="lts-layer-heading"><span>Traffic stress</span><button type="button" onClick={() => setShowAbout(true)}>Colour guide <Info className="h-3.5 w-3.5" /></button></div>
               <div className="lts-stress-options">
                 {[1, 2, 3, 4, 4.5].map(level => <label key={level}>
@@ -2132,123 +1531,13 @@ export default function LtsLabPage() {
           </div>
         )}
               </details>
-            </>}
-            {routeMode && panelFocus === 'route' && <section className="planner-route">
-              <p className="lts-route-instruction" role="status">
-                {routeLoading ? 'Finding your route…' : routeError ? 'Couldn’t find a route' : routePoints.length === 0 ? 'Choose your starting point' : routePoints.length === 1 ? 'Choose your destination' : 'Your route'}
-              </p>
-              <p className="lts-muted-note">{routePoints.length === 0 ? 'Click the map to place A.' : routePoints.length === 1 ? 'Click the map to place B.' : routePoints.length < MAX_ROUTE_POINTS ? `Click the map to add stop ${String.fromCharCode(65 + routePoints.length)}.` : `Maximum ${MAX_ROUTE_POINTS} points reached.`}</p>
-              <div className="lts-route-editing">
-                <button type="button" onClick={undoRouteEdit} disabled={routeHistoryIndex === 0}><Undo2 className="h-4 w-4" /> Undo</button>
-                <button type="button" onClick={redoRouteEdit} disabled={routeHistoryIndex >= routeHistoryLength - 1}><Redo2 className="h-4 w-4" /> Redo</button>
-                <button type="button" onClick={() => commitRoutePoints([])} disabled={routePoints.length === 0}><Trash2 className="h-4 w-4" /> Clear</button>
-              </div>
-              {routeLoading && <div className="lts-route-progress"><span /></div>}
-              {routeError && <div className="lts-route-error" role="alert"><p>{routeError}</p><button type="button" onClick={() => void requestRoute(routePoints)}>Try again</button></div>}
-              {displayedRouteSummary && <div className="lts-route-result">
-                <div className="lts-route-totals"><strong>{formatRouteDistance(displayedRouteSummary.distance_m)}</strong><span>{formatRouteTime(displayedRouteSummary.time_ms)}</span></div>
-                <div className="lts-route-stress-bar" role="img" aria-label={ROUTE_LTS_LEVELS.map(level => `LTS ${level}: ${displayedRouteSummary.percentage_by_lts[String(level)] || 0}%`).join(', ')}>
-                  {ROUTE_LTS_LEVELS.map(level => <span key={level} style={{ width: `${displayedRouteSummary.percentage_by_lts[String(level)] || 0}%`, backgroundColor: LTS_COLOURS[level] }} />)}
-                </div>
-                {selectedRouteKind === 'bike-profile' && (routeComparison?.stress?.unknown_distance_m || 0) > 0 && (
-                  <p className="mt-3 rounded-lg border border-slate-400/20 bg-slate-400/10 px-2.5 py-2 text-xs text-slate-300">
-                    {formatRouteDistance(routeComparison!.stress!.unknown_distance_m)} could not be matched confidently to the loaded LTS map and remains grey rather than being assigned a guessed stress level.
-                  </p>
-                )}
-                {displayedRouteSummary.mtb_caution_distance_m > 0 && (
-                  <p className="mt-2 rounded-lg border border-purple-400/25 bg-purple-400/10 px-2.5 py-2 text-xs text-purple-100">
-                    Includes {formatRouteDistance(displayedRouteSummary.mtb_caution_distance_m)} carrying easy or unspecified MTB evidence. This terrain may not suit a commuter bike.
-                  </p>
-                )}
-                {displayedRouteSummary.technical_mtb_distance_m > 0 && (
-                  <p className="mt-2 rounded-lg border border-red-400/25 bg-red-400/10 px-2.5 py-2 text-xs text-red-100">
-                    Warning: {formatRouteDistance(displayedRouteSummary.technical_mtb_distance_m)} is explicitly technical MTB terrain.
-                  </p>
-                )}
-                {displayedRouteSummary.unverified_trail_distance_m > 0 && (
-                  <p className="mt-2 rounded-lg border border-stone-400/25 bg-stone-400/10 px-2.5 py-2 text-xs text-stone-100">
-                    Includes {formatRouteDistance(displayedRouteSummary.unverified_trail_distance_m)} of path/track without explicit cycling evidence. Check local signs and conditions.
-                  </p>
-                )}
-                {displayedRouteSummary.hiking_only_distance_m > 0 && (
-                  <p className="mt-2 rounded-lg border border-red-400/25 bg-red-400/10 px-2.5 py-2 text-xs text-red-100">
-                    Warning: {formatRouteDistance(displayedRouteSummary.hiking_only_distance_m)} carries hiking-difficulty evidence without cycling evidence.
-                  </p>
-                )}
-                <details className="lts-disclosure"><summary>Stress breakdown</summary>
-                  <div className="lts-stress-breakdown">{ROUTE_LTS_LEVELS.map(level => <div key={level}><span className="lts-breakdown-label"><i style={{ backgroundColor: LTS_COLOURS[level] }} />LTS {level}</span><span>{displayedRouteSummary.percentage_by_lts[String(level)] || 0}%</span></div>)}</div>
-                {displayedRouteSummary.known_unsealed_distance_m > 0 && (
-                  <p className="mt-3 rounded-lg bg-white/10 px-2.5 py-2 text-xs text-slate-200">
-                    Known unsealed: <strong>{formatRouteDistance(displayedRouteSummary.known_unsealed_distance_m)}</strong>
-                  </p>
-                )}
-                  {routeClassifier && <p className="lts-muted-note">Model: {routeClassifier}</p>}
-                </details>
-                <details className="lts-disclosure"><summary>Compare with Bike Paths</summary>
-                <div className="mb-3 lts-comparison text-sm">
-
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => displayRoute('low-stress')}
-                      aria-pressed={selectedRouteKind === 'low-stress'}
-                      className={`rounded-lg border p-2 text-left transition ${selectedRouteKind === 'low-stress' ? 'border-emerald-300/50 bg-emerald-300/15' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
-                    >
-                      {selectedRouteKind === 'low-stress'
-                        ? <span className="block h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #16a34a, #2563eb, #f59e0b, #dc2626)' }} />
-                        : <span className="block border-t-[3px] border-slate-400 opacity-75" />}
-                      <span className="mt-1.5 block font-semibold text-slate-100">Low-stress</span>
-                      <span className="block text-slate-400">{routeSummary ? formatRouteDistance(routeSummary.distance_m) : '—'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => displayRoute('bike-profile')}
-                      aria-pressed={selectedRouteKind === 'bike-profile'}
-                      disabled={!routeComparison?.stress}
-                      className={`rounded-lg border p-2 text-left transition disabled:cursor-wait disabled:opacity-55 ${selectedRouteKind === 'bike-profile' ? 'border-slate-300/60 bg-slate-300/15' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
-                    >
-                      {selectedRouteKind === 'bike-profile'
-                        ? <span className="block h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #16a34a, #2563eb, #f59e0b, #dc2626)' }} />
-                        : <span className="block border-t-[3px] border-slate-400 opacity-75" />}
-                      <span className="mt-1.5 block font-semibold text-slate-100">AusBUG Bike Paths</span>
-                      <span className="block text-slate-400">
-                        {comparisonScoring ? 'Scoring against map…' : routeComparison ? formatRouteDistance(routeComparison.summary.distance_m) : 'Unavailable'}
-                      </span>
-                    </button>
-                  </div>
-                  <label className="mt-2.5 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-slate-200">
-                    <span>
-                      <span className="block font-semibold">Transparent route lines</span>
-                      <span className="block text-[10px] leading-relaxed text-slate-500">Reveal the stress network underneath.</span>
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={transparentRoutes}
-                      onChange={(event) => setTransparentRoutes(event.target.checked)}
-                      className="h-4 w-4 shrink-0"
-                    />
-                  </label>
-                  <p className="mt-2 leading-relaxed text-slate-500">Select either route to colour it by LTS and show its stress breakdown. The other route becomes grey; overlapping streets sit underneath the selected route.</p>
-                  {selectedRouteKind === 'bike-profile' && routeComparison?.stress && (
-                    <p className="mt-2 text-slate-400">Matched to {routeComparison.stress.coverage_pct}% of the visible LTS network.</p>
-                  )}
-                  {routeComparisonError && <p className="mt-2 text-amber-300/80">Comparison unavailable: {routeComparisonError}</p>}
-                </div>
-                </details>
-              </div>}
-              <details className="lts-disclosure"><summary>Route options</summary>
-                <label className="lts-option-row"><span>Allow gravel / known unsealed</span><input type="checkbox" checked={allowGravel} onChange={event => { const next = event.target.checked; setAllowGravel(next); if (routePointsRef.current.length >= 2) void requestRoute(routePointsRef.current, next); }} /></label>
-                <p className="lts-muted-note">Stress Free avoids published LTS 4.5 links and crossings.</p>
-              </details>
-              <button type="button" className="lts-exit-route" onClick={toggleRoutePlanning}>Exit route planner</button>
-            </section>}
-            {mapError && <p className="lts-route-error" role="alert">{mapError}</p>}
-          </div>
-        </>}
+          {mapError && <p className="lts-map-error" role="alert">{mapError}</p>}
+        </div>
       </aside>}
 
-      {!routeMode && selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)) && (
+      {selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)) && (
         <aside key={selectedVoteSegment?.segmentId || selectedOsmId || String(selected.name)} className="lts-surface lts-road-panel" aria-label="Selected road">
+          <div className="lts-road-heading">
           <button
             onClick={() => {
               if (selectionSavingRef.current) return;
@@ -2274,6 +1563,8 @@ export default function LtsLabPage() {
               <p className="text-sm" style={{ color: selectedLts ? LTS_COLOURS[selectedLts] : selectedIsDismount ? '#cbd5e1' : '#c084fc' }}>{selectedLts ? LTS_LABELS[selectedLts] : selectedIsDismount ? 'Dismount / walk bike' : 'MTB trail shown for context'}</p>
             </div>
           </div>
+          </div>
+          <div className="lts-road-body">
           <p className="lts-road-summary">{String(selected.reason || 'Select the details below to explore this score.')}</p>
           <div className="lts-road-facts">
             {selected.surface && <span>{String(selected.surface).replaceAll('_', ' ')}</span>}
@@ -2416,6 +1707,7 @@ export default function LtsLabPage() {
           )}
           {selectedOsmUrl && <a href={selectedOsmUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex text-sm font-semibold text-sky-400 hover:text-sky-300">Inspect this feature in OpenStreetMap →</a>}
           </details>
+          </div>
         </aside>
       )}
 
@@ -2454,7 +1746,7 @@ export default function LtsLabPage() {
                   LTS means Level of Traffic Stress. Lower scores mean less interaction with motor traffic. Select a road to inspect its score or contribute local knowledge.
                 </p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {ROUTE_LTS_LEVELS.map((level) => (
+                  {LTS_LEVELS.map((level) => (
                     <div key={level} className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
                       <span className="lts-score-badge" style={{ background: LTS_COLOURS[level], color: level === 2 || level >= 4 ? '#fff' : '#10202b' }}>L{level}</span>
                       <div><p className="font-semibold text-white">{LTS_LABELS[level]}</p><p className="text-sm text-slate-400">{level === 1 ? 'Very little interaction with motor traffic' : level === 1.5 ? 'Community-identified quieter road, informed by local knowledge' : level === 2 ? 'Lower-stress conditions for many adults' : level === 3 ? 'More traffic interaction; confident riders' : level === 4 ? 'High-speed, high-volume or otherwise stressful conditions' : 'Hostile link or crossing: excluded from Stress Free routes, even for a few metres'}</p></div>
@@ -2496,11 +1788,6 @@ export default function LtsLabPage() {
                     <p className="font-semibold text-white">Map delivery</p>
                     <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered with MapLibre over a simplified OpenFreeMap base map. An optional Mapbox Satellite overlay can be faded from transparent to opaque; it changes only the background imagery, never the classification or routing. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Grey dashes identify <code>bicycle=dismount</code> walk-bike links and deliberately carry no LTS score. Short white-backed purple dashes identify OSM-tagged MTB trails. Short white-backed cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <p className="font-semibold text-white">Experimental routing</p>
-                    <p className="mt-1 text-xs text-slate-400">{activeDataset.routable ? (USING_LOCAL_ENRICHED_ROUTER ? <>Routes in this local Lab come from a separate traffic-enriched BRouter test instance using <code className="text-emerald-300">cyalts</code>. The production router and existing iOS and Android profiles remain unchanged.</> : <>Routes come from the live BRouter service using the additive <code className="text-emerald-300">cyalts</code> profile. Existing iOS and Android profiles remain unchanged.</>) : <>This statewide layer is map-only. It uses the shared classifier for inspection and comparison but has no LTS BRouter graph, cannot plan routes, and cannot change AusBUG navigation.</>}</p>
-                    <a href="https://brouter.de/" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">About BRouter <ExternalLink className="h-3 w-3" /></a>
-                  </div>
                 </div>
               </details>
 
@@ -2511,14 +1798,14 @@ export default function LtsLabPage() {
                   <li><strong>Check access.</strong><span>Check whether cycling is permitted. Dismount links are grey and have no LTS score.</span></li>
                   <li><strong>Assess each direction.</strong><span>Use speed, lanes and cycling facilities to set the base score.</span></li>
                   <li><strong>Apply community adjustments.</strong><span>LTS 4 roads use the average of the base score and approved vote, rounded up. LTS 2 → 1.5 stays a direct adjustment. An LTS 4.5 result is an explicit routing exclusion and is never averaged down.</span></li>
-                  <li><strong>Display the result.</strong><span>The map shows the worse direction. Your route uses the direction you ride.</span></li>
+                  <li><strong>Display the result.</strong><span>The map shows the worse of the two scored travel directions.</span></li>
                 </ol>
                 <details className="about-subdetail"><summary>Access, directions and evidence</summary>
                 <div className="mt-3 space-y-2 text-slate-300">
                   <p>Every state and territory uses the same classifier and the exact rules below. What differs is which official datasets can fill gaps in OSM—not the meaning of an LTS level.</p>
                   <p>Each OSM way is assessed separately for the forward and backward cycling directions using Australian left-hand traffic. The map displays the more stressful permitted direction.</p>
                   <p>Direction matters because the two sides of a road can have different painted or protected cycle lanes, buffers, lane counts and speed tags. For Australian left-hand traffic, forward travel uses the left-side cycling treatment and backward travel uses the right-side treatment. Parking is currently a road-level door-zone flag rather than a fully directional input; its exact effect is stated below.</p>
-                  <p>The background line deliberately shows the worse of the two permitted directions, while an active route shows the LTS for the direction being ridden. A route may therefore change a yellow background segment to blue when its side is safer, but the same shared classification should never change a blue background segment to yellow.</p>
+                  <p>The background line deliberately shows the worse of the two permitted travel directions. Expand a road’s details to inspect its forward and backward scores.</p>
                   <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access and bicycle=no/private/use_sidepath are excluded. Dismount links are excluded from LTS scoring but can remain as grey walk-bike routing connections. Footways without explicit bicycle permission are normally excluded; in the ACT, where cycling on ordinary paths is legally permitted unless signed otherwise, they remain cautious routing links but are hidden from the map by default. An ACT footway, path or forestry track tagged only bicycle=yes is treated as legal access rather than proof of a designated cycling facility; highway=cycleway, bicycle=designated or official bicycle-route evidence keeps a link visible. One-way tags decide which travel directions are scored.</p>
                   <p>For an included direction, the segment score can be changed by only these inputs: road/path class; directional or general speed limit; directional or total motor-traffic lane count; roundabout status; cycling-facility type and side; whether a painted lane has a mapped buffer; mapped kerbside parking beside a painted lane; and matched all-vehicle daily motor traffic.{hasRuralUnsealedRule ? ' On a narrow class of high-speed minor roads, explicit unsealed surface, traffic evidence where available, and heavy-vehicle evidence also affect a provisional one-band adjustment.' : ''} Each rule is deterministic and is applied in the order shown below.</p>
                   <p>Traffic records are matched to OSM geometry using road name or route reference, projected distance, local direction and line overlap. Directional counts are doubled for a two-way OSM centreline to approximate conventional two-way daily traffic.</p>
@@ -2583,29 +1870,9 @@ export default function LtsLabPage() {
               </details>
 
               </details>
-              <details className="about-detail">
-                <summary>{activeDataset.routable ? 'How BRouter chooses a route' : 'Routing status'}</summary>
-                {!activeDataset.routable && <p className="mt-2 rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-sky-100">The statewide {activeDataset.label} map is map-only. Its visual classification and official-data matches are being audited before any BRouter segment build. It cannot plan routes or change production navigation.</p>}
-                {activeDataset.routable && <>
-                <p className="mt-2">The planner accepts up to 26 ordered points labelled A–Z. BRouter connects them in sequence, and every edit—including Clear—can be undone or redone.</p>
-                <p className="mt-2">Each plan also requests the existing AusBUG <strong>Bike Paths</strong> route using the <code className="text-slate-300">cyabikepath</code> BRouter profile—the conservative profile used by the iOS and Android apps—for the same points and gravel setting. The route-comparison switch colours either result using the loaded directional LTS map while drawing the other as a semi-transparent solid grey line. The comparison profile&apos;s own routing cost is never presented as stress: its geometry is spatially matched back to the same map classifier, and any section that cannot be matched confidently remains grey and is reported as unscored.</p>
-                <p className="mt-2">The <code className="text-emerald-300">cyalts</code> profile assigns widely separated routing costs: 1.0 for LTS 1, 1.4 for community LTS 1.5, 1.8 for LTS 2, 5.0 for LTS 3 and 15.0 for LTS 4. This strongly prefers low-stress links while allowing a higher-stress connection when otherwise necessary. LTS 4.5 is excluded, including very short hostile links and crossings. If no route avoids it, the planner reports that it cannot find a route. The rating does not assert a legal bicycle prohibition or make a hostile crossing suitable for walking.</p>
-                <p className="mt-2">The enriched routing segments carry the map classifier&apos;s forward and backward LTS values directly. BRouter uses the value for the travel direction; it does not independently reinterpret the road&apos;s lane or cycleway tags. The background line deliberately uses the worse direction, so a routed line can be safer—but not more stressful—when the lane or cycleway on the ridden side is better.</p>
-                <p className="mt-2">Crossing dots are classified by the same rules and add point penalties equivalent to a 0 m, 20 m, 80 m or 250 m detour for LTS 1–4. This encourages the router to prefer signals, refuges and calmer crossings without making a difficult crossing an absolute barrier.</p>
-                <p className="mt-2">The Gravel switch applies only to explicitly known unsealed surfaces. With Gravel off, those links receive a strong additional cost; unknown surfaces are not assumed unsealed. MTB trails with easy or unspecified difficulty remain connected but carry a strong commuter penalty. Trails tagged <code>mtb:scale=2</code> or higher, IMBA 2 or higher, downhill, freeride or trial are treated as clearly technical and excluded from commuter routing.</p>
-                <p className="mt-2">A generic path, track or bridleway without explicit bicycle access or normal bicycle-route membership remains available only with an additional unverified-trail penalty. Hiking/foot route membership makes that warning more specific but does not prohibit cycling by itself. A <code>sac_scale</code> hiking-difficulty tag without positive cycling or MTB evidence is excluded from commuter routing.</p>
-                <p className="mt-2">A link explicitly tagged <code>bicycle=dismount</code> remains connected with a strong penalty so a station crossing or short passage does not break the route. It is shown grey without an LTS score because the mapped instruction is to walk the bike, not ride it. Rider reports that signage is missing are saved for access verification and do not silently erase the OSM restriction.</p>
-                <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-400/10 p-4">
-                  <h4 className="font-semibold text-white">Handling unavoidable high-stress gaps</h4>
-                  <p className="mt-2 text-xs text-violet-50">The values 1.0, 1.4, 1.8, 5.0 and 15.0 are deliberately separated experimental preference weights, not measured speeds, crash risks or final calibrated constants. Before other routing costs are considered, one kilometre at LTS 2, 3 or 4 therefore contributes roughly the same route cost as 1.8, 5 or 15 kilometres at LTS 1. The spacing makes the router mildly prefer LTS 1 over LTS 2, strongly avoid LTS 3 and treat LTS 4 as a last resort. An explicit LTS 4.5 exclusion remains unavailable even where there is no alternative. These values still need comparison against routes chosen by riders.</p>
-                  <p className="mt-2 text-xs text-violet-50">The model normally assumes the rider remains on the bicycle. The sole explicit exception is an OSM <code>bicycle=dismount</code> connector: the router may use it with a strong penalty and the map marks it grey as a walk-bike section. The current travel-time estimate does not yet separately model walking speed, so riders should allow extra time. LTS 4 still represents riding a stressful link; it is not a walking estimate.</p>
-                </div>
-                <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-100">
-                  {USING_LOCAL_ENRICHED_ROUTER
-                    ? 'This local test uses separately built BRouter segments containing matched AADT classes, lane counts, parking, buffers, normalised cycleway tags, crossing scores and real elevation. Each directional road and crossing LTS value is precomputed by the same classifier that paints the map; ways excluded from the visible cycling network are also unavailable to the router. It has not been switched into production.'
-                    : 'This Lab uses isolated, state-specific BRouter segment sets containing the same matched traffic, official road evidence, directional LTS, surface and trail rules, crossing scores and elevation used by the map. The AusBUG iOS and Android BRouter service remains separate and unchanged.'}
-                </div>
-                </>}
+              <details className="about-detail"><summary>How ratings affect Stress Free routes</summary>
+                <p>LTS 4 carries a strong routing penalty but remains available for a short connection. Published LTS 4.5 decisions exclude a link or crossing, regardless of length. A road rating does not change legal access or automatically change a separate crossing’s rating.</p>
+                <p className="mt-2">Published ratings enter direct app routing through the community graph refresh.</p>
               </details>
 
               <details className="about-detail">
@@ -2661,7 +1928,6 @@ export default function LtsLabPage() {
 
               <footer className="flex flex-wrap gap-x-5 gap-y-1 border-t border-white/10 pt-4 text-xs text-slate-500">
                 <span>Map classifier: {metadata?.classifier_version || 'loading'}</span>
-                <span>Router classifier: {activeDataset.routable ? (routeClassifier || DATASET_VERSION) : 'not enabled for this pilot'}</span>
                 {metadata?.source_pbf_modified_at && <span>OSM snapshot: {new Date(metadata.source_pbf_modified_at).toLocaleDateString('en-AU')}</span>}
                 {metadata?.generated_at && <span>Built: {new Date(metadata.generated_at).toLocaleString('en-AU')}</span>}
               </footer>

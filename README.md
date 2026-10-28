@@ -2,7 +2,7 @@
 
 A public, experimental Bicycle Level of Traffic Stress (LTS) map for Australia.
 
-The Lab classifies each rideable OpenStreetMap road or path separately by travel direction, then displays the more stressful permitted direction on the background map. Every published state and territory except the still-audited NSW graph includes an isolated experimental BRouter route planner. The About panel documents the current rules, thresholds, state-specific data sources, routing costs, crossing penalties, limitations and freshness information.
+The Lab classifies each rideable OpenStreetMap road or path separately by travel direction, then displays the more stressful permitted direction on the background map. The map focuses on road inspection and community contributions. The Map guide documents the current rules, thresholds, state-specific data sources, routing costs, crossing penalties, limitations and freshness information.
 
 The map includes Australian search-as-you-type and a browser-controlled current-location button. Place suggestions use the OpenStreetMap-based Photon geocoder through a debounced, cached and rate-limited server route. `PHOTON_GEOCODER_URL` can point production at a dedicated Photon instance. Current coordinates remain in the browser and are used only to position the map marker.
 
@@ -10,8 +10,8 @@ The map includes Australian search-as-you-type and a browser-controlled current-
 
 This is research and diagnostic software. It is not safety advice, a guarantee that a link is legal or open, or a replacement for checking current conditions.
 
-- Victoria, Queensland, Western Australia, South Australia, ACT, Tasmania and Northern Territory: statewide or territory-wide diagnostic maps and isolated experimental routing.
-- New South Wales: statewide diagnostic map; routing is intentionally disabled while the NSW graph is audited.
+- All eight states and territories have statewide or territory-wide diagnostic maps.
+- The web interface focuses on search, road inspection, layers and community contributions; routing remains a separate API/service.
 - Official traffic evidence is state-specific. WA, SA and Tasmania include suitable reusable traffic observations; ACT and NT currently use OSM and transparent inference because no maintained territory-wide geospatial AADT feed passed the road-level join contract.
 
 ## Run locally
@@ -45,13 +45,16 @@ Set the PMTiles URLs in `.env.local`. Generated PMTiles archives are intentional
 
 ## Map interface
 
-Search, Plan route and Map display are the primary controls. The default view
-keeps the map clear with a compact colour key. Road selection starts with its
-score, explanation and basic facts; rating/correction controls and source data
-expand on request. Layer statistics, extra overlays, route options, stress
-breakdowns and comparison routes are also collapsed by default. The More menu
-contains the colour/scoring guide and community activity. Phone layouts use
-compact bottom drawers with the same controls.
+Search and Map display are the primary controls. Road selection opens a full-height
+left sidebar with a sticky heading and close button. On desktop the map reserves
+space beside it and resizes when the sidebar opens or closes. Narrow screens use
+a left drawer. Rating/correction controls, community feedback, source data, extra
+layers and statistics expand on request. The More menu contains the colour/scoring
+guide and community activity.
+
+The web map focuses on inspection and contributions. Its route-planning UI and
+client-side route state/layers have been removed. The existing routing API and
+Stress Free graph/profile services remain available to their other clients.
 
 ## Community segment voting
 
