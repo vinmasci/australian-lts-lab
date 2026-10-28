@@ -25,7 +25,7 @@ for (const [file, end] of [
 ]) {
   test(`${file} accepts every supported base rating including 1.5`, () => {
     const validate = validator(file, end);
-    for (const level of [1,1.5,2,3,4]) assert.equal(validate(segment(level), 'victoria'), true);
+    for (const level of [1,1.5,2,3,4,4.5]) assert.equal(validate(segment(level), 'victoria'), true);
     for (const level of [0,1.2,2.5,5,NaN,Infinity,'1.5',null]) assert.equal(validate(segment(level), 'victoria'), false);
   });
 }

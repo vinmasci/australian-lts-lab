@@ -315,6 +315,7 @@ const LTS_COLOURS: Record<number, string> = {
   2: '#2563eb',
   3: '#f59e0b',
   4: '#dc2626',
+  4.5: '#7f1d1d',
 };
 const LTS_LABELS: Record<number, string> = {
   1: 'Very low stress',
@@ -322,8 +323,9 @@ const LTS_LABELS: Record<number, string> = {
   2: 'Low stress',
   3: 'Higher stress',
   4: 'High stress',
+  4.5: 'Avoid cycling',
 };
-const ROUTE_LTS_LEVELS = [1, 1.5, 2, 3, 4] as const;
+const ROUTE_LTS_LEVELS = [1, 1.5, 2, 3, 4, 4.5] as const;
 
 function syncSatelliteOverlay(map: maplibregl.Map, enabled: boolean, opacity: number) {
   if (!enabled || !MAPBOX_PUBLIC_TOKEN) {
@@ -557,7 +559,7 @@ function voteSegmentFromFeature(feature: Pick<MapGeoJSONFeature, 'properties' | 
   const currentLts = Number(properties.lts);
   if (!isLtsVoteLevel(currentLts)) return null;
   const featureKind = String(properties.feature_kind || 'segment');
-  if (featureKind !== 'segment') return null;
+  if (featureKind !== 'segment' && featureKind !== 'crossing') return null;
   const osmId = properties.osm_id ? String(properties.osm_id) : undefined;
   const sourceId = String(properties.segment_id || osmId || feature.id || geometryFingerprint(feature.geometry as GeoJSON.Geometry));
   const direction = properties.lts_direction || properties.direction;
@@ -686,7 +688,7 @@ function scoreComparisonAgainstMap(
   }
   if (networkSegments.length === 0) return null;
 
-  const distanceByLts: Record<string, number> = { '1': 0, '1.5': 0, '2': 0, '3': 0, '4': 0 };
+  const distanceByLts: Record<string, number> = { '1': 0, '1.5': 0, '2': 0, '3': 0, '4': 0, '4.5': 0 };
   let knownDistance = 0;
   let unknownDistance = 0;
   let knownUnsealedDistance = 0;
@@ -763,10 +765,10 @@ function scoreComparisonAgainstMap(
       const directional = Number(aligned
         ? matched.properties.lts_forward ?? matched.properties.lts
         : matched.properties.lts_backward ?? matched.properties.lts);
-      lts = directional >= 1 && directional <= 4 ? directional : Number(matched.properties.lts || 0);
+      lts = ROUTE_LTS_LEVELS.includes(directional as (typeof ROUTE_LTS_LEVELS)[number]) ? directional : Number(matched.properties.lts || 0);
     }
 
-    if (lts >= 1 && lts <= 4) {
+    if (ROUTE_LTS_LEVELS.includes(lts as (typeof ROUTE_LTS_LEVELS)[number])) {
       distanceByLts[String(lts)] += sectionDistance;
       knownDistance += sectionDistance;
       if (propertyIsTrue(matchedProperties.is_unsealed)) knownUnsealedDistance += sectionDistance;
@@ -877,7 +879,7 @@ export default function LtsLabPage() {
   const [selectedStreetViewPoint, setSelectedStreetViewPoint] = useState<Coordinate | null>(null);
   const [osmFeatureDetails, setOsmFeatureDetails] = useState<OsmFeatureDetails | null>(null);
   const [osmFeatureError, setOsmFeatureError] = useState<{ osmId: string; message: string } | null>(null);
-  const [visibleLts, setVisibleLts] = useState<Set<number>>(new Set([1, 2, 3, 4]));
+  const [visibleLts, setVisibleLts] = useState<Set<number>>(new Set([1, 2, 3, 4, 4.5]));
   const [showCrossings, setShowCrossings] = useState(true);
   const [showLowConfidence, setShowLowConfidence] = useState(true);
   const [showMtbTrails, setShowMtbTrails] = useState(true);
@@ -1209,6 +1211,7 @@ export default function LtsLabPage() {
           ['==', ['get', 'lts'], 2], LTS_COLOURS[2],
           ['==', ['get', 'lts'], 3], LTS_COLOURS[3],
           ['==', ['get', 'lts'], 4], LTS_COLOURS[4],
+          ['==', ['get', 'lts'], 4.5], LTS_COLOURS[4.5],
           '#6b7280',
         ];
         const approvedColourExpression: maplibregl.ExpressionSpecification = [
@@ -1221,6 +1224,7 @@ export default function LtsLabPage() {
           ['==', ['get', 'lts'], 2], LTS_VOTE_COLOURS[2],
           ['==', ['get', 'lts'], 3], LTS_VOTE_COLOURS[3],
           ['==', ['get', 'lts'], 4], LTS_VOTE_COLOURS[4],
+          ['==', ['get', 'lts'], 4.5], LTS_VOTE_COLOURS[4.5],
           '#6b7280',
         ];
 
@@ -2393,12 +2397,12 @@ export default function LtsLabPage() {
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <h2 className="font-semibold">Stress levels</h2>
-            <p className="text-xs text-slate-400">{routeMode ? 'The background network remains inspectable after routing.' : 'Click a road to inspect and vote; crossings remain inspectable.'}</p>
+            <p className="text-xs text-slate-400">{routeMode ? 'The background network remains inspectable after routing.' : 'Click a road or crossing to inspect and contribute.'}</p>
           </div>
           {metadata && <span className="rounded bg-white/10 px-2 py-1 text-[10px] text-slate-300">{metadata.classifier_version}</span>}
         </div>
         <div className="space-y-1.5">
-          {[1, 2, 3, 4].map((level) => (
+          {[1, 2, 3, 4, 4.5].map((level) => (
             <label key={level} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/5">
               <input
                 type="checkbox"
@@ -2412,7 +2416,7 @@ export default function LtsLabPage() {
               />
               <span className="h-1.5 w-8 rounded-full" style={{ background: LTS_COLOURS[level] }} />
               <span className="flex-1 text-sm">LTS {level} · {LTS_LABELS[level]}</span>
-              {metadata && <span className="text-xs text-slate-500">{metadata.segment_distance_km[String(level)].toLocaleString()} km</span>}
+              {metadata && <span className="text-xs text-slate-500">{level === 4.5 ? 'Community' : `${(metadata.segment_distance_km[String(level)] ?? 0).toLocaleString()} km`}</span>}
             </label>
           ))}
         </div>
@@ -2684,10 +2688,10 @@ export default function LtsLabPage() {
                   LTS means Level of Traffic Stress. It estimates the stress of interacting with motor traffic. It does not establish bicycle access, surface quality or whether a route is safe for a particular rider.
                 </p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {[1, 1.5, 2, 3, 4].map((level) => (
+                  {ROUTE_LTS_LEVELS.map((level) => (
                     <div key={level} className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
-                      <span className="lts-score-badge" style={{ background: LTS_COLOURS[level], color: level === 2 || level === 4 ? '#fff' : '#10202b' }}>L{level}</span>
-                      <div><p className="font-semibold text-white">{LTS_LABELS[level]}</p><p className="text-sm text-slate-400">{level === 1 ? 'Very little interaction with motor traffic' : level === 1.5 ? 'Community-identified quieter road, informed by local knowledge' : level === 2 ? 'Lower-stress conditions for many adults' : level === 3 ? 'More traffic interaction; confident riders' : 'High-speed, high-volume or otherwise stressful conditions'}</p></div>
+                      <span className="lts-score-badge" style={{ background: LTS_COLOURS[level], color: level === 2 || level >= 4 ? '#fff' : '#10202b' }}>L{level}</span>
+                      <div><p className="font-semibold text-white">{LTS_LABELS[level]}</p><p className="text-sm text-slate-400">{level === 1 ? 'Very little interaction with motor traffic' : level === 1.5 ? 'Community-identified quieter road, informed by local knowledge' : level === 2 ? 'Lower-stress conditions for many adults' : level === 3 ? 'More traffic interaction; confident riders' : level === 4 ? 'High-speed, high-volume or otherwise stressful conditions' : 'Hostile link or crossing: excluded from Stress Free routes, even for a few metres'}</p></div>
                     </div>
                   ))}
                 </div>
@@ -2738,7 +2742,7 @@ export default function LtsLabPage() {
                 <ol className="about-score-steps">
                   <li><strong>Check access.</strong><span>Check whether cycling is permitted. Dismount links are grey and have no LTS score.</span></li>
                   <li><strong>Assess each direction.</strong><span>Use speed, lanes and cycling facilities to set the base score.</span></li>
-                  <li><strong>Apply community adjustments.</strong><span>LTS 4 roads use the average of the base score and approved vote, rounded up. LTS 2 → 1.5 stays a direct adjustment.</span></li>
+                  <li><strong>Apply community adjustments.</strong><span>LTS 4 roads use the average of the base score and approved vote, rounded up. LTS 2 → 1.5 stays a direct adjustment. An LTS 4.5 result is an explicit routing exclusion and is never averaged down.</span></li>
                   <li><strong>Display the result.</strong><span>The map shows the worse direction. Your route uses the direction you ride.</span></li>
                 </ol>
                 <details className="about-subdetail"><summary>Access, directions and evidence</summary>
@@ -2795,7 +2799,7 @@ export default function LtsLabPage() {
                   </table>
                 </div>
                 <p className="mt-3 text-xs text-slate-400">Traffic volume is applied after the base rule. It may only raise a segment with no cycling facility, sharrows or a shoulder. It does not directly lower a score and currently does not alter a path, protected lane, buffered lane or painted lane.{hasRuralUnsealedRule ? ' The provisional minor-unsealed-road exception is checked separately after this step; unknown volume gives low confidence, while a matched count above 1,500 vehicles/day prevents the adjustment.' : ''} A low-confidence SCATS estimate may raise a segment by no more than one level.</p>
-                <p className="mt-2 text-xs text-slate-400">Community-adjusted LTS 4 roads use (4 + approved vote) ÷ 2, rounded up, at every speed. Votes of 1, 1.5 or 2 give LTS 3; votes of 3 or 4 retain LTS 4. LTS 2 roads voted to 1.5 still become 1.5 directly. Speed limits and access restrictions are unchanged. Community adjustments are not independently verified safety assessments.</p>
+                <p className="mt-2 text-xs text-slate-400">Community-adjusted LTS 4 roads use (4 + approved vote) ÷ 2, rounded up, at every speed. Votes of 1, 1.5 or 2 give LTS 3; votes of 3 or 4 retain LTS 4. LTS 2 roads voted to 1.5 still become 1.5 directly. AusBUG&apos;s additional 4.5 class is a routing exclusion and is never averaged down. Speed limits and access restrictions are unchanged. Community adjustments are not independently verified safety assessments.</p>
                 </details>
                 <details className="about-subdetail"><summary>Crossings and what LTS does not measure</summary>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -2817,7 +2821,7 @@ export default function LtsLabPage() {
                 {activeDataset.routable && <>
                 <p className="mt-2">The planner accepts up to 26 ordered points labelled A–Z. BRouter connects them in sequence, and every edit—including Clear—can be undone or redone.</p>
                 <p className="mt-2">Each plan also requests the existing AusBUG <strong>Bike Paths</strong> route using the <code className="text-slate-300">cyabikepath</code> BRouter profile—the conservative profile used by the iOS and Android apps—for the same points and gravel setting. The route-comparison switch colours either result using the loaded directional LTS map while drawing the other as a semi-transparent solid grey line. The comparison profile&apos;s own routing cost is never presented as stress: its geometry is spatially matched back to the same map classifier, and any section that cannot be matched confidently remains grey and is reported as unscored.</p>
-                <p className="mt-2">The <code className="text-emerald-300">cyalts</code> profile assigns widely separated routing costs: 1.0 for LTS 1, 1.4 for community LTS 1.5, 1.8 for LTS 2, 5.0 for LTS 3 and 15.0 for LTS 4. This strongly prefers low-stress links while allowing a higher-stress connection when otherwise necessary.</p>
+                <p className="mt-2">The <code className="text-emerald-300">cyalts</code> profile assigns widely separated routing costs: 1.0 for LTS 1, 1.4 for community LTS 1.5, 1.8 for LTS 2, 5.0 for LTS 3 and 15.0 for LTS 4. This strongly prefers low-stress links while allowing a higher-stress connection when otherwise necessary. LTS 4.5 is excluded, including very short hostile links and crossings. If no route avoids it, the planner reports that it cannot find a route. The rating does not assert a legal bicycle prohibition or make a hostile crossing suitable for walking.</p>
                 <p className="mt-2">The enriched routing segments carry the map classifier&apos;s forward and backward LTS values directly. BRouter uses the value for the travel direction; it does not independently reinterpret the road&apos;s lane or cycleway tags. The background line deliberately uses the worse direction, so a routed line can be safer—but not more stressful—when the lane or cycleway on the ridden side is better.</p>
                 <p className="mt-2">Crossing dots are classified by the same rules and add point penalties equivalent to a 0 m, 20 m, 80 m or 250 m detour for LTS 1–4. This encourages the router to prefer signals, refuges and calmer crossings without making a difficult crossing an absolute barrier.</p>
                 <p className="mt-2">The Gravel switch applies only to explicitly known unsealed surfaces. With Gravel off, those links receive a strong additional cost; unknown surfaces are not assumed unsealed. MTB trails with easy or unspecified difficulty remain connected but carry a strong commuter penalty. Trails tagged <code>mtb:scale=2</code> or higher, IMBA 2 or higher, downhill, freeride or trial are treated as clearly technical and excluded from commuter routing.</p>
@@ -2825,7 +2829,7 @@ export default function LtsLabPage() {
                 <p className="mt-2">A link explicitly tagged <code>bicycle=dismount</code> remains connected with a strong penalty so a station crossing or short passage does not break the route. It is shown grey without an LTS score because the mapped instruction is to walk the bike, not ride it. Rider reports that signage is missing are saved for access verification and do not silently erase the OSM restriction.</p>
                 <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-400/10 p-4">
                   <h4 className="font-semibold text-white">Handling unavoidable high-stress gaps</h4>
-                  <p className="mt-2 text-xs text-violet-50">The values 1.0, 1.4, 1.8, 5.0 and 15.0 are deliberately separated experimental preference weights, not measured speeds, crash risks or final calibrated constants. Before other routing costs are considered, one kilometre at LTS 2, 3 or 4 therefore contributes roughly the same route cost as 1.8, 5 or 15 kilometres at LTS 1. The spacing makes the router mildly prefer LTS 1 over LTS 2, strongly avoid LTS 3 and treat LTS 4 as a last resort, while keeping every legal cycling connection available where the network has no practical alternative. These values still need comparison against routes chosen by riders.</p>
+                  <p className="mt-2 text-xs text-violet-50">The values 1.0, 1.4, 1.8, 5.0 and 15.0 are deliberately separated experimental preference weights, not measured speeds, crash risks or final calibrated constants. Before other routing costs are considered, one kilometre at LTS 2, 3 or 4 therefore contributes roughly the same route cost as 1.8, 5 or 15 kilometres at LTS 1. The spacing makes the router mildly prefer LTS 1 over LTS 2, strongly avoid LTS 3 and treat LTS 4 as a last resort. An explicit LTS 4.5 exclusion remains unavailable even where there is no alternative. These values still need comparison against routes chosen by riders.</p>
                   <p className="mt-2 text-xs text-violet-50">The model normally assumes the rider remains on the bicycle. The sole explicit exception is an OSM <code>bicycle=dismount</code> connector: the router may use it with a strong penalty and the map marks it grey as a walk-bike section. The current travel-time estimate does not yet separately model walking speed, so riders should allow extra time. LTS 4 still represents riding a stressful link; it is not a walking estimate.</p>
                 </div>
                 <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-100">

@@ -49,6 +49,23 @@ Selecting a mapped road opens its contribution controls. A contribution may cont
 
 LTS 1.5 is the cyan class for a trafficable road above 30 km/h with very little motor traffic. Community results of LTS 1, 1.5 or 2 become that value when published. An LTS 3 or 4 community result is averaged with the source score and rounded up: for example, source LTS 2 plus an LTS 3 result becomes LTS 3.
 
+LTS 4.5 is AusBUG's dark burgundy **Avoid cycling** class for hostile links and
+crossings, including very short median/U-turn connectors. Published 4.5 decisions
+are never averaged down and do not change legal bicycle or pedestrian access.
+A crossing-point decision blocks passage through that node in every direction;
+select the individual connecting way when only one manoeuvre is unsuitable.
+The review queue can withdraw a published decision.
+
+The map route API reads current published exclusions before planning. It retries
+around conflicting geometry with narrow BRouter avoidance barriers and checks
+the result against every exclusion. An incomplete route whose destination was
+snapped across a flagged gap is rejected. There is no walking fallback through
+4.5. Registry failures stop routing rather than silently omitting restrictions.
+Direct Stress Free router clients receive each decision after the community
+graph refresh; their matching profile/lookups must support directional way
+placeholders 22/23 and `ausbug_lts_crossing=4.5`. The generic cycling profiles
+retain their own routing rules.
+
 Rideability is rated independently as R1 any bike, R2 commuter or hybrid, R3 wider tyres advised, or R4 specialist bike/walking may be required. Voters can optionally explain their LTS choice, flag loose surfaces, corrugations, potholes or ruts, uneven stone, and wet-weather slipperiness, and add a short observation. Rideability does not change the LTS because surface difficulty and motor-traffic stress measure different things. The community result uses the conservative upper median when an even number of ratings is split.
 
 Votes do not alter the underlying OSM-derived source network. Each signed-in contribution immediately recalculates the community result and updates the separate published override layer. Reconciled published overrides are incorporated into the isolated LTS routing graph during its weekly Monday rebuild; LTS 1.5 receives a routing cost between LTS 1 and LTS 2. The server verifies the contributor's Firebase ID token, keys their vote to the verified UID and applies account and connection rate limits. The protected `/ltsmap/review` page (also `/review`) remains available to allowlisted reviewers for audits, corrections and removal; account creation remains with the main AusBUG app.

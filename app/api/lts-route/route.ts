@@ -1,5 +1,7 @@
 import { ltsFromCost, precomputedLtsFromWayTags, hasPlaceholder } from '@/lib/lts-route-ratings';
 import { currentLtsRelease } from '@/lib/lts-release';
+import { publishedCommunityApprovals } from '@/lib/lts-community-store';
+import { routingExclusions, routeWithExclusions, type RoutingExclusion, type avoidanceParameters } from '@/lib/lts-routing-exclusions';
 import { NextRequest, NextResponse } from 'next/server';
 
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development'
@@ -138,7 +140,7 @@ function buildStressOutput(feature: BRouterFeature) {
   const messages = parseMessages(feature.properties);
   const routeDistance = asNumber(feature.properties['track-length']);
   const routeTimeMilliseconds = asNumber(feature.properties['total-time']) * 1000;
-  const distanceByLts: Record<string, number> = { '1': 0, '1.5': 0, '2': 0, '3': 0, '4': 0 };
+  const distanceByLts: Record<string, number> = { '1': 0, '1.5': 0, '2': 0, '3': 0, '4': 0, '4.5': 0 };
   let knownUnsealedDistance = 0;
   let mtbCautionDistance = 0;
   let technicalMtbDistance = 0;
@@ -244,9 +246,37 @@ function buildStressOutput(feature: BRouterFeature) {
   };
 }
 
+async function requestRoutingFeature(url: URL, exclusions: RoutingExclusion[]): Promise<BRouterFeature> {
+  const waypoints = (url.searchParams.get('lonlats') || '').split('|').map(point => point.split(',').map(Number));
+  return routeWithExclusions(async (avoidance?: ReturnType<typeof avoidanceParameters>) => {
+    const upstreamUrl = new URL(url);
+    if (avoidance?.polylines) upstreamUrl.searchParams.set('polylines', avoidance.polylines);
+    if (avoidance?.nogos) upstreamUrl.searchParams.set('nogos', avoidance.nogos);
+    const upstream = await fetch(upstreamUrl, {
+      signal: AbortSignal.timeout(25_000), cache: 'no-store',
+    });
+    const raw = await upstream.text();
+    let payload: BRouterResponse;
+    try { payload = JSON.parse(raw) as BRouterResponse; }
+    catch { throw new Error(raw.trim() || `BRouter returned HTTP ${upstream.status}.`); }
+    const feature = payload.features?.[0];
+    if (!upstream.ok || payload.error || !feature?.geometry?.coordinates?.length) {
+      throw new Error(payload.error || 'No route was found. Try moving the start, finish or via points.');
+    }
+    const messages = feature.properties.messages || [];
+    const nodeTagsIndex = messages[0]?.map(String).indexOf('NodeTags') ?? -1;
+    if (parseMessages(feature.properties).some(message => precomputedLtsFromWayTags(message.wayTags) === 4.5)
+      || (nodeTagsIndex >= 0 && messages.slice(1).some(row => tagValue(String(row[nodeTagsIndex]), 'ausbug_lts_crossing') === '4.5'))) {
+      throw new Error('The routing graph returned an excluded LTS 4.5 link. No route can be shown.');
+    }
+    return feature;
+  }, exclusions, waypoints);
+}
+
 async function requestComparisonRoute(
   points: Array<[number, number]>,
   allowGravel: boolean,
+  exclusions: RoutingExclusion[],
 ): Promise<ComparisonResult> {
   try {
     const upstreamUrl = new URL(COMPARISON_BROUTER_ROUTE_URL);
@@ -259,24 +289,7 @@ async function requestComparisonRoute(
     upstreamUrl.searchParams.set('format', 'geojson');
     if (!allowGravel) upstreamUrl.searchParams.set('profile:avoid_unpaved', '1');
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25_000);
-    const upstream = await fetch(upstreamUrl, {
-      signal: controller.signal,
-      cache: 'no-store',
-    }).finally(() => clearTimeout(timeout));
-    const raw = await upstream.text();
-    let response: BRouterResponse;
-    try {
-      response = JSON.parse(raw) as BRouterResponse;
-    } catch {
-      return { error: raw.trim() || `BRouter comparison returned HTTP ${upstream.status}.` };
-    }
-
-    const feature = response.features?.[0];
-    if (!upstream.ok || response.error || !feature?.geometry?.coordinates?.length) {
-      return { error: response.error || 'The AusBUG Bike Paths comparison was unavailable.' };
-    }
+    const feature = await requestRoutingFeature(upstreamUrl, exclusions);
 
     return {
       route: feature.geometry,
@@ -312,7 +325,10 @@ export async function POST(request: NextRequest) {
     if (body.dataset !== undefined && !isRoutableDataset(body.dataset)) {
       return NextResponse.json({ error: 'Low-stress routing is not enabled for that dataset.' }, { status: 400 });
     }
-    const comparisonPromise = requestComparisonRoute(points, allowGravel);
+    // Use current published exclusions immediately; graph rebuilds incorporate
+    // the same decisions later. Do not silently ignore a failed registry read.
+    const exclusions = routingExclusions(dataset, await publishedCommunityApprovals(dataset));
+    const comparisonPromise = requestComparisonRoute(points, allowGravel, exclusions);
     const releasePromise = currentLtsRelease();
 
     const upstreamUrl = new URL(ROUTER_URLS[dataset]);
@@ -327,31 +343,7 @@ export async function POST(request: NextRequest) {
       upstreamUrl.searchParams.set('profile:avoid_unpaved', '1');
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25_000);
-    const upstream = await fetch(upstreamUrl, {
-      signal: controller.signal,
-      cache: 'no-store',
-    }).finally(() => clearTimeout(timeout));
-
-    const raw = await upstream.text();
-    let brouter: BRouterResponse;
-    try {
-      brouter = JSON.parse(raw) as BRouterResponse;
-    } catch {
-      return NextResponse.json(
-        { error: raw.trim() || `BRouter returned HTTP ${upstream.status}.` },
-        { status: 502 },
-      );
-    }
-
-    const feature = brouter.features?.[0];
-    if (!upstream.ok || brouter.error || !feature?.geometry?.coordinates?.length) {
-      return NextResponse.json(
-        { error: brouter.error || 'BRouter did not return a route.' },
-        { status: upstream.ok ? 422 : 502 },
-      );
-    }
+    const feature = await requestRoutingFeature(upstreamUrl, exclusions);
 
     const [comparison, release] = await Promise.all([comparisonPromise, releasePromise]);
     const publishedVersion = release?.datasets[dataset].metadata.classifier_version;

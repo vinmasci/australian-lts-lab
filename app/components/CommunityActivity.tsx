@@ -5,7 +5,7 @@ import { Bell, X } from 'lucide-react';
 import { ltsAppPath } from '@/lib/client-path';
 import { groupRoadActivity, type Activity } from '@/lib/lts-activity-groups';
 
-const colours: Record<number, string> = { 1: '#16a34a', 1.5: '#06b6d4', 2: '#2563eb', 3: '#f59e0b', 4: '#dc2626' };
+const colours: Record<number, string> = { 1: '#16a34a', 1.5: '#06b6d4', 2: '#2563eb', 3: '#f59e0b', 4: '#dc2626', 4.5: '#7f1d1d' };
 
 function Score({ value }: { value: number | null }) {
   return <span className="inline-flex items-center gap-1.5 text-xs font-bold"><span className="h-3 w-3 rounded-sm" style={{ backgroundColor: value === null ? '#94a3b8' : colours[value] }} />{value === null ? 'Unknown' : `LTS ${value}`}</span>;

@@ -398,7 +398,7 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
               <CircleHelp className="h-4 w-4" />
             </button>
           </div>
-          <div className="mt-3 grid grid-cols-5 gap-1.5" role="group" aria-label="Choose a proposed LTS">
+          <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label="Choose a proposed LTS">
             {LTS_VOTE_LEVELS.map((level) => {
               const selected = choice === level;
               return (
@@ -422,10 +422,11 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
             <>
               <div className="mt-2 flex items-center gap-2 rounded-lg bg-slate-950/45 p-2 text-xs text-slate-200">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: LTS_VOTE_COLOURS[choiceResult] }} />
-                {bulk ? <span>Each segment is assessed separately using its existing score and the usual community rules.</span> : choice >= 3
+                {choiceResult === 4.5 ? <span><strong>LTS 4.5 · Avoid cycling.</strong> Excluded from Stress Free routes, even for a short link. This does not change legal access.</span> : bulk ? <span>Each segment is assessed separately using its existing score and the usual community rules.</span> : choice >= 3
                   ? <span>Published result: ceil(({segment.currentLts} + {choice}) ÷ 2) = <strong>LTS {choiceResult}</strong></span>
                   : <span>Published result: this segment becomes <strong>LTS {choiceResult}</strong></span>}
               </div>
+              {choiceResult === 4.5 && segment.featureKind === 'crossing' && <p className="mt-2 text-xs text-slate-400">This excludes passage through the crossing point in every direction. To exclude one manoeuvre, select its individual connecting road or path.</p>}
               <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-lts-reason">Why did you choose this LTS? <span className="normal-case tracking-normal text-cyan-300">Required · public</span></label>
               <textarea
                 id="vote-lts-reason"

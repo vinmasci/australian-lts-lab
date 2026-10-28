@@ -1,4 +1,4 @@
-export const LTS_VOTE_LEVELS = [1, 1.5, 2, 3, 4] as const;
+export const LTS_VOTE_LEVELS = [1, 1.5, 2, 3, 4, 4.5] as const;
 export const RIDEABILITY_LEVELS = [1, 2, 3, 4] as const;
 export const RIDEABILITY_ISSUES = ['loose_surface', 'corrugations', 'potholes_ruts', 'uneven_stone', 'slippery_wet'] as const;
 
@@ -12,6 +12,7 @@ export const LTS_VOTE_COLOURS: Record<LtsVoteLevel, string> = {
   2: '#2563eb',
   3: '#f59e0b',
   4: '#dc2626',
+  4.5: '#7f1d1d',
 };
 
 export const LTS_VOTE_LABELS: Record<LtsVoteLevel, string> = {
@@ -20,6 +21,7 @@ export const LTS_VOTE_LABELS: Record<LtsVoteLevel, string> = {
   2: 'Low stress',
   3: 'Higher stress',
   4: 'High stress',
+  4.5: 'Avoid cycling',
 };
 
 export const LTS_VOTE_DESCRIPTIONS: Record<LtsVoteLevel, string> = {
@@ -28,6 +30,7 @@ export const LTS_VOTE_DESCRIPTIONS: Record<LtsVoteLevel, string> = {
   2: 'Generally comfortable for most adults, with low traffic stress or useful separation.',
   3: 'Noticeable traffic stress, suited to more-confident riders who can tolerate moderate interaction.',
   4: 'High stress from fast or heavy traffic, difficult crossings or little meaningful separation.',
+  4.5: 'A hostile link or crossing excluded from Stress Free routing, even for a short distance. This rating does not change legal bicycle access.',
 };
 
 export const RIDEABILITY_LABELS: Record<RideabilityLevel, string> = {
@@ -213,6 +216,7 @@ export function publishedLtsContributions(votes: StoredLtsVote[], published: boo
 }
 
 export function hardSpeedRuleFloor(currentLts: number, maxspeed?: number): LtsVoteLevel | null {
+  if (currentLts === 4.5) return 4.5;
   // Community-adjusted LTS 4 roads remain at least LTS 3 at every speed.
   if (currentLts >= 4) return 3;
   if (currentLts <= 2) return null;
@@ -226,6 +230,8 @@ export function applyHardSpeedRuleFloor(currentLts: number, proposedLts: LtsVote
 }
 
 export function projectApprovedLts(currentLts: number, targetLts: LtsVoteLevel, maxspeed?: number): LtsVoteLevel {
+  // An avoidance decision is not a higher distance penalty or an average.
+  if (targetLts === 4.5 || currentLts === 4.5) return 4.5;
   const projected = currentLts >= 4
     ? Math.min(4, Math.ceil((currentLts + targetLts) / 2)) as LtsVoteLevel
     : targetLts < 3

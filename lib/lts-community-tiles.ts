@@ -9,17 +9,20 @@ export function tileApprovals(dataset: string, records: Array<Record<string, unk
   for (const record of records) {
     if (record.dataset !== dataset || !isLtsVoteLevel(record.approvedLts)) continue;
     if (record.status && !['current', 'carried_forward'].includes(String(record.status))) continue;
-    const id = /^segment:(w[1-9][0-9]*)$/.exec(String(record.segmentId));
+    const id = /^(?:segment:(w[1-9][0-9]*)|crossing:(n[1-9][0-9]*))$/.exec(String(record.segmentId));
     if (!id) continue;
     const segment = record.segment as { maxspeed?: number; currentLts?: number } | undefined;
     const base = Number(record.baseLts ?? segment?.currentLts ?? record.approvedLts);
-    ratings.set(id[1], base >= 4 ? projectApprovedLts(base, isLtsVoteLevel(record.targetLts) ? record.targetLts : record.approvedLts, segment?.maxspeed) : applyHardSpeedRuleFloor(base, record.approvedLts, segment?.maxspeed));
+    // Existing crossing votes were not baked into tiles. Add the explicit
+    // avoidance class without applying an unrelated road vote to a crossing.
+    if (id[2] && record.approvedLts !== 4.5) continue;
+    ratings.set(id[1] || id[2], base >= 4 ? projectApprovedLts(base, isLtsVoteLevel(record.targetLts) ? record.targetLts : record.approvedLts, segment?.maxspeed) : applyHardSpeedRuleFloor(base, record.approvedLts, segment?.maxspeed));
   }
   return ratings;
 }
 
 const colours: Record<LtsVoteLevel, string> = {
-  1: '#16a34a', 1.5: '#06b6d4', 2: '#2563eb', 3: '#f59e0b', 4: '#dc2626',
+  1: '#16a34a', 1.5: '#06b6d4', 2: '#2563eb', 3: '#f59e0b', 4: '#dc2626', 4.5: '#7f1d1d',
 };
 
 /** Change properties, never reconstruct/simplify road geometry or join crossings. */
@@ -33,8 +36,10 @@ export function applyTileApprovals(data: Uint8Array, ratings: ReadonlyMap<string
   const features = Array.from({ length: layer.length }, (_, index) => {
     const feature = layer.feature(index);
     const p = feature.properties;
-    const rating = p.feature_kind === 'segment' ? ratings.get(String(p.osm_id)) : undefined;
-    const correction = p.feature_kind === 'segment' && ['caution', 'avoid'].includes(String(p.trail_routing))
+    const rating = (p.feature_kind === 'segment' && /^w[1-9][0-9]*$/.test(String(p.osm_id)))
+      || (p.feature_kind === 'crossing' && /^n[1-9][0-9]*$/.test(String(p.osm_id)))
+      ? ratings.get(String(p.osm_id)) : undefined;
+    const correction = rating !== 4.5 && p.feature_kind === 'segment' && ['caution', 'avoid'].includes(String(p.trail_routing))
       && ['path', 'track', 'bridleway'].includes(String(p.highway)) && p.is_mtb !== true
       ? corrections.get(String(p.osm_id)) : undefined;
     if (correction) {
