@@ -298,12 +298,11 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
   };
 
   return (
-    <section className="mt-4 rounded-xl border border-cyan-300/25 bg-cyan-300/[0.07] p-3" aria-labelledby="segment-vote-title">
-      <div className="flex items-start gap-2">
-        <Vote className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+    <section className="lts-vote" aria-labelledby="segment-vote-title">
+      <div className="lts-vote-heading">
         <div>
-          <h3 id="segment-vote-title" className="text-sm font-bold text-white">{bulk ? `Vote on ${targets.length} selected segments` : 'Vote on this segment'}</h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">Your display name and explanation are public; your email stays private.</p>
+          <h3 id="segment-vote-title">Your rating</h3>
+          <p>Your name and explanation are public. Your email stays private.</p>
         </div>
       </div>
 
@@ -334,11 +333,11 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
       {!authReady ? (
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Checking your AusBUG account…</div>
       ) : !user ? (
-        <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/45 p-3">
+        <div className="lts-vote-auth">
           <p className="text-xs font-bold text-white">Sign in to contribute</p>
           <p className="mt-1 text-[11px] leading-relaxed text-slate-400">Use the same Apple, Google or email account you use with AusBUG.</p>
           {authMode === 'choice' ? (
-            <div className="mt-3 space-y-2">
+            <div className="lts-auth-options">
               <button type="button" onClick={() => void socialLogin('apple')} disabled={authLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-white px-3 text-sm font-bold text-black hover:bg-slate-100 disabled:opacity-50">
                 {authLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" /></svg>}
                 Continue with Apple
@@ -380,22 +379,22 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading votes…</div>
       ) : (
         <fieldset disabled={saving} className="min-w-0 border-0 p-0">
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="lts-vote-label-row">
             <div>
-              <h4 className="text-xs font-bold text-white">Optional traffic stress</h4>
-              <p className="mt-0.5 text-[11px] text-slate-400">LTS means Level of Traffic Stress.</p>
+              <h4>Traffic stress · LTS</h4>
+              <p>Choose the level that matches your experience.</p>
             </div>
             <button
               type="button"
               onClick={() => setHelp('lts')}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/15 text-slate-300 transition hover:bg-white/10 hover:text-white"
+              className="lts-rating-help"
               aria-label="Explain the LTS ratings"
               title="Explain the LTS ratings"
             >
               <CircleHelp className="h-4 w-4" />
             </button>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label="Choose a proposed LTS">
+          <div className="lts-vote-options" role="group" aria-label="Choose a proposed LTS">
             {LTS_VOTE_LEVELS.map((level) => {
               const selected = choice === level;
               return (
@@ -403,13 +402,15 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
                   key={level}
                   type="button"
                   onClick={() => setChoice(selected ? null : level)}
-                  className={`relative rounded-lg border px-1 py-2 text-center transition ${selected ? 'border-white bg-white/15 ring-2 ring-white/40' : 'border-white/10 bg-slate-950/40 hover:bg-white/10'}`}
+                  className="lts-vote-option"
                   aria-pressed={selected}
+                  aria-label={`LTS ${level}: ${LTS_VOTE_LABELS[level]}`}
                   title={`LTS ${level}: ${LTS_VOTE_LABELS[level]}`}
                 >
-                  <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-white" style={{ background: LTS_VOTE_COLOURS[level] }}>L{level}</span>
-                  {!bulk && <span className="mt-1 block text-[10px] font-semibold text-slate-300">{summary.counts[String(level)] || 0}</span>}
-                  {summary.yourVote === level && <Check className="absolute right-1 top-1 h-3 w-3 text-white" aria-label="Your saved vote" />}
+                  <span className="lts-vote-colour" style={{ background: LTS_VOTE_COLOURS[level] }} aria-hidden="true" />
+                  <span className="lts-vote-level">{level}</span>
+                  {!bulk && (summary.counts[String(level)] || 0) > 0 && <span className="lts-vote-count">{summary.counts[String(level)]} votes</span>}
+                  {summary.yourVote === level && <Check className="lts-vote-saved" aria-label="Your saved vote" />}
                 </button>
               );
             })}
@@ -417,22 +418,22 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
 
           {choice !== null && choiceResult !== null && (
             <>
-              <div className="mt-2 flex items-center gap-2 rounded-lg bg-slate-950/45 p-2 text-xs text-slate-200">
+              <div className="lts-vote-result">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: LTS_VOTE_COLOURS[choiceResult] }} />
                 {choiceResult === 4.5 ? <span><strong>LTS 4.5 · Avoid cycling.</strong> Excluded from Stress Free routes, even for a short link. This does not change legal access.</span> : bulk ? <span>Each segment is assessed separately using its existing score and the usual community rules.</span> : choice >= 3
                   ? <span>Published result: ceil(({segment.currentLts} + {choice}) ÷ 2) = <strong>LTS {choiceResult}</strong></span>
                   : <span>Published result: this segment becomes <strong>LTS {choiceResult}</strong></span>}
               </div>
               {choiceResult === 4.5 && segment.featureKind === 'crossing' && <p className="mt-2 text-xs text-slate-400">This excludes passage through the crossing point in every direction. To exclude one manoeuvre, select its individual connecting road or path.</p>}
-              <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-400" htmlFor="vote-lts-reason">Why did you choose this LTS? <span className="normal-case tracking-normal text-cyan-300">Required · public</span></label>
+              <label className="lts-vote-reason-label" htmlFor="vote-lts-reason">Why this rating?<span>Required · public</span></label>
               <textarea
                 id="vote-lts-reason"
                 required
                 value={ltsReason}
                 onChange={(event) => setLtsReason(event.target.value.slice(0, 500))}
-                rows={2}
+                rows={3}
                 placeholder="For example: traffic is fast and heavy, the bike lane disappears, or the crossing feels calm. Don’t include personal information."
-                className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 text-xs text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/60"
+                className="lts-vote-reason"
               />
             </>
           )}
@@ -517,13 +518,13 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
             className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 text-xs text-white outline-none placeholder:text-slate-600 focus:border-cyan-300/60"
           />
           </div>
-          <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-slate-950/45 p-2.5">
+          <div className="lts-vote-account">
             <UserRound className="h-4 w-4 shrink-0 text-cyan-300" aria-hidden="true" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-slate-200">Signed in as {user.displayName || user.email}</p>
-              {user.displayName && user.email && <p className="truncate text-[10px] text-slate-500">{user.email}</p>}
-              <p className="mt-0.5 text-[10px] text-slate-500">Shown publicly as {user.displayName || 'AusBUG rider'}; your email is never shown.</p>
-            </div>
+            <details>
+              <summary>Contributing as <strong>{user.displayName || 'AusBUG rider'}</strong></summary>
+              {user.email && <p>{user.email}</p>}
+              <p>Your email is private.</p>
+            </details>
             <button type="button" onClick={() => void logout()} className="flex min-h-9 items-center gap-1 rounded-md border border-white/10 px-2 text-[11px] font-semibold text-slate-300 hover:bg-white/10"><LogOut className="h-3.5 w-3.5" /> Sign out</button>
           </div>
           <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
@@ -534,7 +535,7 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
             type="button"
             onClick={saveVote}
             disabled={choice === null || !ltsReason.trim() || saving}
-            className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-45"
+            className="lts-vote-submit"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Vote className="h-4 w-4" />}
             {saving ? 'Saving contributions…' : bulk ? `Apply to ${targets.length} selected segments` : summary.yourVote || summary.yourRideability ? 'Update my contribution' : 'Save my contribution'}
@@ -613,7 +614,7 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
             </div>
 
             <p className="mt-4 rounded-lg border border-white/10 bg-white/5 p-3 text-[11px] leading-relaxed text-slate-400">
-              You can close this guide and submit only the rating you know. The other scale can be left blank.
+              Choose the traffic-stress rating that matches your experience, and add a short explanation.
             </p>
           </section>
         </div>
