@@ -46,18 +46,6 @@ select {
   bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
-/* Route controls are primary reading content, not map metadata. */
-.planner-route p,
-.planner-route label,
-.planner-route button {
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.planner-route details p {
-  font-size: 0.75rem;
-}
-
 .mobile-map-panel button:focus-visible {
   outline: 2px solid #77848b;
   outline-offset: 2px;
@@ -124,7 +112,6 @@ select {
 }
 .lts-surface button[aria-pressed="true"] { border-color: #3c4347; }
 .lts-surface .shadow-2xl { box-shadow: 0 3px 18px #19232e14; }
-.lts-surface .planner-route { background: #f2f1ef; border-color: #e6e4e1; }
 .lts-surface #map-controls > section { border-radius: 8px; }
 .lts-surface #map-controls :is(p, label) { font-size: 0.8125rem; line-height: 1.5; }
 .lts-surface #map-controls button { font-size: 0.875rem; }
@@ -150,7 +137,7 @@ select {
 }
 
 /* Map first. One toolbar and one task panel; detail is disclosed on request. */
-.lts-app { --lts-top: 64px; --lts-ink: #293336; --lts-muted: #687276; --lts-line: #e4e7e5; }
+.lts-app { --lts-sidebar-width: 0px; --lts-panel-width: 368px; --lts-top: 64px; --lts-ink: #293336; --lts-muted: #687276; --lts-line: #e4e7e5; }
 .lts-open-header.lts-surface {
   inset: 0 0 auto; height: var(--lts-top); min-height: 0; padding: 10px 16px;
   border: 0; border-bottom: 1px solid var(--lts-line); border-radius: 0;
@@ -184,8 +171,18 @@ select {
 .lts-compact-legend > span:nth-last-child(2) { color: var(--lts-muted); }
 .lts-legend-scale { display: flex; gap: 2px; }
 .lts-legend-scale i { display: block; width: 10px; height: 10px; border-radius: 2px; }
-.lts-tool-panel.lts-surface, .lts-road-panel.lts-surface { position: absolute; z-index: 12; top: calc(var(--lts-top) + 12px); left: 16px; width: 336px; max-height: calc(100dvh - var(--lts-top) - 28px); padding: 0; overflow-y: auto; overscroll-behavior: contain; background: #fff; border: 1px solid var(--lts-line); border-radius: 10px; box-shadow: 0 5px 24px #1e333315; scrollbar-width: thin; }
-.lts-road-panel.lts-surface { left: auto; right: 16px; width: 368px; padding: 20px; overflow-wrap: anywhere; }
+.lts-sidebar-open { --lts-sidebar-width: var(--lts-panel-width); }
+.lts-app > .lts-map-canvas { position: absolute; top: var(--lts-top); left: var(--lts-sidebar-width); right: 0; bottom: 0; }
+.lts-tool-panel.lts-surface, .lts-road-panel.lts-surface {
+  position: absolute; z-index: 12; top: var(--lts-top); bottom: 0; left: 0; right: auto;
+  width: var(--lts-panel-width); max-height: none; padding: 0; overflow-y: auto;
+  overscroll-behavior: contain; background: #fff; border: 0; border-right: 1px solid var(--lts-line);
+  border-radius: 0; box-shadow: none; scrollbar-width: thin; overflow-wrap: anywhere;
+}
+.lts-road-heading { position: sticky; top: 0; z-index: 3; padding: 18px 20px; border-bottom: 1px solid var(--lts-line); background: #fff; }
+.lts-road-heading > .mb-4 { margin-bottom: 0; padding-right: 44px; }
+.lts-road-heading > button { top: 16px; right: 12px; }
+.lts-road-body { padding: 18px 20px; }
 .lts-panel-heading { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 10px 16px; border-bottom: 1px solid var(--lts-line); background: #fff; }
 .lts-panel-heading h2 { font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
 .lts-panel-heading button { display: grid; place-items: center; width: 34px; height: 34px; color: var(--lts-muted); }
@@ -213,28 +210,8 @@ select {
 .lts-extra-layers { display: grid; gap: 8px; padding-bottom: 8px; }
 .lts-extra-layers > label { min-height: 38px; font-size: 12px !important; }
 .lts-extra-layers > div { font-size: 12px; }
-.lts-tool-panel #map-controls > .planner-route { padding: 0; margin: 0; background: transparent; border: 0; border-radius: 0; }
-.lts-route-instruction { margin: 0 0 4px; font-weight: 650; font-size: 15px !important; }
-.lts-route-editing { display: flex; gap: 6px; margin: 16px 0; }
-.lts-route-editing button { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; min-height: 36px; border: 1px solid var(--lts-line); font-size: 12px !important; }
-.lts-route-editing button:disabled { opacity: .35; cursor: not-allowed; }
-.lts-route-progress { height: 3px; overflow: hidden; background: #e7eeea; }
-.lts-route-progress span { display: block; width: 50%; height: 100%; background: #497d64; animation: pulse 1s infinite; }
-.lts-route-error { margin: 12px 0; padding: 10px 12px; border: 1px solid #ecc6c6; border-radius: 6px; color: #a12727; font-size: 13px; }
-.lts-route-error button { margin-top: 8px; text-decoration: underline; }
-.lts-route-result { padding-top: 4px; }
-.lts-route-totals { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; }
-.lts-route-totals strong { font-size: 25px; font-weight: 700; letter-spacing: -.04em; }
-.lts-route-totals > span { color: var(--lts-muted); font-size: 14px; }
-.lts-route-stress-bar { display: flex; overflow: hidden; height: 5px; margin-bottom: 18px; border-radius: 4px; background: #edf0ed; }
-.lts-stress-breakdown { padding: 0 0 6px; }
-.lts-stress-breakdown > div { display: flex; justify-content: space-between; padding: 7px 0; font-size: 12px; }
-.lts-breakdown-label { display: flex; align-items: center; gap: 8px; }
-.lts-breakdown-label i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; }
-.lts-exit-route { min-height: 40px; margin-top: 8px; font-size: 12px !important; color: var(--lts-muted); text-decoration: underline; text-underline-offset: 3px; }
-.lts-route-chip.lts-surface { top: auto; bottom: 32px; width: max-content; max-width: calc(100% - 80px); overflow: hidden; }
-.lts-route-resume { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 14px; font-size: 12px; }
-.lts-route-resume > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lts-map-error { margin: 12px 0; padding: 10px 12px; border: 1px solid #ecc6c6; border-radius: 6px; color: #a12727; font-size: 13px; }
+.lts-map-error button { margin-top: 8px; text-decoration: underline; }
 .lts-road-badge { flex-shrink: 0; width: 42px; height: 42px; color: #fff !important; border-radius: 8px; font-size: 15px; }
 .lts-road-panel h2 { font-size: 16px; letter-spacing: -.025em; }
 .lts-road-panel > .mb-4 { margin-bottom: 14px; }
@@ -270,7 +247,7 @@ select {
 .lts-guide .lts-about-content > :is(.about-detail, footer) { margin-top: 0; }
 .lts-guide-caution { margin: 12px 0 18px; font-size: 12px; line-height: 1.6; color: var(--lts-muted) !important; }
 .lts-guide-action { min-height: 40px; margin: 10px 0; padding: 8px 12px; border: 1px solid var(--lts-line); font-size: 12px; }
-.maplibregl-ctrl-top-right { top: calc(var(--lts-top) + 12px) !important; right: 10px !important; }
+.maplibregl-ctrl-top-right { top: 12px !important; right: 10px !important; }
 @media (max-width: 767px) {
   .lts-app { --lts-top: calc(102px + env(safe-area-inset-top)); }
   .lts-open-header.lts-surface { align-items: flex-start; gap: 7px; padding: calc(8px + env(safe-area-inset-top)) 12px 52px; }
@@ -281,11 +258,12 @@ select {
   .lts-more > summary { min-height: 32px; padding: 0 4px; font-size: 11px; }
   .lts-action-pill { top: calc(51px + env(safe-area-inset-top)); left: 12px; right: 12px; transform: none; justify-content: stretch; }
   .lts-action-pill button { flex: 1; min-height: 34px; padding: 0 5px; font-size: 12px; }
-  .lts-tool-panel.lts-panel-open, .lts-road-panel.lts-surface { top: auto; left: 10px; right: 10px; bottom: max(12px, env(safe-area-inset-bottom)); width: auto; max-height: min(67dvh, calc(100dvh - var(--lts-top) - 20px)); }
+  .lts-sidebar-open { --lts-sidebar-width: 0px; }
+  .lts-tool-panel.lts-panel-open, .lts-road-panel.lts-surface { top: var(--lts-top); bottom: 0; left: 0; right: auto; width: min(352px, calc(100% - 40px)); max-height: none; }
   .lts-tool-panel.lts-panel-open { overflow-y: auto; }
-  .lts-road-panel.lts-surface { padding: 18px; }
+  .lts-road-heading { padding: 16px 18px; }
+  .lts-road-body { padding: 16px 18px; }
   .lts-panel-heading { min-height: 50px; }
-  .lts-route-chip.lts-surface { top: auto; left: 10px; right: auto; bottom: 34px; }
   .lts-compact-legend { left: 10px; bottom: 32px; gap: 7px; padding: 8px 10px; font-size: 10px; }
   .lts-legend-scale i { width: 8px; height: 8px; }
   .lts-locate { bottom: 32px; width: 38px; height: 38px; right: 10px; }
