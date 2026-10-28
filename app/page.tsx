@@ -1566,11 +1566,11 @@ export default function LtsLabPage() {
           </div>
           <div className="lts-road-body">
           <p className="lts-road-summary">{String(selected.reason || 'Select the details below to explore this score.')}</p>
-          <div className="lts-road-facts">
-            {selected.surface && <span>{String(selected.surface).replaceAll('_', ' ')}</span>}
-            {selected.maxspeed && <span>{String(selected.maxspeed)} km/h{selected.speed_inferred ? ' · inferred' : ''}</span>}
-            {selected.distance_km && <span>{(Number(selected.distance_km) * 1000).toFixed(0)} m</span>}
-          </div>
+          <dl className="lts-road-facts">
+            {selected.surface && <div><dt>Surface</dt><dd>{String(selected.surface).replaceAll('_', ' ')}</dd></div>}
+            {selected.maxspeed && <div><dt>Speed{selected.speed_inferred ? ' · inferred' : ''}</dt><dd>{String(selected.maxspeed)} km/h</dd></div>}
+            {selected.distance_km && <div><dt>Length</dt><dd>{(Number(selected.distance_km) * 1000).toFixed(0)} m</dd></div>}
+          </dl>
           {selectedBikeAccess && <p className={`lts-access-summary ${selectedBikeAccess.kind === 'prohibited' ? 'lts-access-restricted' : ''}`}><span>Mapped bike access</span><strong>{selectedBikeAccess.label}</strong></p>}
           {selectedStreetViewPoint && (
             <a
@@ -1585,16 +1585,18 @@ export default function LtsLabPage() {
             </a>
           )}
           {(selectedVoteSegment || selectedDismountSegment) && <details className="lts-disclosure lts-contribution" open={contributionExpanded} onToggle={event => setContributionExpanded(event.currentTarget.open)}>
-            <summary>Rate or correct this {selected.feature_kind === 'crossing' ? 'crossing' : 'road'}{voteSelection.length > 1 && <span className="lts-selection-count">{voteSelection.length} selected</span>}</summary>
+            <summary>Rate or correct this {selected.feature_kind === 'crossing' ? 'crossing' : 'road'}</summary>
             <div className="lts-contribution-body">
           {selectedVoteSegment && <>
-            <div className="mb-3 rounded-lg border border-white/15 p-3 text-sm" role="status">
-              <strong>{voteSelection.length} {voteSelection.length === 1 ? 'segment' : 'segments'} selected</strong>
-              <details className="lts-selection-help"><summary>Selection tips</summary><p>Hold Shift and click roads to add or remove segments (up to {MAX_SELECTED_SEGMENTS}). Parts of the same OSM way are selected together. Click without Shift to start again.</p></details>
-              <button type="button" disabled={selectionSaving} aria-pressed={multiSelect} className="mt-2 rounded-lg border px-3 py-2 text-xs font-bold" onClick={() => { multiSelectRef.current = !multiSelect; setMultiSelect(!multiSelect); }}>{multiSelect ? 'Finish selecting' : 'Select multiple segments'}</button>
-              {multiSelect && <p className="mt-1 text-xs">Selection mode is on: click or tap a segment to add it; click it again to remove it. Choose Finish selecting when ready. Close this panel to clear the selection.</p>}
-              {voteSelection.length >= MAX_SELECTED_SEGMENTS && <p className="mt-1 text-xs">Selection limit reached. Submit these before selecting more.</p>}
-              {voteSelection.length > 1 && <p className="mt-1 text-xs">{[...new Set(voteSelection.map((item) => item.name))].join(' · ')}. The same ratings and explanation will apply to every selected segment.</p>}
+            <div className="lts-selection">
+              <div className="lts-selection-toolbar">
+                <strong role="status">{voteSelection.length} {voteSelection.length === 1 ? 'segment' : 'segments'} selected</strong>
+                <button type="button" disabled={selectionSaving} aria-pressed={multiSelect} className="lts-selection-toggle" onClick={() => { multiSelectRef.current = !multiSelect; setMultiSelect(!multiSelect); }}>{multiSelect ? 'Done selecting' : 'Select more'}</button>
+              </div>
+              {multiSelect && <p className="lts-selection-note">Tap segments to add or remove them, then choose Done selecting.</p>}
+              {voteSelection.length >= MAX_SELECTED_SEGMENTS && <p className="lts-selection-note">Limit of {MAX_SELECTED_SEGMENTS} reached. Save this selection before adding more.</p>}
+              {voteSelection.length > 1 && <p className="lts-selection-note">Your rating and explanation will apply to all {voteSelection.length} segments.</p>}
+              <details className="lts-selection-help"><summary>Selection tips{voteSelection.length > 1 ? ' & selected roads' : ''}</summary><p>Hold Shift and click roads to add or remove segments (up to {MAX_SELECTED_SEGMENTS}). Parts of the same OSM way are selected together. Click without Shift to start again.</p>{voteSelection.length > 1 && <p>{[...new Set(voteSelection.map((item) => item.name))].join(' · ')}</p>}</details>
             </div>
             <SegmentVote segment={selectedVoteSegment} segments={voteSelection} onSavingChange={(saving) => { selectionSavingRef.current = saving; setSelectionSaving(saving); if (saving) setSaveNotice(null); }} onPublished={refreshApprovedOverlay} onSaved={(count, mapRefreshed) => {
               multiSelectRef.current = false;
