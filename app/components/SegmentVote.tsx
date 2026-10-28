@@ -303,16 +303,13 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
         <Vote className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
         <div>
           <h3 id="segment-vote-title" className="text-sm font-bold text-white">{bulk ? `Vote on ${targets.length} selected segments` : 'Vote on this segment'}</h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">Anyone can read published votes. Sign in to contribute. Your display name and explanation appear after review; your email stays private.</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">Your display name and explanation are public; your email stays private.</p>
         </div>
       </div>
 
       {!loading && summary.publicContributions.length > 0 && (
-        <section className="mt-4 border-t border-white/10 pt-4" aria-labelledby="community-comments-title">
-          <div className="flex items-center gap-2">
-            <UserRound className="h-4 w-4 text-cyan-300" aria-hidden="true" />
-            <h4 id="community-comments-title" className="text-xs font-bold text-white">Community votes</h4>
-          </div>
+        <details className="lts-disclosure mt-4">
+          <summary id="community-comments-title">Community feedback · {summary.publicContributions.length}</summary>
           <div className="mt-2 space-y-2">
             {summary.publicContributions.map((contribution, index) => (
               <article key={`${contribution.updatedAt}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/45 p-2.5">
@@ -328,9 +325,9 @@ export function SegmentVote({ segment, segments, onSavingChange, onPublished, on
               </article>
             ))}
           </div>
-        </section>
+        </details>
       )}
-      {!loading && !bulk && <p className="mt-3 text-sm">{summary.total} traffic-stress votes</p>}
+      {!loading && !bulk && summary.total > 0 && <p className="mt-3 text-sm">{summary.total} traffic-stress votes</p>}
       {!loading && summary.total > 0 && <p className="mt-1 text-sm">{Object.entries(summary.counts).filter(([, count]) => count > 0).map(([level, count]) => `LTS ${level}: ${count}`).join(' · ')}</p>}
       {!loading && summary.total > 0 && !summary.publicContributions.length && <p className="mt-1 text-sm">Voter names are not available in this public record.</p>}
       {error && <p role="alert" className="mt-2 text-sm text-rose-700">{error}</p>}

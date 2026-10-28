@@ -11,7 +11,7 @@ function Score({ value }: { value: number | null }) {
   return <span className="inline-flex items-center gap-1.5 text-xs font-bold"><span className="h-3 w-3 rounded-sm" style={{ backgroundColor: value === null ? '#94a3b8' : colours[value] }} />{value === null ? 'Unknown' : `LTS ${value}`}</span>;
 }
 
-export function CommunityActivity({ onShowRoad }: { onShowRoad: (dataset: string, center: [number, number]) => void }) {
+export function CommunityActivity({ onShowRoad, labelled = false }: { onShowRoad: (dataset: string, center: [number, number]) => void; labelled?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const request = useRef<AbortController | null>(null);
   const [items, setItems] = useState<Activity[]>([]);
@@ -42,7 +42,7 @@ export function CommunityActivity({ onShowRoad }: { onShowRoad: (dataset: string
   }
 
   return <>
-    <button type="button" className="flex h-10 w-10 shrink-0 items-center justify-center border border-white/10" aria-label="Community activity" aria-haspopup="dialog" aria-expanded={open} onClick={() => { dialog.current?.showModal(); setOpen(true); void load(); }}><Bell className="h-5 w-5" /></button>
+    <button type="button" className={labelled ? 'lts-menu-item' : 'flex h-10 w-10 shrink-0 items-center justify-center border border-white/10'} aria-label="Community activity" aria-haspopup="dialog" aria-expanded={open} onClick={() => { dialog.current?.showModal(); setOpen(true); void load(); }}><Bell className="h-4 w-4" />{labelled && <span>Community activity</span>}</button>
     <dialog ref={dialog} className="community-activity lts-surface" aria-labelledby="community-activity-title" onClose={() => { setOpen(false); request.current?.abort(); }} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
       <div className="activity-inner">
         <header className="flex items-center justify-between gap-4 border-b p-5">

@@ -4,7 +4,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Bike, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, Search, Trash2, Undo2, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Redo2, Route as RouteIcon, Search, Trash2, Undo2, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 import { DismountReport } from '@/app/components/DismountReport';
 import { PathCorrection } from '@/app/components/PathCorrection';
@@ -906,6 +906,8 @@ export default function LtsLabPage() {
   const [showAbout, setShowAbout] = useState(false);
   const aboutDialogRef = useRef<HTMLDivElement>(null);
   const aboutCloseRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDetailsElement>(null);
+  const [contributionExpanded, setContributionExpanded] = useState(false);
   const [mapPanelExpanded, setMapPanelExpanded] = useState(false);
   const [panelFocus, setPanelFocus] = useState<'route' | 'layers'>('layers');
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -1574,6 +1576,11 @@ export default function LtsLabPage() {
             .find(part => part.properties?.segment_id === segment?.segmentId && part.properties?.path_type);
           setSelected(feature ? { ...feature.properties, ...(publishedPath ? { reviewed_path_type: publishedPath.properties.path_type } : {}) } as FeatureProperties : null);
           setSelectedVoteSegment(selectionRef.current[0]?.segment ?? null);
+          if (feature) {
+            setMapPanelExpanded(false);
+            setSearchExpanded(false);
+            if (!extending) setContributionExpanded(false);
+          }
           setSelectedDismountSegment(feature ? dismountReportSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
           setSelectedStreetViewPoint(feature ? [event.lngLat.lng, event.lngLat.lat] : null);
           (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
@@ -1685,7 +1692,11 @@ export default function LtsLabPage() {
       if (event.key === 'Tab') {
         const controls = Array.from(aboutDialogRef.current?.querySelectorAll<HTMLElement>(
           'button:not([disabled]), summary, a[href], input:not([disabled]), select:not([disabled]), [tabindex="0"]',
-        ) || []).filter((element) => element.getClientRects().length > 0);
+        ) || []).filter((element) => {
+          const collapsed = element.closest('details:not([open])');
+          return element.getClientRects().length > 0
+            && (!collapsed || element === collapsed.querySelector(':scope > summary'));
+        });
         if (!controls?.length) return;
         const first = controls[0];
         const last = controls[controls.length - 1];
@@ -1818,6 +1829,20 @@ export default function LtsLabPage() {
     resetRouteHistory();
   };
 
+  const clearRoadSelection = () => {
+    if (selectionSavingRef.current) return;
+    multiSelectRef.current = false;
+    setMultiSelect(false);
+    setContributionExpanded(false);
+    setSelected(null);
+    selectionRef.current = [];
+    setVoteSelection([]);
+    setSelectedVoteSegment(null);
+    setSelectedDismountSegment(null);
+    setSelectedStreetViewPoint(null);
+    (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
+  };
+
   const searchPlaces = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const query = placeQuery.trim();
@@ -1903,7 +1928,7 @@ export default function LtsLabPage() {
   };
 
   return (
-    <main className="lts-app relative h-[100dvh] overflow-hidden bg-slate-950 text-white" onPointerDownCapture={() => { startupInteractionRef.current = true; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
+    <main className="lts-app relative h-[100dvh] overflow-hidden bg-slate-950 text-white" onPointerDownCapture={(event) => { startupInteractionRef.current = true; if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) moreMenuRef.current.open = false; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
       <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
       {saveNotice && (
         <div className="lts-surface absolute left-3 right-3 top-24 z-30 mx-auto flex max-w-lg items-start gap-3 rounded-xl border border-emerald-600 bg-white p-4 text-slate-900 shadow-xl">
@@ -1915,7 +1940,7 @@ export default function LtsLabPage() {
         <div className="lts-loading pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/45">
           <div className="lts-loading-panel flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/90 px-5 py-4 text-sm font-semibold text-slate-100 shadow-2xl">
             <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
-            Loading the full-resolution LTS network…
+            Loading the map…
           </div>
         </div>
       )}
@@ -1934,7 +1959,6 @@ export default function LtsLabPage() {
       <header className="lts-surface mobile-map-header lts-open-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 shadow-2xl md:left-4 md:right-4 md:flex-nowrap md:gap-3 md:px-4">
         <div className="shrink-0"><img src={process.env.NODE_ENV === 'production' ? 'https://australian-lts-lab.vercel.app/ausbug-logo-transparent.png' : '/ausbug-logo-transparent.png'} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
         <div className="lts-brand-copy min-w-0 flex-1">
-          <span className="lts-brand-kicker">AusBUG tools</span>
           <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>Traffic stress map</h1>
         </div>
         <select
@@ -1968,7 +1992,11 @@ export default function LtsLabPage() {
         >
           {Object.entries(DATASETS).map(([key, dataset]) => <option key={key} value={key}>{dataset.label}</option>)}
         </select>
-        <CommunityActivity onShowRoad={(dataset, center) => {
+        <details ref={moreMenuRef} className="lts-more" onKeyDown={(event) => { if (event.key === 'Escape' && !(event.target as HTMLElement).closest('dialog')) { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+          <summary>More <ChevronDown className="h-3.5 w-3.5" /></summary>
+          <div className="lts-more-menu">
+        <button type="button" onClick={() => { if (moreMenuRef.current) { moreMenuRef.current.open = false; moreMenuRef.current.querySelector('summary')?.focus(); } setShowAbout(true); }} aria-haspopup="dialog"><Info className="h-4 w-4" /> Map guide &amp; scoring</button>
+        <CommunityActivity labelled onShowRoad={(dataset, center) => {
           if (selectionSavingRef.current) return;
           if (!Object.prototype.hasOwnProperty.call(DATASETS, dataset)) return;
           setShowAbout(false);
@@ -1992,444 +2020,69 @@ export default function LtsLabPage() {
             setDatasetKey(dataset as DatasetKey);
           }
         }} />
-        <button
-          type="button"
-          onClick={() => setShowAbout(true)}
-          aria-label="About LTS levels and scoring"
-          aria-haspopup="dialog"
-          aria-expanded={showAbout}
-          aria-controls={showAbout ? 'lts-about-dialog' : undefined}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-200 hover:bg-white/10 sm:w-auto sm:gap-1.5 sm:px-2.5"
-        >
-          <Info className="h-4 w-4" />
-          <span className="hidden sm:inline">About</span>
-        </button>
+          </div>
+        </details>
       </header>
 
       <nav className="lts-surface lts-action-pill" aria-label="Map actions">
-        <button type="button" aria-expanded={searchExpanded} onClick={() => { setSearchExpanded(!searchExpanded); setMapPanelExpanded(false); }}><Search className="h-4 w-4" /><span>Search</span></button>
-        <button type="button" aria-expanded={mapPanelExpanded && panelFocus === 'route'} disabled={!activeDataset.routable} onClick={() => { if (!routeMode) toggleRoutePlanning(); setPanelFocus('route'); setMapPanelExpanded(true); setSearchExpanded(false); }}><RouteIcon className="h-4 w-4" /><span>Plan route</span></button>
-        <button type="button" aria-expanded={mapPanelExpanded && panelFocus === 'layers'} onClick={() => { setMapPanelExpanded(!(mapPanelExpanded && panelFocus === 'layers')); setPanelFocus('layers'); setSearchExpanded(false); }}><Layers3 className="h-4 w-4" /><span>Layers</span></button>
+        <button type="button" disabled={selectionSaving} aria-expanded={searchExpanded} onClick={() => { clearRoadSelection(); setSearchExpanded(!searchExpanded); setMapPanelExpanded(false); }}><Search className="h-4 w-4" /><span>Search</span></button>
+        <button type="button" aria-expanded={mapPanelExpanded && panelFocus === 'route'} disabled={!activeDataset.routable || selectionSaving} onClick={() => { if (!routeMode) toggleRoutePlanning(); setPanelFocus('route'); setMapPanelExpanded(!(mapPanelExpanded && panelFocus === 'route')); setSearchExpanded(false); }}><RouteIcon className="h-4 w-4" /><span>Plan route</span></button>
+        <button type="button" disabled={selectionSaving} aria-expanded={mapPanelExpanded && panelFocus === 'layers'} onClick={() => { clearRoadSelection(); setMapPanelExpanded(!(mapPanelExpanded && panelFocus === 'layers')); setPanelFocus('layers'); setSearchExpanded(false); }}><Layers3 className="h-4 w-4" /><span>Map display</span></button>
       </nav>
+
+      {!mapPanelExpanded && !selected && !searchExpanded && !routeMode && <button type="button" className="lts-surface lts-compact-legend" aria-label="Show stress colours and map layers" onClick={() => { setPanelFocus('layers'); setMapPanelExpanded(true); }}>
+        <span>Traffic stress</span><span className="lts-legend-scale" aria-hidden="true">{ROUTE_LTS_LEVELS.map(level => <i key={level} style={{ backgroundColor: LTS_COLOURS[level] }} />)}</span><span>Low → High</span><ChevronUp className="h-3.5 w-3.5" />
+      </button>}
 
       <button type="button" className="lts-surface lts-locate" onClick={findCurrentLocation} disabled={locating} aria-label="Find my location">{locating ? <Loader2 className="h-5 w-5 animate-spin" /> : <LocateFixed className="h-5 w-5" />}</button>
 
-      {searchExpanded &&
-      <section className={`lts-surface lts-search absolute left-3 top-[7.25rem] z-10 md:left-[22rem] md:top-24 ${searchExpanded ? 'right-14 md:right-16 md:max-w-md' : ''}`} aria-label="Find a place on the map">
-        {searchExpanded ? (
-          <form onSubmit={searchPlaces} className="rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur">
-            <div className="flex items-center gap-1.5">
-              <Search className="ml-2 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-              <label htmlFor="map-place-search" className="sr-only">Search for an Australian place or address</label>
-              <input
-                id="map-place-search"
-                type="search"
-                value={placeQuery}
-                onChange={(event) => {
-                  setPlaceQuery(event.target.value);
-                  setPlaceResults([]);
-                  setPlaceSearchError(null);
-                  setPlaceSearchLoading(false);
-                }}
-                placeholder="Start typing a suburb, road or place…"
-                autoComplete="off"
-                autoFocus
-                className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-white outline-none placeholder:text-slate-500"
-              />
-              <button
-                type="submit"
-                disabled={placeSearchLoading || placeQuery.trim().length < 2}
-                className="flex h-10 shrink-0 items-center justify-center rounded-lg bg-white px-3 text-xs font-bold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                {placeSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Searching" /> : 'Search'}
-              </button>
-              <button
-                type="button"
-                onClick={findCurrentLocation}
-                disabled={locating}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-300/30 bg-emerald-300/10 text-emerald-300 transition hover:bg-emerald-300/20 disabled:cursor-wait disabled:opacity-50"
-                aria-label="Find my current location"
-                title="Find my current location"
-              >
-                {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchExpanded(false);
-                  setPlaceResults([]);
-                  setPlaceSearchError(null);
-                  setLocationError(null);
-                }}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-300 transition hover:bg-white/10 hover:text-white"
-                aria-label="Minimise place search"
-                title="Minimise place search"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {placeResults.length > 0 && (
-              <div className="mt-1.5 overflow-hidden rounded-lg border border-white/10 bg-slate-950" role="listbox" aria-label="Place search results">
-                {placeResults.map((place) => (
-                  <button
-                    key={place.id}
-                    type="button"
-                    onClick={() => showPlace(place)}
-                    className="flex w-full items-start gap-2 border-b border-white/10 px-3 py-2.5 text-left text-xs leading-relaxed text-slate-200 transition last:border-0 hover:bg-white/10"
-                    role="option"
-                    aria-selected="false"
-                  >
-                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink-400" />
-                    <span>{place.name}</span>
-                  </button>
-                ))}
-                <p className="px-3 py-1.5 text-[9px] text-slate-500">Search © OpenStreetMap contributors</p>
-              </div>
-            )}
-            {(placeSearchError || locationError) && (
-              <p className="px-2 pb-1 pt-2 text-[11px] font-semibold text-rose-300" role="status">{placeSearchError || locationError}</p>
-            )}
-          </form>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setSearchExpanded(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950/95 text-slate-200 shadow-2xl backdrop-blur transition hover:bg-slate-900 hover:text-white"
-              aria-label="Open place search"
-              aria-expanded="false"
-              title="Search for a place"
-            >
-              <Search className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={findCurrentLocation}
-              disabled={locating}
-              className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-slate-950/95 text-emerald-300 shadow-2xl backdrop-blur transition hover:bg-slate-900 disabled:cursor-wait disabled:opacity-50"
-              aria-label="Find my current location"
-              title="Find my current location"
-            >
-              {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-5 w-5" />}
-            </button>
+      {searchExpanded && <section className="lts-surface lts-search" aria-label="Find a place on the map">
+        <form onSubmit={searchPlaces} aria-busy={placeSearchLoading}>
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="map-place-search" className="sr-only">Search for an Australian place or address</label>
+            <input id="map-place-search" type="search" value={placeQuery} onChange={event => { setPlaceQuery(event.target.value); setPlaceResults([]); setPlaceSearchError(null); setPlaceSearchLoading(false); }} placeholder="Search a suburb, road or place…" autoComplete="off" autoFocus className="min-w-0 flex-1 rounded-lg px-3 py-2.5 text-sm outline-none" />
+            <button type="submit" disabled={placeSearchLoading || placeQuery.trim().length < 2} className="lts-search-submit" aria-label="Search places">{placeSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</button>
+            <button type="button" onClick={() => { setSearchExpanded(false); setPlaceResults([]); setPlaceSearchError(null); setLocationError(null); }} className="lts-search-close" aria-label="Close place search"><X className="h-4 w-4" /></button>
           </div>
-        )}
+          {placeResults.length > 0 && <>
+            <div className="lts-search-results" role="listbox" aria-label="Place search results">
+              {placeResults.map(place => <button key={place.id} type="button" onClick={() => showPlace(place)} role="option" aria-selected="false"><MapPin className="h-4 w-4" /><span>{place.name}</span></button>)}
+            </div>
+            <p className="lts-search-attribution">Search © OpenStreetMap contributors</p>
+          </>}
+          {(placeSearchError || locationError) && <p className="lts-search-error" role="status">{placeSearchError || locationError}</p>}
+        </form>
       </section>}
 
-      {(mapPanelExpanded || routeMode) && <aside className={`lts-surface mobile-map-panel ${mapPanelExpanded ? 'lts-panel-open' : 'lts-route-chip'} absolute left-3 z-10 md:bottom-auto md:left-4 md:top-24 ${mapPanelExpanded ? 'max-h-[calc(100dvh-8rem)] w-[calc(100%-1.5rem)] max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl backdrop-blur md:w-80 md:overflow-y-auto md:rounded-xl md:p-4' : 'w-auto rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur'}`}>
+      {(mapPanelExpanded || routeMode) && <aside className={`lts-surface lts-tool-panel ${mapPanelExpanded ? 'lts-panel-open' : 'lts-route-chip'}`} aria-label={panelFocus === 'route' ? 'Route planner' : 'Map display'}>
         {!mapPanelExpanded ? (
-          <button
-            type="button"
-            onClick={() => setMapPanelExpanded(true)}
-            className="flex min-h-11 max-w-[17rem] items-center gap-2 rounded-lg px-3 text-sm font-bold text-slate-100 transition hover:bg-white/10"
-            aria-expanded="false"
-            aria-controls="map-controls"
-          >
-            <Layers3 className="h-4 w-4 shrink-0 text-cyan-300" />
-            <span className="truncate">{routeMode ? mobileRouteStatus : 'Layers & route'}</span>
-            <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" />
+          <button type="button" onClick={() => { setPanelFocus('route'); setMapPanelExpanded(true); }} className="lts-route-resume" aria-expanded="false">
+            <RouteIcon className="h-4 w-4" /><span>{mobileRouteStatus}</span><ChevronUp className="h-4 w-4" />
           </button>
-        ) : (
-          <>
-        <div className="md:hidden">
-          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-600" aria-hidden="true" />
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-            {activeDataset.routable ? (
-              <button
-                type="button"
-                onClick={toggleRoutePlanning}
-                className={`flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition ${routeMode ? 'bg-emerald-400 text-slate-950' : 'bg-white text-slate-950 hover:bg-emerald-100'}`}
-              >
-                <RouteIcon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{routeMode ? 'Exit routing' : 'Plan a low-stress route'}</span>
-              </button>
-            ) : (
-              <div className="flex min-h-11 items-center rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 text-xs font-semibold text-sky-100">{activeDataset.label} map only</div>
-            )}
-            <button
-              type="button"
-              onClick={() => setMapPanelExpanded(false)}
-              aria-expanded="true"
-              aria-controls="map-controls"
-              className="flex min-h-11 items-center gap-1.5 rounded-xl border border-white/10 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10"
-            >
-              <Layers3 className="h-4 w-4" />
-              Hide
-              <ChevronDown className="h-4 w-4" />
-            </button>
+        ) : <>
+          <div className="lts-panel-heading">
+            <h2>{panelFocus === 'route' ? 'Plan a route' : 'Map display'}</h2>
+            <button type="button" onClick={() => setMapPanelExpanded(false)} aria-label={panelFocus === 'route' ? 'Minimise route planner' : 'Close map display'}><X className="h-4 w-4" /></button>
           </div>
-        </div>
-
-        <div id="map-controls" className="mt-2 block max-h-[calc(100dvh-15rem)] overflow-y-auto px-1 pb-1 md:mt-0 md:max-h-none md:overflow-visible md:px-0 md:pb-0">
-        <div className="mb-3 hidden items-center justify-between gap-3 md:flex">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Map & route</p>
-          <button
-            type="button"
-            onClick={() => setMapPanelExpanded(false)}
-            className="flex min-h-9 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
-            aria-label="Minimise map controls"
-          >
-            Hide <ChevronUp className="h-4 w-4" />
-          </button>
-        </div>
-        {activeDataset.routable ? <button
-          type="button"
-          onClick={toggleRoutePlanning}
-          className={`mb-4 hidden w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition md:flex ${routeMode ? 'bg-emerald-400 text-slate-950' : 'bg-white text-slate-950 hover:bg-emerald-100'}`}
-        >
-          <RouteIcon className="h-4 w-4" />
-          {routeMode ? 'LTS routing active' : 'Plan a low-stress route'}
-        </button> : (
-          <div className="mb-4 hidden rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 py-2.5 text-xs leading-relaxed text-sky-100 md:block">
-            {activeDataset.label} is map-only while its classification is audited. Victoria and Queensland include experimental LTS routing.
-          </div>
-        )}
-
-        {panelFocus === 'layers' && <section className="mb-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
-          <div className="flex items-center justify-between gap-3">
-            <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-200">
-              <input
-                type="checkbox"
-                checked={satelliteEnabled}
-                disabled={!MAPBOX_PUBLIC_TOKEN}
-                onChange={(event) => setSatelliteEnabled(event.target.checked)}
-                className="h-4 w-4"
-              />
-              Satellite imagery
-            </label>
-            <span className="text-[11px] tabular-nums text-slate-400">{Math.round(satelliteOpacity * 100)}%</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={satelliteOpacity}
-            disabled={!satelliteEnabled || !MAPBOX_PUBLIC_TOKEN}
-            onChange={(event) => setSatelliteOpacity(Number(event.target.value))}
-            aria-label="Satellite imagery opacity"
-            className="mt-2 h-1.5 w-full cursor-pointer accent-sky-400 disabled:cursor-not-allowed disabled:opacity-35"
-          />
-          <div className="mt-1 flex justify-between text-[9px] uppercase tracking-wide text-slate-500"><span>Transparent</span><span>Opaque</span></div>
-          {!MAPBOX_PUBLIC_TOKEN && <p className="mt-2 text-[10px] text-amber-300">Satellite imagery is not configured in this environment.</p>}
-        </section>}
-
-        {routeMode && panelFocus === 'route' && (
-          <section className="planner-route mb-4 rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-emerald-300">
-                  {routePoints.length === 0 && 'Click starting point A'}
-                  {routePoints.length === 1 && 'Click destination B'}
-                  {routePoints.length >= 2 && !routeLoading && !routeError && `${routePoints.length}-point route calculated`}
-                  {routeLoading && 'Finding the lowest-stress route…'}
-                  {routeError && 'Route failed'}
-                </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-                  {routePoints.length >= 2 && routePoints.length < MAX_ROUTE_POINTS
-                    ? `Click the map to add point ${String.fromCharCode(65 + routePoints.length)}. Points are visited in order.`
-                    : routePoints.length >= MAX_ROUTE_POINTS
-                      ? `Maximum ${MAX_ROUTE_POINTS} points reached.`
-                      : 'Higher-stress roads remain available only where needed to keep the journey connected.'}
-                </p>
-                <p className="mt-1 text-[10px] leading-relaxed text-amber-300/80">
-                  {USING_LOCAL_ENRICHED_ROUTER
-                    ? 'This local test router is using the shared directional road scores, traffic counts and crossing stress now; production routing is unchanged.'
-                    : 'Traffic counts refine the background map; BRouter will use them after its enriched segment switch.'}
-                </p>
-                <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-200">
-                  <input
-                    type="checkbox"
-                    checked={allowGravel}
-                    onChange={(event) => {
-                      const next = event.target.checked;
-                      setAllowGravel(next);
-                      if (routePointsRef.current.length >= 2) void requestRoute(routePointsRef.current, next);
-                    }}
-                    className="h-4 w-4"
-                  />
-                  Gravel / known unsealed surfaces
-                </label>
+          <div id="map-controls" className="lts-panel-body">
+            {panelFocus === 'layers' && <>
+              <div className="lts-layer-heading"><span>Traffic stress</span><button type="button" onClick={() => setShowAbout(true)}>Colour guide <Info className="h-3.5 w-3.5" /></button></div>
+              <div className="lts-stress-options">
+                {[1, 2, 3, 4, 4.5].map(level => <label key={level}>
+                  <input type="checkbox" checked={visibleLts.has(level)} onChange={() => setVisibleLts(previous => { const next = new Set(previous); if (next.has(level)) next.delete(level); else next.add(level); return next; })} />
+                  <span className="lts-level-key" style={{ backgroundColor: LTS_COLOURS[level] }}>{level}</span>
+                  <span>{LTS_LABELS[level]}</span>
+                </label>)}
+                <p className="lts-community-key"><span style={{ backgroundColor: LTS_VOTE_COLOURS[1.5] }} />1.5 · Quiet trafficable road</p>
               </div>
-            </div>
-
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={undoRouteEdit}
-                disabled={routeHistoryIndex === 0}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
-              >
-                <Undo2 className="h-3.5 w-3.5" /> Undo
-              </button>
-              <button
-                type="button"
-                onClick={redoRouteEdit}
-                disabled={routeHistoryIndex >= routeHistoryLength - 1}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
-              >
-                <Redo2 className="h-3.5 w-3.5" /> Redo
-              </button>
-              <button
-                type="button"
-                onClick={() => commitRoutePoints([])}
-                disabled={routePoints.length === 0}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Clear
-              </button>
-            </div>
-
-            {routeLoading && <div className="mt-3 h-1 overflow-hidden rounded bg-white/10"><div className="h-full w-1/2 animate-pulse rounded bg-emerald-400" /></div>}
-            {routeError && <div className="mt-3 rounded-lg bg-red-500/15 p-3 text-sm text-red-300"><p>{routeError}</p><button type="button" onClick={() => void requestRoute(routePoints)} className="mt-2 min-h-11 rounded-lg border px-3">Try again</button></div>}
-
-            {displayedRouteSummary && (
-              <div className="mt-3">
-                <div className="mb-3 rounded-lg border border-white/10 bg-slate-950/45 p-2.5 text-[11px]">
-                  <p className="font-semibold text-slate-100">Route comparison</p>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => displayRoute('low-stress')}
-                      className={`rounded-lg border p-2 text-left transition ${selectedRouteKind === 'low-stress' ? 'border-emerald-300/50 bg-emerald-300/15' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
-                    >
-                      {selectedRouteKind === 'low-stress'
-                        ? <span className="block h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #16a34a, #2563eb, #f59e0b, #dc2626)' }} />
-                        : <span className="block border-t-[3px] border-slate-400 opacity-75" />}
-                      <span className="mt-1.5 block font-semibold text-slate-100">Low-stress</span>
-                      <span className="block text-slate-400">{routeSummary ? formatRouteDistance(routeSummary.distance_m) : '—'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => displayRoute('bike-profile')}
-                      disabled={!routeComparison?.stress}
-                      className={`rounded-lg border p-2 text-left transition disabled:cursor-wait disabled:opacity-55 ${selectedRouteKind === 'bike-profile' ? 'border-slate-300/60 bg-slate-300/15' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
-                    >
-                      {selectedRouteKind === 'bike-profile'
-                        ? <span className="block h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #16a34a, #2563eb, #f59e0b, #dc2626)' }} />
-                        : <span className="block border-t-[3px] border-slate-400 opacity-75" />}
-                      <span className="mt-1.5 block font-semibold text-slate-100">AusBUG Bike Paths</span>
-                      <span className="block text-slate-400">
-                        {comparisonScoring ? 'Scoring against map…' : routeComparison ? formatRouteDistance(routeComparison.summary.distance_m) : 'Unavailable'}
-                      </span>
-                    </button>
-                  </div>
-                  <label className="mt-2.5 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-slate-200">
-                    <span>
-                      <span className="block font-semibold">Transparent route lines</span>
-                      <span className="block text-[10px] leading-relaxed text-slate-500">Reveal the stress network underneath.</span>
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={transparentRoutes}
-                      onChange={(event) => setTransparentRoutes(event.target.checked)}
-                      className="h-4 w-4 shrink-0"
-                    />
-                  </label>
-                  <p className="mt-2 leading-relaxed text-slate-500">Select either route to colour it by LTS and show its stress breakdown. The other route becomes grey; overlapping streets sit underneath the selected route.</p>
-                  {selectedRouteKind === 'bike-profile' && routeComparison?.stress && (
-                    <p className="mt-2 text-slate-400">Matched to {routeComparison.stress.coverage_pct}% of the visible LTS network.</p>
-                  )}
-                  {routeComparisonError && <p className="mt-2 text-amber-300/80">Comparison unavailable: {routeComparisonError}</p>}
-                </div>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-lg font-bold">{formatRouteDistance(displayedRouteSummary.distance_m)}</span>
-                  <span className="text-sm text-slate-300">{formatRouteTime(displayedRouteSummary.time_ms)}</span>
-                  {routeClassifier && <span className="ml-auto text-[9px] text-slate-500">{routeClassifier}</span>}
-                </div>
-                <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/10">
-                  {ROUTE_LTS_LEVELS.map((level) => (
-                    <span
-                      key={level}
-                      style={{
-                        width: `${displayedRouteSummary.percentage_by_lts[String(level)] || 0}%`,
-                        backgroundColor: LTS_COLOURS[level],
-                      }}
-                    />
-                  ))}
-                </div>
-                <div className="mt-2 grid grid-cols-5 gap-1 text-center text-[10px] text-slate-400">
-                  {ROUTE_LTS_LEVELS.map((level) => (
-                    <div key={level}>
-                      <span className="font-semibold" style={{ color: LTS_COLOURS[level] }}>L{level}</span>
-                      <br />{displayedRouteSummary.percentage_by_lts[String(level)] || 0}%
-                    </div>
-                  ))}
-                </div>
-                {selectedRouteKind === 'bike-profile' && (routeComparison?.stress?.unknown_distance_m || 0) > 0 && (
-                  <p className="mt-3 rounded-lg border border-slate-400/20 bg-slate-400/10 px-2.5 py-2 text-xs text-slate-300">
-                    {formatRouteDistance(routeComparison!.stress!.unknown_distance_m)} could not be matched confidently to the loaded LTS map and remains grey rather than being assigned a guessed stress level.
-                  </p>
-                )}
-                {displayedRouteSummary.known_unsealed_distance_m > 0 && (
-                  <p className="mt-3 rounded-lg bg-white/10 px-2.5 py-2 text-xs text-slate-200">
-                    Known unsealed: <strong>{formatRouteDistance(displayedRouteSummary.known_unsealed_distance_m)}</strong>
-                  </p>
-                )}
-                {displayedRouteSummary.mtb_caution_distance_m > 0 && (
-                  <p className="mt-2 rounded-lg border border-purple-400/25 bg-purple-400/10 px-2.5 py-2 text-xs text-purple-100">
-                    Includes {formatRouteDistance(displayedRouteSummary.mtb_caution_distance_m)} carrying easy or unspecified MTB evidence. This terrain may not suit a commuter bike.
-                  </p>
-                )}
-                {displayedRouteSummary.technical_mtb_distance_m > 0 && (
-                  <p className="mt-2 rounded-lg border border-red-400/25 bg-red-400/10 px-2.5 py-2 text-xs text-red-100">
-                    Warning: {formatRouteDistance(displayedRouteSummary.technical_mtb_distance_m)} is explicitly technical MTB terrain.
-                  </p>
-                )}
-                {displayedRouteSummary.unverified_trail_distance_m > 0 && (
-                  <p className="mt-2 rounded-lg border border-stone-400/25 bg-stone-400/10 px-2.5 py-2 text-xs text-stone-100">
-                    Includes {formatRouteDistance(displayedRouteSummary.unverified_trail_distance_m)} of path/track without explicit cycling evidence. Check local signs and conditions.
-                  </p>
-                )}
-                {displayedRouteSummary.hiking_only_distance_m > 0 && (
-                  <p className="mt-2 rounded-lg border border-red-400/25 bg-red-400/10 px-2.5 py-2 text-xs text-red-100">
-                    Warning: {formatRouteDistance(displayedRouteSummary.hiking_only_distance_m)} carries hiking-difficulty evidence without cycling evidence.
-                  </p>
-                )}
-              </div>
-            )}
-          </section>
-        )}
-
-        <button type="button" onClick={() => setShowAbout(true)} className="mb-3 min-h-11 text-sm font-semibold text-cyan-300">What do these colours mean?</button>
-        {panelFocus === 'layers' && <>
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="font-semibold">Stress levels</h2>
-            <p className="text-xs text-slate-400">{routeMode ? 'The background network remains inspectable after routing.' : 'Click a road or crossing to inspect and contribute.'}</p>
-          </div>
-          {metadata && <span className="rounded bg-white/10 px-2 py-1 text-[10px] text-slate-300">{metadata.classifier_version}</span>}
-        </div>
-        <div className="space-y-1.5">
-          {[1, 2, 3, 4, 4.5].map((level) => (
-            <label key={level} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/5">
-              <input
-                type="checkbox"
-                checked={visibleLts.has(level)}
-                onChange={() => setVisibleLts((previous) => {
-                  const next = new Set(previous);
-                  if (next.has(level)) next.delete(level); else next.add(level);
-                  return next;
-                })}
-                className="h-4 w-4"
-              />
-              <span className="h-1.5 w-8 rounded-full" style={{ background: LTS_COLOURS[level] }} />
-              <span className="flex-1 text-sm">LTS {level} · {LTS_LABELS[level]}</span>
-              {metadata && <span className="text-xs text-slate-500">{level === 4.5 ? 'Community' : `${(metadata.segment_distance_km[String(level)] ?? 0).toLocaleString()} km`}</span>}
-            </label>
-          ))}
-        </div>
-        <div className="my-3 h-px bg-white/10" />
-        <div className="grid grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm text-slate-200">
-          <span className="h-4 w-4" aria-hidden="true" />
-          <span className="h-1.5 w-8 rounded-full" style={{ background: LTS_VOTE_COLOURS[1.5] }} />
-          <span>Community LTS 1.5 · quiet trafficable road</span>
-        </div>
-        <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
-          <input type="checkbox" checked={showCrossings} onChange={(event) => setShowCrossings(event.target.checked)} className="h-4 w-4" />
-          <span className="h-4 w-4 shrink-0 rounded-full border-2 border-white bg-blue-500" /> Crossings (LTS-coloured, zoom 14+)
-        </label>
+              <label className="lts-option-row"><span>Crossing points</span><input type="checkbox" checked={showCrossings} onChange={event => setShowCrossings(event.target.checked)} /></label>
+              <label className="lts-option-row"><span>Satellite imagery</span><input type="checkbox" checked={satelliteEnabled} disabled={!MAPBOX_PUBLIC_TOKEN} onChange={event => setSatelliteEnabled(event.target.checked)} /></label>
+              {satelliteEnabled && MAPBOX_PUBLIC_TOKEN && <div className="lts-opacity-control">
+                <label htmlFor="satellite-opacity">Image opacity <span>{Math.round(satelliteOpacity * 100)}%</span></label>
+                <input id="satellite-opacity" type="range" min={0} max={1} step={0.05} value={satelliteOpacity} onChange={event => setSatelliteOpacity(Number(event.target.value))} />
+              </div>}
+              {!MAPBOX_PUBLIC_TOKEN && <p className="lts-muted-note">Satellite imagery is unavailable in this preview.</p>}
+              <details className="lts-disclosure"><summary>More map layers</summary><div className="lts-extra-layers">
         <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
           <input type="checkbox" checked={showLowConfidence} onChange={(event) => setShowLowConfidence(event.target.checked)} className="h-4 w-4" />
           <span className="w-8 shrink-0 rounded-full border-t-[6px] border-dashed border-green-500" /> Inferred / low-confidence roads
@@ -2466,6 +2119,8 @@ export default function LtsLabPage() {
             <span>Ordinary ACT paths &amp; forestry tracks</span>
           </label>
         )}
+              </div></details>
+              <details className="lts-disclosure"><summary>Data coverage &amp; freshness</summary>
         {metadata && (
           <div className="mt-3 text-[11px] leading-relaxed text-slate-500">
             <p>{metadata.segments.toLocaleString()} LTS segments · {(metadata.dismount_segments || 0).toLocaleString()} walk-bike links · {metadata.crossings.toLocaleString()} crossings · OSM snapshot {new Date(metadata.source_pbf_modified_at).toLocaleDateString('en-AU')}</p>
@@ -2476,15 +2131,124 @@ export default function LtsLabPage() {
             )}
           </div>
         )}
+              </details>
+            </>}
+            {routeMode && panelFocus === 'route' && <section className="planner-route">
+              <p className="lts-route-instruction" role="status">
+                {routeLoading ? 'Finding your route…' : routeError ? 'Couldn’t find a route' : routePoints.length === 0 ? 'Choose your starting point' : routePoints.length === 1 ? 'Choose your destination' : 'Your route'}
+              </p>
+              <p className="lts-muted-note">{routePoints.length === 0 ? 'Click the map to place A.' : routePoints.length === 1 ? 'Click the map to place B.' : routePoints.length < MAX_ROUTE_POINTS ? `Click the map to add stop ${String.fromCharCode(65 + routePoints.length)}.` : `Maximum ${MAX_ROUTE_POINTS} points reached.`}</p>
+              <div className="lts-route-editing">
+                <button type="button" onClick={undoRouteEdit} disabled={routeHistoryIndex === 0}><Undo2 className="h-4 w-4" /> Undo</button>
+                <button type="button" onClick={redoRouteEdit} disabled={routeHistoryIndex >= routeHistoryLength - 1}><Redo2 className="h-4 w-4" /> Redo</button>
+                <button type="button" onClick={() => commitRoutePoints([])} disabled={routePoints.length === 0}><Trash2 className="h-4 w-4" /> Clear</button>
+              </div>
+              {routeLoading && <div className="lts-route-progress"><span /></div>}
+              {routeError && <div className="lts-route-error" role="alert"><p>{routeError}</p><button type="button" onClick={() => void requestRoute(routePoints)}>Try again</button></div>}
+              {displayedRouteSummary && <div className="lts-route-result">
+                <div className="lts-route-totals"><strong>{formatRouteDistance(displayedRouteSummary.distance_m)}</strong><span>{formatRouteTime(displayedRouteSummary.time_ms)}</span></div>
+                <div className="lts-route-stress-bar" role="img" aria-label={ROUTE_LTS_LEVELS.map(level => `LTS ${level}: ${displayedRouteSummary.percentage_by_lts[String(level)] || 0}%`).join(', ')}>
+                  {ROUTE_LTS_LEVELS.map(level => <span key={level} style={{ width: `${displayedRouteSummary.percentage_by_lts[String(level)] || 0}%`, backgroundColor: LTS_COLOURS[level] }} />)}
+                </div>
+                {selectedRouteKind === 'bike-profile' && (routeComparison?.stress?.unknown_distance_m || 0) > 0 && (
+                  <p className="mt-3 rounded-lg border border-slate-400/20 bg-slate-400/10 px-2.5 py-2 text-xs text-slate-300">
+                    {formatRouteDistance(routeComparison!.stress!.unknown_distance_m)} could not be matched confidently to the loaded LTS map and remains grey rather than being assigned a guessed stress level.
+                  </p>
+                )}
+                {displayedRouteSummary.mtb_caution_distance_m > 0 && (
+                  <p className="mt-2 rounded-lg border border-purple-400/25 bg-purple-400/10 px-2.5 py-2 text-xs text-purple-100">
+                    Includes {formatRouteDistance(displayedRouteSummary.mtb_caution_distance_m)} carrying easy or unspecified MTB evidence. This terrain may not suit a commuter bike.
+                  </p>
+                )}
+                {displayedRouteSummary.technical_mtb_distance_m > 0 && (
+                  <p className="mt-2 rounded-lg border border-red-400/25 bg-red-400/10 px-2.5 py-2 text-xs text-red-100">
+                    Warning: {formatRouteDistance(displayedRouteSummary.technical_mtb_distance_m)} is explicitly technical MTB terrain.
+                  </p>
+                )}
+                {displayedRouteSummary.unverified_trail_distance_m > 0 && (
+                  <p className="mt-2 rounded-lg border border-stone-400/25 bg-stone-400/10 px-2.5 py-2 text-xs text-stone-100">
+                    Includes {formatRouteDistance(displayedRouteSummary.unverified_trail_distance_m)} of path/track without explicit cycling evidence. Check local signs and conditions.
+                  </p>
+                )}
+                {displayedRouteSummary.hiking_only_distance_m > 0 && (
+                  <p className="mt-2 rounded-lg border border-red-400/25 bg-red-400/10 px-2.5 py-2 text-xs text-red-100">
+                    Warning: {formatRouteDistance(displayedRouteSummary.hiking_only_distance_m)} carries hiking-difficulty evidence without cycling evidence.
+                  </p>
+                )}
+                <details className="lts-disclosure"><summary>Stress breakdown</summary>
+                  <div className="lts-stress-breakdown">{ROUTE_LTS_LEVELS.map(level => <div key={level}><span className="lts-breakdown-label"><i style={{ backgroundColor: LTS_COLOURS[level] }} />LTS {level}</span><span>{displayedRouteSummary.percentage_by_lts[String(level)] || 0}%</span></div>)}</div>
+                {displayedRouteSummary.known_unsealed_distance_m > 0 && (
+                  <p className="mt-3 rounded-lg bg-white/10 px-2.5 py-2 text-xs text-slate-200">
+                    Known unsealed: <strong>{formatRouteDistance(displayedRouteSummary.known_unsealed_distance_m)}</strong>
+                  </p>
+                )}
+                  {routeClassifier && <p className="lts-muted-note">Model: {routeClassifier}</p>}
+                </details>
+                <details className="lts-disclosure"><summary>Compare with Bike Paths</summary>
+                <div className="mb-3 lts-comparison text-sm">
+
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => displayRoute('low-stress')}
+                      aria-pressed={selectedRouteKind === 'low-stress'}
+                      className={`rounded-lg border p-2 text-left transition ${selectedRouteKind === 'low-stress' ? 'border-emerald-300/50 bg-emerald-300/15' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                    >
+                      {selectedRouteKind === 'low-stress'
+                        ? <span className="block h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #16a34a, #2563eb, #f59e0b, #dc2626)' }} />
+                        : <span className="block border-t-[3px] border-slate-400 opacity-75" />}
+                      <span className="mt-1.5 block font-semibold text-slate-100">Low-stress</span>
+                      <span className="block text-slate-400">{routeSummary ? formatRouteDistance(routeSummary.distance_m) : '—'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => displayRoute('bike-profile')}
+                      aria-pressed={selectedRouteKind === 'bike-profile'}
+                      disabled={!routeComparison?.stress}
+                      className={`rounded-lg border p-2 text-left transition disabled:cursor-wait disabled:opacity-55 ${selectedRouteKind === 'bike-profile' ? 'border-slate-300/60 bg-slate-300/15' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                    >
+                      {selectedRouteKind === 'bike-profile'
+                        ? <span className="block h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #16a34a, #2563eb, #f59e0b, #dc2626)' }} />
+                        : <span className="block border-t-[3px] border-slate-400 opacity-75" />}
+                      <span className="mt-1.5 block font-semibold text-slate-100">AusBUG Bike Paths</span>
+                      <span className="block text-slate-400">
+                        {comparisonScoring ? 'Scoring against map…' : routeComparison ? formatRouteDistance(routeComparison.summary.distance_m) : 'Unavailable'}
+                      </span>
+                    </button>
+                  </div>
+                  <label className="mt-2.5 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-slate-200">
+                    <span>
+                      <span className="block font-semibold">Transparent route lines</span>
+                      <span className="block text-[10px] leading-relaxed text-slate-500">Reveal the stress network underneath.</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={transparentRoutes}
+                      onChange={(event) => setTransparentRoutes(event.target.checked)}
+                      className="h-4 w-4 shrink-0"
+                    />
+                  </label>
+                  <p className="mt-2 leading-relaxed text-slate-500">Select either route to colour it by LTS and show its stress breakdown. The other route becomes grey; overlapping streets sit underneath the selected route.</p>
+                  {selectedRouteKind === 'bike-profile' && routeComparison?.stress && (
+                    <p className="mt-2 text-slate-400">Matched to {routeComparison.stress.coverage_pct}% of the visible LTS network.</p>
+                  )}
+                  {routeComparisonError && <p className="mt-2 text-amber-300/80">Comparison unavailable: {routeComparisonError}</p>}
+                </div>
+                </details>
+              </div>}
+              <details className="lts-disclosure"><summary>Route options</summary>
+                <label className="lts-option-row"><span>Allow gravel / known unsealed</span><input type="checkbox" checked={allowGravel} onChange={event => { const next = event.target.checked; setAllowGravel(next); if (routePointsRef.current.length >= 2) void requestRoute(routePointsRef.current, next); }} /></label>
+                <p className="lts-muted-note">Stress Free avoids published LTS 4.5 links and crossings.</p>
+              </details>
+              <button type="button" className="lts-exit-route" onClick={toggleRoutePlanning}>Exit route planner</button>
+            </section>}
+            {mapError && <p className="lts-route-error" role="alert">{mapError}</p>}
+          </div>
         </>}
-        {mapError && <p className="mt-3 rounded-lg bg-red-500/15 p-2 text-xs text-red-300">{mapError}</p>}
-        </div>
-          </>
-        )}
       </aside>}
 
       {!routeMode && selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)) && (
-        <aside className="lts-surface absolute bottom-3 right-3 top-auto z-20 max-h-[70vh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl border border-white/10 bg-slate-950/95 p-5 shadow-2xl backdrop-blur md:bottom-auto md:right-4 md:top-24 md:w-96">
+        <aside key={selectedVoteSegment?.segmentId || selectedOsmId || String(selected.name)} className="lts-surface lts-road-panel" aria-label="Selected road">
           <button
             onClick={() => {
               if (selectionSavingRef.current) return;
@@ -2504,28 +2268,38 @@ export default function LtsLabPage() {
             disabled={selectionSaving}
           ><X className="h-5 w-5" /></button>
           <div className="mb-4 flex items-center gap-3 pr-8">
-            <span className={`flex h-12 w-12 items-center justify-center rounded-xl font-black text-white ${selectedIsDismount ? 'text-xs' : 'text-lg'}`} style={{ background: selectedLts ? LTS_COLOURS[selectedLts] : selectedIsDismount ? '#6b7280' : '#a855f7' }}>{selectedLts ? `L${selectedLts}` : selectedIsDismount ? 'WALK' : 'MTB'}</span>
+            <span className={`lts-road-badge flex h-12 w-12 items-center justify-center rounded-xl font-black text-white ${selectedIsDismount ? 'text-xs' : 'text-lg'}`} style={{ background: selectedLts ? LTS_COLOURS[selectedLts] : selectedIsDismount ? '#6b7280' : '#a855f7' }}>{selectedLts ? `L${selectedLts}` : selectedIsDismount ? 'WALK' : 'MTB'}</span>
             <div>
               <h2 className="font-bold">{String(selected.name || (selected.feature_kind === 'crossing' ? 'Crossing' : 'Unnamed road/path'))}</h2>
               <p className="text-sm" style={{ color: selectedLts ? LTS_COLOURS[selectedLts] : selectedIsDismount ? '#cbd5e1' : '#c084fc' }}>{selectedLts ? LTS_LABELS[selectedLts] : selectedIsDismount ? 'Dismount / walk bike' : 'MTB trail shown for context'}</p>
             </div>
           </div>
+          <p className="lts-road-summary">{String(selected.reason || 'Select the details below to explore this score.')}</p>
+          <div className="lts-road-facts">
+            {selected.surface && <span>{String(selected.surface).replaceAll('_', ' ')}</span>}
+            {selected.maxspeed && <span>{String(selected.maxspeed)} km/h{selected.speed_inferred ? ' · inferred' : ''}</span>}
+            {selected.distance_km && <span>{(Number(selected.distance_km) * 1000).toFixed(0)} m</span>}
+          </div>
+          {selectedBikeAccess && <p className={`lts-access-summary ${selectedBikeAccess.kind === 'prohibited' ? 'lts-access-restricted' : ''}`}><span>Mapped bike access</span><strong>{selectedBikeAccess.label}</strong></p>}
           {selectedStreetViewPoint && (
             <a
               href={googleStreetViewUrl(selectedStreetViewPoint)}
               target="_blank"
               rel="noreferrer"
-              className="mb-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-sky-300/25 bg-sky-300/10 px-3 text-sm font-bold text-sky-100 transition hover:border-sky-300/40 hover:bg-sky-300/20"
+              className="lts-street-view"
             >
               <MapPin className="h-4 w-4" />
-              Open Street View
+              Street View
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}
+          {(selectedVoteSegment || selectedDismountSegment) && <details className="lts-disclosure lts-contribution" open={contributionExpanded} onToggle={event => setContributionExpanded(event.currentTarget.open)}>
+            <summary>Rate or correct this {selected.feature_kind === 'crossing' ? 'crossing' : 'road'}{voteSelection.length > 1 && <span className="lts-selection-count">{voteSelection.length} selected</span>}</summary>
+            <div className="lts-contribution-body">
           {selectedVoteSegment && <>
             <div className="mb-3 rounded-lg border border-white/15 p-3 text-sm" role="status">
               <strong>{voteSelection.length} {voteSelection.length === 1 ? 'segment' : 'segments'} selected</strong>
-              <p className="mt-1 text-xs">Hold Shift and click roads to add or remove segments (up to {MAX_SELECTED_SEGMENTS}). Parts of the same OSM segment are selected together. Click without Shift to start again.</p>
+              <details className="lts-selection-help"><summary>Selection tips</summary><p>Hold Shift and click roads to add or remove segments (up to {MAX_SELECTED_SEGMENTS}). Parts of the same OSM way are selected together. Click without Shift to start again.</p></details>
               <button type="button" disabled={selectionSaving} aria-pressed={multiSelect} className="mt-2 rounded-lg border px-3 py-2 text-xs font-bold" onClick={() => { multiSelectRef.current = !multiSelect; setMultiSelect(!multiSelect); }}>{multiSelect ? 'Finish selecting' : 'Select multiple segments'}</button>
               {multiSelect && <p className="mt-1 text-xs">Selection mode is on: click or tap a segment to add it; click it again to remove it. Choose Finish selecting when ready. Close this panel to clear the selection.</p>}
               {voteSelection.length >= MAX_SELECTED_SEGMENTS && <p className="mt-1 text-xs">Selection limit reached. Submit these before selecting more.</p>}
@@ -2541,12 +2315,15 @@ export default function LtsLabPage() {
               setSelectedDismountSegment(null);
               setSelectedStreetViewPoint(null);
               (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
-              setSaveNotice(`Saved successfully for ${count} ${count === 1 ? 'segment' : 'segments'}. ${mapRefreshed ? 'Selection cleared. The map now shows the published scores under the community voting rules.' : 'Selection cleared, but the map could not refresh. Reload to see the published scores.'}`);
+              setSaveNotice(`Saved for ${count} ${count === 1 ? 'segment' : 'segments'}. ${mapRefreshed ? 'Map updated.' : 'Reload to see the updated map.'}`);
             }} />
           </>}
           {selected.reviewed_path_type && <p className="mt-3 rounded-lg border border-pink-300/20 p-3 text-xs text-pink-200">Saved path type: {String(selected.reviewed_path_type) === 'cycling' ? 'Suitable for cycling' : String(selected.reviewed_path_type) === 'walking' ? 'Walking only / dismount' : 'MTB trail'}. Routing updates with the next community graph refresh.</p>}
           {selectedVoteSegment && voteSelection.length === 1 && canCorrectPath(selectedVoteSegment) && <PathCorrection key={`${selectedVoteSegment.dataset}:${selectedVoteSegment.segmentId}`} segment={selectedVoteSegment} onPublished={refreshApprovedOverlay} onSavingChange={saving => { selectionSavingRef.current = saving; setSelectionSaving(saving); }} />}
           {selectedDismountSegment && <DismountReport segment={selectedDismountSegment} />}
+            </div>
+          </details>}
+          <details className="lts-disclosure lts-road-data"><summary>Road details &amp; sources</summary>
           <div className="mt-3 rounded-lg bg-white/5 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{selectedIsDismount ? 'Why this is grey' : 'Why this score'}</p>
             <p className="mt-1 text-sm leading-relaxed text-slate-200">{String(selected.reason || 'No explanation available')}</p>
@@ -2638,9 +2415,9 @@ export default function LtsLabPage() {
             <p className="mt-3 rounded-lg border border-pink-400/20 bg-pink-400/10 p-3 text-xs leading-relaxed text-pink-100">{String(selected.trail_reason)}</p>
           )}
           {selectedOsmUrl && <a href={selectedOsmUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex text-sm font-semibold text-sky-400 hover:text-sky-300">Inspect this feature in OpenStreetMap →</a>}
+          </details>
         </aside>
       )}
-
 
       {showAbout && (
         <div
@@ -2654,12 +2431,12 @@ export default function LtsLabPage() {
             if (event.currentTarget === event.target) setShowAbout(false);
           }}
         >
-          <section className="lts-surface relative h-full max-h-full w-full max-w-4xl overflow-y-auto border border-white/10 bg-slate-950 shadow-2xl sm:h-auto sm:rounded-2xl">
+          <section className="lts-surface lts-guide relative h-full max-h-full w-full max-w-4xl overflow-y-auto border border-white/10 bg-slate-950 shadow-2xl sm:h-auto sm:rounded-2xl">
             <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur sm:px-5 sm:py-4 md:px-7">
               <div className="hidden rounded-xl bg-emerald-400/15 p-2.5 text-emerald-300 sm:block"><Info className="h-5 w-5" /></div>
               <div className="pr-10">
-                <h2 id="lts-about-title" className="text-lg font-bold sm:text-xl">About the AusBUG LTS map</h2>
-                <p className="mt-1 text-sm text-slate-400">Calmer streets. Better connections. Local knowledge.</p>
+                <h2 id="lts-about-title" className="text-lg font-bold sm:text-xl">Map guide</h2>
+                <p className="mt-1 text-sm text-slate-400">Understand the colours. Explore more when you need it.</p>
               </div>
               <button
                 type="button"
@@ -2671,21 +2448,10 @@ export default function LtsLabPage() {
             </div>
 
             <div className="lts-about-content space-y-6 px-4 py-5 text-base leading-relaxed text-slate-300 sm:px-5 sm:py-6 md:px-7 md:py-7">
-              <section aria-labelledby="about-purpose">
-                <h3 id="about-purpose" className="text-2xl font-bold text-white">Help build Australia’s unofficial bike highways</h3>
-                <p className="mt-3">Our aim is to connect quiet streets, bike paths and better crossings into everyday cycling corridors—to school, work and beyond. This is a community mapping project, not an officially designated network.</p>
-                <p className="mt-3">The data gives us a starting point. Local riders help reveal the missing links: a filtered street that bikes can pass through, a calmer crossing, or the better choice between two roads both rated LTS 2.</p>
-              </section>
-              <section className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-5" aria-labelledby="about-contribute">
-                <h3 id="about-contribute" className="text-lg font-bold text-white">Know a road better than the map? Vote.</h3>
-                <p className="mt-2">Select a road or path, sign in with your AusBUG account, and rate its traffic stress or rideability. Explain what you observed—reasons are required. Your display name and explanation are public; your email stays private.</p>
-                <p className="mt-2">A vote is evidence, not permission to ignore signs or override the scoring rules. Restrictions and high-speed safeguards still apply.</p>
-                <button type="button" onClick={() => { setShowAbout(false); setSearchExpanded(true); setMapPanelExpanded(false); }} className="mt-4 min-h-11 rounded-full bg-emerald-400 px-5 text-sm font-bold text-slate-950">Find a road and contribute</button>
-              </section>
               <section>
-                <h3 className="text-lg font-bold text-white">Read the map: traffic stress, not a safety guarantee</h3>
+                <h3 className="text-lg font-bold text-white">Traffic stress colours</h3>
                 <p className="mt-2">
-                  LTS means Level of Traffic Stress. It estimates the stress of interacting with motor traffic. It does not establish bicycle access, surface quality or whether a route is safe for a particular rider.
+                  LTS means Level of Traffic Stress. Lower scores mean less interaction with motor traffic. Select a road to inspect its score or contribute local knowledge.
                 </p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {ROUTE_LTS_LEVELS.map((level) => (
@@ -2697,11 +2463,13 @@ export default function LtsLabPage() {
                 </div>
               </section>
 
-              <section className="rounded-xl border border-white/10 p-4">
-                <p className="mt-3"><strong>Grey links:</strong> walk your bike where dismount is mapped. <strong>Rideability:</strong> a separate surface rating. <strong>Inferred:</strong> missing data has been filled using model assumptions, not verified on site.</p>
-                <p className="mt-3">Always check signs, access and current conditions. Low traffic stress does not guarantee a suitable surface, an open route or a safe crossing.</p>
-              </section>
-              <h3 className="text-lg font-bold text-white">Behind the map</h3>
+              <p className="lts-guide-caution">Traffic stress does not establish legal access, surface quality or current conditions. Check signs and the conditions on your ride.</p>
+              <details className="about-detail"><summary>Contribute local knowledge</summary>
+                <p>Select a road or crossing, expand “Rate or correct”, and sign in with your AusBUG account. Choose a rating and explain what you observed. Your display name and explanation are public; your email stays private.</p>
+                <p className="mt-2">We’re connecting quiet streets, bike paths and better crossings into everyday cycling corridors. Local knowledge helps reveal the missing links. This is a community mapping project, not an officially designated network.</p>
+                <button type="button" onClick={() => { setShowAbout(false); setSearchExpanded(true); setMapPanelExpanded(false); }} className="lts-guide-action">Find a road to rate</button>
+              </details>
+
               <details className="about-detail">
                 <summary>Data sources and map symbols</summary>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
