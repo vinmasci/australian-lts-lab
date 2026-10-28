@@ -1215,15 +1215,6 @@ export default function LtsLabPage() {
   const selectedBikeAccess = selected && selectedOsmFeatureDetails
     ? assessBikeAccess(selectedOsmFeatureDetails.tags, String(selected.highway || ''))
     : null;
-  const selectedBikeAccessClass = selectedIsDismount
-    ? 'border-slate-300/30 bg-slate-300/10 text-slate-100'
-    : selectedBikeAccess?.kind === 'designated'
-    ? 'border-emerald-300/30 bg-emerald-300/10 text-emerald-100'
-    : selectedBikeAccess?.kind === 'permitted'
-      ? 'border-cyan-300/30 bg-cyan-300/10 text-cyan-100'
-      : selectedBikeAccess?.kind === 'prohibited'
-        ? 'border-red-300/30 bg-red-300/10 text-red-100'
-        : 'border-amber-300/30 bg-amber-300/10 text-amber-100';
   const clearRoadSelection = () => {
     if (selectionSavingRef.current) return;
     multiSelectRef.current = false;
@@ -1617,52 +1608,39 @@ export default function LtsLabPage() {
             </div>
           </details>}
           <details className="lts-disclosure lts-road-data"><summary>Road details &amp; sources</summary>
-          <div className="mt-3 rounded-lg bg-white/5 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{selectedIsDismount ? 'Why this is grey' : 'Why this score'}</p>
-            <p className="mt-1 text-sm leading-relaxed text-slate-200">{String(selected.reason || 'No explanation available')}</p>
-          </div>
           {selectedOsmId && (
-            <section className="mt-3 rounded-lg border border-white/10 bg-white/[0.035] p-3" aria-labelledby="osm-access-heading">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 id="osm-access-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-400">Current OSM access</h3>
-                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">Live tags can be newer than the OSM snapshot used to build this LTS score.</p>
-                </div>
-                {selectedOsmFeatureDetails?.updatedAt && (
-                  <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-                    {new Date(selectedOsmFeatureDetails.updatedAt).toLocaleDateString('en-AU')}
-                  </span>
-                )}
+            <section className="lts-source-section" aria-labelledby="osm-access-heading">
+              <div className="lts-source-heading">
+                <h3 id="osm-access-heading">OpenStreetMap access</h3>
+                {selectedOsmFeatureDetails?.updatedAt && <time dateTime={selectedOsmFeatureDetails.updatedAt}>Updated {new Date(selectedOsmFeatureDetails.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</time>}
               </div>
-              {osmFeatureLoading && <p className="mt-3 text-sm text-slate-300">Loading OpenStreetMap tags…</p>}
-              {selectedOsmFeatureError && <p className="mt-3 rounded-md border border-amber-300/20 bg-amber-300/10 p-2 text-xs text-amber-100">{selectedOsmFeatureError}</p>}
+              {osmFeatureLoading && <p className="lts-source-note">Loading OpenStreetMap tags…</p>}
+              {selectedOsmFeatureError && <p className="lts-source-error" role="alert">{selectedOsmFeatureError}</p>}
               {selectedBikeAccess && (
-                <div className={`mt-3 rounded-lg border p-3 ${selectedBikeAccessClass}`}>
-                  <p className="text-sm font-black">Bike access: {selectedBikeAccess.label}</p>
-                  <p className="mt-1 text-xs leading-relaxed opacity-90">{selectedBikeAccess.detail}</p>
+                <div className={`lts-source-access ${selectedBikeAccess.kind === 'prohibited' ? 'lts-source-access-restricted' : ''}`}>
+                  <p className="lts-source-access-label">{selectedBikeAccess.label}</p>
+                  <p>{selectedBikeAccess.detail}</p>
                 </div>
               )}
+              <p className="lts-source-note">Live OSM tags may be newer than the map’s source data.</p>
               {selectedOsmFeatureDetails && (
-                <details className="mt-3">
-                  <summary className="min-h-11 cursor-pointer select-none py-3 text-sm font-bold text-sky-300">Show all {Object.keys(selectedOsmFeatureDetails.tags).length} OSM tags</summary>
+                <details className="lts-source-tags">
+                  <summary>View {Object.keys(selectedOsmFeatureDetails.tags).length} OSM tags</summary>
                   {Object.keys(selectedOsmFeatureDetails.tags).length > 0 ? (
-                    <dl className="grid max-h-64 gap-1.5 overflow-y-auto rounded-lg bg-slate-950/70 p-2 text-xs">
+                    <dl className="lts-tag-table">
                       {orderedOsmTags(selectedOsmFeatureDetails.tags).map(([key, value]) => (
-                        <div key={key} className="grid grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-2 border-b border-white/5 py-1.5 last:border-0">
-                          <dt><code className="break-all text-cyan-300">{key}</code></dt>
-                          <dd><code className="break-all text-slate-200">{value}</code></dd>
-                        </div>
+                        <div key={key}><dt><code>{key}</code></dt><dd><code>{value}</code></dd></div>
                       ))}
                     </dl>
-                  ) : <p className="rounded-lg bg-slate-950/70 p-2 text-xs text-slate-400">This OSM feature currently has no tags.</p>}
+                  ) : <p className="lts-source-note">No tags are recorded for this feature.</p>}
                 </details>
               )}
             </section>
           )}
           {selected.traffic_aadt && (
-            <div className="mt-3 rounded-lg border border-sky-400/20 bg-sky-400/10 p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="mr-auto text-xs font-semibold uppercase tracking-wide text-sky-300">Motor traffic evidence</p>
+            <section className="lts-source-section lts-traffic-source">
+              <div className="lts-source-heading">
+                <h3>Traffic counts</h3>
                 {selected.traffic_year && <span className="rounded-full border border-sky-300/30 bg-sky-300/15 px-2 py-0.5 text-[10px] font-bold text-sky-100">{String(selected.traffic_year)} count</span>}
                 {selectedTrafficFreshness && <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${selectedTrafficFreshness.className}`}>{selectedTrafficFreshness.label}</span>}
               </div>
@@ -1673,9 +1651,10 @@ export default function LtsLabPage() {
                 {selected.traffic_match_confidence ? ` · ${String(selected.traffic_match_confidence)} match confidence` : ''}
               </p>
               {Boolean(selected.traffic_raised_lts) && <p className="mt-1 text-xs font-semibold text-amber-300">Traffic volume raised this road’s stress score.</p>}
-            </div>
+            </section>
           )}
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <details className="lts-source-technical"><summary>Classification &amp; source data</summary>
+          <dl className="lts-source-facts">
             <div><dt className="text-xs text-slate-500">Feature</dt><dd className="mt-0.5 capitalize">{String(selected.feature_kind)}</dd></div>
             <div><dt className="text-xs text-slate-500">Confidence</dt><dd className="mt-0.5 capitalize">{String(selected.confidence)}</dd></div>
             {selected.highway && <div><dt className="text-xs text-slate-500">OSM highway</dt><dd className="mt-0.5">{String(selected.highway)}</dd></div>}
@@ -1707,7 +1686,8 @@ export default function LtsLabPage() {
           {selected.trail_routing && selected.trail_routing !== 'normal' && selected.trail_reason && (
             <p className="mt-3 rounded-lg border border-pink-400/20 bg-pink-400/10 p-3 text-xs leading-relaxed text-pink-100">{String(selected.trail_reason)}</p>
           )}
-          {selectedOsmUrl && <a href={selectedOsmUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex text-sm font-semibold text-sky-400 hover:text-sky-300">Inspect this feature in OpenStreetMap →</a>}
+          </details>
+          {selectedOsmUrl && <a href={selectedOsmUrl} target="_blank" rel="noreferrer" className="lts-source-link">Open in OpenStreetMap <ExternalLink className="h-4 w-4" /></a>}
           </details>
           </div>
         </aside>
