@@ -43,6 +43,16 @@ Set the PMTiles URLs in `.env.local`. Generated PMTiles archives are intentional
 - `LTS_RECONCILE_TOKEN`: optional server-only machine credential for automated OSM reconciliation jobs. Human review uses Firebase Authentication instead.
 - `LTS_VOTE_HASH_SALT`: separate server-only random value used when hashing network identifiers for abuse controls.
 
+## Map interface
+
+Search, Plan route and Map display are the primary controls. The default view
+keeps the map clear with a compact colour key. Road selection starts with its
+score, explanation and basic facts; rating/correction controls and source data
+expand on request. Layer statistics, extra overlays, route options, stress
+breakdowns and comparison routes are also collapsed by default. The More menu
+contains the colour/scoring guide and community activity. Phone layouts use
+compact bottom drawers with the same controls.
+
 ## Community segment voting
 
 Selecting a mapped road opens its contribution controls. A contribution may contain an LTS vote, a rideability rating, or both; at least one rating is required, but neither scale is mandatory when submitting the other. Contributors sign in with an existing AusBUG Apple, Google or email/password account. Their verified Firebase UID identifies one editable contribution per account and segment. Their display name, reasoning and observations are shown publicly on the selected segment; email addresses and account identifiers remain private.
