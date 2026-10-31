@@ -1,4 +1,4 @@
-import { ltsFromCost, precomputedLtsFromWayTags, hasPlaceholder } from '@/lib/lts-route-ratings';
+import { routeSectionRating, precomputedLtsFromWayTags, hasPlaceholder } from '@/lib/lts-route-ratings';
 import { currentLtsRelease } from '@/lib/lts-release';
 import { publishedCommunityApprovals } from '@/lib/lts-community-store';
 import { routingExclusions, routeWithExclusions, type RoutingExclusion, type avoidanceParameters } from '@/lib/lts-routing-exclusions';
@@ -141,6 +141,7 @@ function buildStressOutput(feature: BRouterFeature) {
   const routeDistance = asNumber(feature.properties['track-length']);
   const routeTimeMilliseconds = asNumber(feature.properties['total-time']) * 1000;
   const distanceByLts: Record<string, number> = { '1': 0, '1.5': 0, '2': 0, '3': 0, '4': 0, '4.5': 0 };
+  let walkingDistance = 0;
   let knownUnsealedDistance = 0;
   let mtbCautionDistance = 0;
   let technicalMtbDistance = 0;
@@ -166,7 +167,7 @@ function buildStressOutput(feature: BRouterFeature) {
 
     for (let index = 0; index < messages.length; index += 1) {
       const message = messages[index];
-      const lts = precomputedLtsFromWayTags(message.wayTags) ?? ltsFromCost(message.costPerKm);
+      const { lts, requiresWalking } = routeSectionRating(message.wayTags, message.costPerKm);
       const isUnsealed = hasPlaceholder(message.wayTags, 13);
       const mtbRouting = hasPlaceholder(message.wayTags, 15)
         ? 'avoid'
@@ -175,7 +176,8 @@ function buildStressOutput(feature: BRouterFeature) {
       const trailRouting = hasPlaceholder(message.wayTags, 17)
         ? 'avoid'
         : hasPlaceholder(message.wayTags, 16) ? 'caution' : 'normal';
-      distanceByLts[String(lts)] += message.distanceMetres;
+      if (requiresWalking) walkingDistance += message.distanceMetres;
+      else if (lts !== null) distanceByLts[String(lts)] += message.distanceMetres;
       if (isUnsealed) knownUnsealedDistance += message.distanceMetres;
       if (mtbRouting === 'caution') mtbCautionDistance += message.distanceMetres;
       if (mtbRouting === 'avoid') technicalMtbDistance += message.distanceMetres;
@@ -192,6 +194,7 @@ function buildStressOutput(feature: BRouterFeature) {
       const previous = features.at(-1);
       if (
         previous?.properties?.lts === lts
+        && previous.properties.requires_walking === requiresWalking
         && previous.properties.is_unsealed === isUnsealed
         && previous.properties.mtb_routing === mtbRouting
         && previous.properties.surface === surface
@@ -203,6 +206,7 @@ function buildStressOutput(feature: BRouterFeature) {
           type: 'Feature',
           properties: {
             lts,
+            requires_walking: requiresWalking,
             cost_per_km: message.costPerKm,
             way_tags: message.wayTags,
             surface,
@@ -216,7 +220,7 @@ function buildStressOutput(feature: BRouterFeature) {
     }
   }
 
-  const measuredDistance = Object.values(distanceByLts).reduce((sum, value) => sum + value, 0);
+  const measuredDistance = Object.values(distanceByLts).reduce((sum, value) => sum + value, walkingDistance);
   const percentages = Object.fromEntries(
     Object.entries(distanceByLts).map(([lts, metres]) => [
       lts,
@@ -224,6 +228,7 @@ function buildStressOutput(feature: BRouterFeature) {
     ]),
   );
 
+  const cyclingLevels = Object.entries(distanceByLts).filter(([, metres]) => metres > 0).map(([lts]) => Number(lts));
   return {
     segments: { type: 'FeatureCollection', features } as GeoJSON.FeatureCollection<GeoJSON.LineString>,
     summary: {
@@ -233,10 +238,9 @@ function buildStressOutput(feature: BRouterFeature) {
         Object.entries(distanceByLts).map(([lts, metres]) => [lts, Math.round(metres)]),
       ),
       percentage_by_lts: percentages,
-      highest_lts: Math.max(
-        ...Object.entries(distanceByLts).filter(([, metres]) => metres > 0).map(([lts]) => Number(lts)),
-        1,
-      ),
+      highest_lts: cyclingLevels.length ? Math.max(...cyclingLevels) : null,
+      walking_distance_m: Math.round(walkingDistance),
+      walking_percentage: measuredDistance > 0 ? Math.round(walkingDistance / measuredDistance * 1000) / 10 : 0,
       known_unsealed_distance_m: Math.round(knownUnsealedDistance),
       mtb_caution_distance_m: Math.round(mtbCautionDistance),
       technical_mtb_distance_m: Math.round(technicalMtbDistance),

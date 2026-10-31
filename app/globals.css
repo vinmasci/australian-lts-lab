@@ -464,3 +464,15 @@ select {
   .lts-route-planner .lts-panel-body { padding: 18px 20px; }
   .lts-routing-open .lts-locate { bottom: calc(42dvh + 32px); }
 }
+
+.lts-route-comparison i, .lts-key-comparison { border-top: 3px dashed #7c6ba6; }
+.lts-route-walking-summary { display: flex; align-items: center; gap: 10px; margin: -8px 0 22px; font-size: 14px; color: var(--lts-muted); }
+.lts-route-map-key { position: absolute; z-index: 10; bottom: 70px; left: calc(var(--lts-sidebar-width) + 16px); display: flex; flex-direction: column; gap: 7px; padding: 10px 12px; font-size: 13px; line-height: 1.4; pointer-events: none; border: 1px solid var(--lts-line); border-radius: 6px; box-shadow: 0 1px 5px #29333612; }
+.lts-route-map-key > span { display: flex; gap: 9px; align-items: center; }
+.lts-route-map-key i, .lts-route-walking-summary > i { display: inline-block; width: 26px; flex-shrink: 0; }
+.lts-key-cycling { height: 5px; background: linear-gradient(to right, #16a34a 0 33%, #2563eb 33% 66%, #dc2626 66%); border-radius: 2px; }
+.lts-key-walking { display: inline-block; height: 9px !important; background: #8fa3b8; border: 2px solid #559cf8; border-radius: 2px; }
+@media (max-width: 767px) {
+  .lts-route-map-key { left: 10px; max-width: calc(100% - 70px); bottom: 70px; font-size: 12px; }
+  .lts-routing-open .lts-route-map-key { bottom: calc(42dvh + 36px); }
+}

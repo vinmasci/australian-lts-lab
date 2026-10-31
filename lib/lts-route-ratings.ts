@@ -24,3 +24,19 @@ export function hasPlaceholder(wayTags: string, number: number): boolean {
   return wayTags.includes(`brouter_route_placeholder_dummy_${tagNumber}=dummy`);
 }
 
+
+/** Same walking classification as iOS; a pedestrian link has no cycling LTS. */
+export function routeSectionRating(wayTags: string, costPerKm: number): { lts: number | null; requiresWalking: boolean } {
+  const tags = Object.fromEntries([...wayTags.matchAll(/(?:^|[ ,])([^= ,]+)=([^ ,]+)/g)]
+    .map(match => [match[1], match[2]]));
+  const bicycle = tags.bicycle ?? '';
+  const walking = ['dismount', 'no', 'use_sidepath', 'private'].includes(bicycle)
+    || tags.highway === 'steps'
+    || (['footway', 'pedestrian'].includes(tags.highway)
+      && !['yes', 'designated', 'permissive'].includes(bicycle));
+  const precomputed = precomputedLtsFromWayTags(wayTags);
+  // Keep a forbidden 4.5 visible as such if an upstream response is ever inspected.
+  // Walking must never downgrade an exclusion into an ordinary pedestrian connection.
+  if (precomputed === 4.5) return { lts: 4.5, requiresWalking: false };
+  return { lts: walking ? null : precomputed ?? ltsFromCost(costPerKm), requiresWalking: walking };
+}
