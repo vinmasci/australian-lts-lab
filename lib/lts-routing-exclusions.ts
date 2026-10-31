@@ -105,16 +105,24 @@ export async function routeWithExclusions<T extends { geometry: GeoJSON.LineStri
   exclusions: RoutingExclusion[],
   waypoints: number[][] = [],
 ): Promise<T> {
+  const avoided = new Map<string, RoutingExclusion>();
   let route = await request();
-  const conflicts = exclusions.filter(exclusion => routeUsesExclusion(route.geometry, exclusion));
-  if (conflicts.length) route = await request(avoidanceParameters(conflicts));
-  if (exclusions.some(exclusion => routeUsesExclusion(route.geometry, exclusion))) {
-    // Some engines ignore nogos containing a start/end waypoint. Never accept
-    // that fallback, or silently switch to walking across the same hazard.
-    throw new Error('No route avoiding LTS 4.5 was found. Move the start, finish or via point to a suitable connection.');
+  // A detour can encounter another unpublished-to-the-graph exclusion. Keep
+  // every discovered barrier, rather than abandoning the search after one retry.
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const conflicts = exclusions.filter(exclusion => routeUsesExclusion(route.geometry, exclusion));
+    if (!conflicts.length) {
+      if (exclusions.length) assertWaypointConnections(route.geometry, waypoints, exclusions);
+      return route;
+    }
+    const additions = conflicts.filter(exclusion => !avoided.has(exclusion.segmentId));
+    // Repeating an ignored barrier cannot improve the route. Never accept it,
+    // including when the engine snaps a start/finish point onto that barrier.
+    if (!additions.length || attempt === 7) break;
+    for (const exclusion of additions) avoided.set(exclusion.segmentId, exclusion);
+    route = await request(avoidanceParameters([...avoided.values()]));
   }
-  if (exclusions.length) assertWaypointConnections(route.geometry, waypoints, exclusions);
-  return route;
+  throw new Error('No route avoiding LTS 4.5 was found. Move the start, finish or via point to a suitable connection.');
 }
 
 /** Island snapping must not silently move a destination across a forbidden gap. */

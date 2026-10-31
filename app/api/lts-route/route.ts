@@ -246,7 +246,7 @@ function buildStressOutput(feature: BRouterFeature, profile: LtsRoutingProfile) 
 
 async function requestRoutingFeature(url: URL, exclusions: RoutingExclusion[], enforceLts45: boolean): Promise<BRouterFeature> {
   const waypoints = (url.searchParams.get('lonlats') || '').split('|').map(point => point.split(',').map(Number));
-  return routeWithExclusions(async (avoidance?: ReturnType<typeof avoidanceParameters>) => {
+  const routed = await routeWithExclusions(async (avoidance?: ReturnType<typeof avoidanceParameters>) => {
     const upstreamUrl = new URL(url);
     if (avoidance?.polylines) upstreamUrl.searchParams.set('polylines', avoidance.polylines);
     if (avoidance?.nogos) upstreamUrl.searchParams.set('nogos', avoidance.nogos);
@@ -261,14 +261,15 @@ async function requestRoutingFeature(url: URL, exclusions: RoutingExclusion[], e
     if (!upstream.ok || payload.error || !feature?.geometry?.coordinates?.length) {
       throw new Error(payload.error || 'No route was found. Try moving the start, finish or via points.');
     }
-    const messages = feature.properties.messages || [];
-    const nodeTagsIndex = messages[0]?.map(String).indexOf('NodeTags') ?? -1;
-    if (enforceLts45 && (parseMessages(feature.properties).some(message => precomputedLtsFromWayTags(message.wayTags) === 4.5)
-      || (nodeTagsIndex >= 0 && messages.slice(1).some(row => tagValue(String(row[nodeTagsIndex]), 'ausbug_lts_crossing') === '4.5')))) {
-      throw new Error('The routing graph returned an excluded LTS 4.5 link. No route can be shown.');
-    }
     return feature;
   }, exclusions, waypoints);
+  const messages = routed.properties.messages || [];
+  const nodeTagsIndex = messages[0]?.map(String).indexOf('NodeTags') ?? -1;
+  if (enforceLts45 && (parseMessages(routed.properties).some(message => precomputedLtsFromWayTags(message.wayTags) === 4.5)
+    || (nodeTagsIndex >= 0 && messages.slice(1).some(row => tagValue(String(row[nodeTagsIndex]), 'ausbug_lts_crossing') === '4.5')))) {
+    throw new Error('The routing graph returned an excluded LTS 4.5 link. No route can be shown.');
+  }
+  return routed;
 }
 
 export async function POST(request: NextRequest) {

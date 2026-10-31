@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { approvalSource } from './lts-approval-source';
+
 import { createHash } from 'node:crypto';
 import {
   firestoreConfigured,
@@ -65,8 +67,13 @@ export async function rejectCommunitySegment(dataset: string, segmentId: string,
 }
 
 export async function publishedCommunityApprovals(dataset: string): Promise<Array<Record<string, unknown>>> {
-  if (firestoreConfigured()) return listPublishedApprovals(dataset) as Promise<Array<Record<string, unknown>>>;
-  if (process.env.NODE_ENV === 'development') {
+  const source = approvalSource({
+    firestore: firestoreConfigured(), development: process.env.NODE_ENV === 'development',
+    preview: process.env.VERCEL_ENV === 'preview', publicRead: process.env.LTS_USE_PUBLIC_COMMUNITY_APPROVALS === 'true',
+    blob: Boolean(process.env.BLOB_READ_WRITE_TOKEN || (process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID)),
+  });
+  if (source === 'firestore') return listPublishedApprovals(dataset) as Promise<Array<Record<string, unknown>>>;
+  if (source === 'public') {
     // Read the public production records for previews, rather than silently
     // painting an empty development store. Never forward credentials or writes.
     const read = async (params: URLSearchParams) => {
