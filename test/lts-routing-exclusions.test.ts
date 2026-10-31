@@ -84,3 +84,28 @@ test('a published 4.5 crossing is excluded without declaring the road legally bi
   assert.match(params.nogos, /^145\.00001,-37,2$/);
   assert.equal(params.polylines, '');
 });
+
+test('South Road accumulates both blocked U-turns and finds the Jasper Road detour', async () => {
+  const { readFileSync } = await import('node:fs');
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/south-road-detour.json', import.meta.url), 'utf8'));
+  const requests: Array<ReturnType<typeof avoidanceParameters> | undefined> = [];
+  const result = await routeWithExclusions(async avoidance => {
+    requests.push(avoidance);
+    return { geometry: fixture.routes[requests.length - 1] };
+  }, fixture.exclusions, fixture.points);
+  assert.equal(requests.length, 3);
+  assert.deepEqual(result.geometry, fixture.routes[2]);
+  const first = fixture.exclusions.find((item: RoutingExclusion) => item.segmentId === 'segment:w180695375');
+  assert.deepEqual(requests[1], avoidanceParameters([first]));
+  assert.deepEqual(requests[2], avoidanceParameters([first, fixture.exclusions.find((item: RoutingExclusion) => item.segmentId !== first.segmentId)]));
+  for (const item of fixture.exclusions) assert.equal(routeUsesExclusion(result.geometry, item), false);
+});
+
+test('a sequence of new blocked alternatives has a bounded search and never returns an unsafe route', async () => {
+  const exclusions: RoutingExclusion[] = Array.from({ length: 12 }, (_, index) => ({
+    segmentId: `segment:w${index + 1}`, geometry: { type: 'LineString', coordinates: [[145, -37 + index * 0.001], [145.00002, -37 + index * 0.001]] },
+  }));
+  let calls = 0;
+  await assert.rejects(routeWithExclusions(async () => ({ geometry: exclusions[calls++].geometry as GeoJSON.LineString }), exclusions), /No route avoiding LTS 4.5/);
+  assert.equal(calls, 8);
+});

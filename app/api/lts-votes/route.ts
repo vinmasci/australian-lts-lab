@@ -24,6 +24,7 @@ import {
 } from '@/lib/lts-voting';
 import {
   communityApproval,
+  communityApprovalSource,
   communityModerationStatus,
   communityVotes,
   observeCommunitySegment,
@@ -150,6 +151,20 @@ export async function GET(request: NextRequest) {
     if (!DATASETS.has(dataset)) return NextResponse.json({ error: 'Unknown dataset.' }, { status: 400 });
 
     if (request.nextUrl.searchParams.get('approved') === '1') {
+      if (communityApprovalSource() === 'public') {
+        // Read-only previews use the complete public overlay, including path
+        // corrections, without requiring production write credentials.
+        const params = new URLSearchParams({ dataset, approved: '1' });
+        const response = await fetch(`https://ausbug.app/ltsmap/api/lts-votes?${params}`, {
+          next: { revalidate: 60 }, signal: AbortSignal.timeout(12000),
+        });
+        if (!response.ok) throw new Error('Published community records are unavailable.');
+        const collection = await response.json();
+        if (collection.type !== 'FeatureCollection' || !Array.isArray(collection.features)) {
+          throw new Error('Published community records are invalid.');
+        }
+        return NextResponse.json(collection);
+      }
       const [approvals, paths] = await Promise.all([publishedCommunityApprovals(dataset), currentPublishedPaths(dataset)]);
       const collection = {
         type: 'FeatureCollection' as const,
