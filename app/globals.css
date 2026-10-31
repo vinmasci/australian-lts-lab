@@ -445,12 +445,6 @@ select {
 .lts-route-totals { display: flex; align-items: baseline; gap: 16px; margin: 8px 0 24px; }
 .lts-route-totals strong { font-size: 30px; letter-spacing: -.04em; }
 .lts-route-totals > span { color: var(--lts-muted); }
-.lts-route-comparison { padding: 16px 0; border-top: 1px solid var(--lts-line); }
-.lts-route-comparison label, .lts-route-option { display: flex; gap: 12px; align-items: center; cursor: pointer; }
-.lts-route-comparison label > span { flex: 1; }
-.lts-route-comparison strong, .lts-route-comparison span > span { display: block; }
-.lts-route-comparison span > span { font-size: 14px; color: var(--lts-muted); }
-.lts-route-comparison i { width: 30px; border-top: 3px dashed #475569; }
 .lts-route-planner input[type="checkbox"] { width: 18px; height: 18px; accent-color: #365b44; flex-shrink: 0; }
 .lts-route-option { padding: 10px 0; }
 .lts-route-note { margin: 12px 0; font-size: 14px; color: var(--lts-muted); }
@@ -465,7 +459,6 @@ select {
   .lts-routing-open .lts-locate { bottom: calc(42dvh + 32px); }
 }
 
-.lts-route-comparison i, .lts-key-comparison { border-top: 3px dashed #7c6ba6; }
 .lts-route-walking-summary { display: flex; align-items: center; gap: 10px; margin: -8px 0 22px; font-size: 14px; color: var(--lts-muted); }
 .lts-route-map-key { position: absolute; z-index: 10; bottom: 70px; left: calc(var(--lts-sidebar-width) + 16px); display: flex; flex-direction: column; gap: 7px; padding: 10px 12px; font-size: 13px; line-height: 1.4; pointer-events: none; border: 1px solid var(--lts-line); border-radius: 6px; box-shadow: 0 1px 5px #29333612; }
 .lts-route-map-key > span { display: flex; gap: 9px; align-items: center; }
@@ -476,3 +469,10 @@ select {
   .lts-route-map-key { left: 10px; max-width: calc(100% - 70px); bottom: 70px; font-size: 12px; }
   .lts-routing-open .lts-route-map-key { bottom: calc(42dvh + 36px); }
 }
+
+.lts-route-profile { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 8px 12px; align-items: center; margin-bottom: 18px; }
+.lts-route-profile label { display: block; margin: 0; font-size: 14px; font-weight: 600; }
+.lts-route-profile select { width: 100%; min-height: 46px; padding: 9px 12px; border: 1px solid #cbd3ce; border-radius: 6px; color: var(--lts-ink); background: #fff; font-size: 16px; font-weight: 600; }
+.lts-route-profile p { grid-column: 1 / -1; margin: 0; color: var(--lts-muted); font-size: 14px; line-height: 1.5; }
+.lts-key-unrated { height: 5px; background: #5d696c; border-radius: 2px; }
+.lts-route-option { display: flex; gap: 12px; align-items: center; cursor: pointer; }

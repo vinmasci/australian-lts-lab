@@ -1,3 +1,4 @@
+import { parseRoutingProfile, type LtsRoutingProfile } from '@/lib/lts-route-profiles';
 import { routeSectionRating, precomputedLtsFromWayTags, hasPlaceholder } from '@/lib/lts-route-ratings';
 import { currentLtsRelease } from '@/lib/lts-release';
 import { publishedCommunityApprovals } from '@/lib/lts-community-store';
@@ -7,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const USING_LOCAL_ENRICHED_ROUTER = process.env.NODE_ENV === 'development'
   && process.env.NEXT_PUBLIC_LTS_USE_LOCAL_ROUTER === 'true';
 const DEFAULT_BROUTER_ROUTE_URL = process.env.LTS_BROUTER_URL
-  || (USING_LOCAL_ENRICHED_ROUTER ? 'http://127.0.0.1:17780/brouter' : 'https://valhalla.vicbug.app/brouter');
+  || (USING_LOCAL_ENRICHED_ROUTER ? 'http://127.0.0.1:17780/brouter' : 'https://valhalla.vicbug.app/lts-brouter');
 const ROUTER_URLS = {
   victoria: DEFAULT_BROUTER_ROUTE_URL,
   nsw: process.env.LTS_BROUTER_NSW_URL || 'https://valhalla.vicbug.app/lts-brouter-nsw',
@@ -19,9 +20,6 @@ const ROUTER_URLS = {
   northern_territory: process.env.LTS_BROUTER_NT_URL || 'https://valhalla.vicbug.app/lts-brouter-nt',
 } as const;
 type RoutableDataset = keyof typeof ROUTER_URLS;
-const COMPARISON_BROUTER_ROUTE_URL = process.env.BROUTER_COMPARISON_URL
-  || 'https://valhalla.vicbug.app/brouter';
-const COMPARISON_PROFILE = 'cyabikepath';
 const ROUTING_CLASSIFIER_VERSION = process.env.LTS_ROUTER_CLASSIFIER_VERSION?.trim()
   || (USING_LOCAL_ENRICHED_ROUTER ? 'au-lts-v0.5-trail-suitability-test' : 'au-lts-brouter-v0.1');
 
@@ -55,15 +53,6 @@ interface ParsedMessage {
   distanceMetres: number;
   costPerKm: number;
   wayTags: string;
-}
-
-interface ComparisonResult {
-  route?: BRouterFeature['geometry'];
-  summary?: {
-    distance_m: number;
-    time_ms: number;
-  };
-  error?: string;
 }
 
 function isCoordinate(value: unknown): value is [number, number] {
@@ -135,13 +124,14 @@ function nearestForwardIndex(
   return bestIndex;
 }
 
-function buildStressOutput(feature: BRouterFeature) {
+function buildStressOutput(feature: BRouterFeature, profile: LtsRoutingProfile) {
   const coordinates = feature.geometry.coordinates;
   const messages = parseMessages(feature.properties);
   const routeDistance = asNumber(feature.properties['track-length']);
   const routeTimeMilliseconds = asNumber(feature.properties['total-time']) * 1000;
   const distanceByLts: Record<string, number> = { '1': 0, '1.5': 0, '2': 0, '3': 0, '4': 0, '4.5': 0 };
   let walkingDistance = 0;
+  let unratedDistance = 0;
   let knownUnsealedDistance = 0;
   let mtbCautionDistance = 0;
   let technicalMtbDistance = 0;
@@ -150,10 +140,11 @@ function buildStressOutput(feature: BRouterFeature) {
   const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
 
   if (messages.length === 0 || coordinates.length < 2) {
-    distanceByLts['3'] = routeDistance;
+    if (profile === 'cyalts') distanceByLts['3'] = routeDistance;
+    else unratedDistance = routeDistance;
     features.push({
       type: 'Feature',
-      properties: { lts: 3, cost_per_km: 5000, confidence: 'low' },
+      properties: { lts: profile === 'cyalts' ? 3 : null, requires_walking: false, cost_per_km: 5000, confidence: 'low' },
       geometry: { type: 'LineString', coordinates },
     });
   } else {
@@ -167,7 +158,7 @@ function buildStressOutput(feature: BRouterFeature) {
 
     for (let index = 0; index < messages.length; index += 1) {
       const message = messages[index];
-      const { lts, requiresWalking } = routeSectionRating(message.wayTags, message.costPerKm);
+      const { lts, requiresWalking } = routeSectionRating(message.wayTags, message.costPerKm, profile === 'cyalts');
       const isUnsealed = hasPlaceholder(message.wayTags, 13);
       const mtbRouting = hasPlaceholder(message.wayTags, 15)
         ? 'avoid'
@@ -178,6 +169,7 @@ function buildStressOutput(feature: BRouterFeature) {
         : hasPlaceholder(message.wayTags, 16) ? 'caution' : 'normal';
       if (requiresWalking) walkingDistance += message.distanceMetres;
       else if (lts !== null) distanceByLts[String(lts)] += message.distanceMetres;
+      else unratedDistance += message.distanceMetres;
       if (isUnsealed) knownUnsealedDistance += message.distanceMetres;
       if (mtbRouting === 'caution') mtbCautionDistance += message.distanceMetres;
       if (mtbRouting === 'avoid') technicalMtbDistance += message.distanceMetres;
@@ -220,7 +212,7 @@ function buildStressOutput(feature: BRouterFeature) {
     }
   }
 
-  const measuredDistance = Object.values(distanceByLts).reduce((sum, value) => sum + value, walkingDistance);
+  const measuredDistance = Object.values(distanceByLts).reduce((sum, value) => sum + value, walkingDistance + unratedDistance);
   const percentages = Object.fromEntries(
     Object.entries(distanceByLts).map(([lts, metres]) => [
       lts,
@@ -239,6 +231,8 @@ function buildStressOutput(feature: BRouterFeature) {
       ),
       percentage_by_lts: percentages,
       highest_lts: cyclingLevels.length ? Math.max(...cyclingLevels) : null,
+      unrated_distance_m: Math.round(unratedDistance),
+      unrated_percentage: measuredDistance > 0 ? Math.round(unratedDistance / measuredDistance * 1000) / 10 : 0,
       walking_distance_m: Math.round(walkingDistance),
       walking_percentage: measuredDistance > 0 ? Math.round(walkingDistance / measuredDistance * 1000) / 10 : 0,
       known_unsealed_distance_m: Math.round(knownUnsealedDistance),
@@ -250,7 +244,7 @@ function buildStressOutput(feature: BRouterFeature) {
   };
 }
 
-async function requestRoutingFeature(url: URL, exclusions: RoutingExclusion[]): Promise<BRouterFeature> {
+async function requestRoutingFeature(url: URL, exclusions: RoutingExclusion[], enforceLts45: boolean): Promise<BRouterFeature> {
   const waypoints = (url.searchParams.get('lonlats') || '').split('|').map(point => point.split(',').map(Number));
   return routeWithExclusions(async (avoidance?: ReturnType<typeof avoidanceParameters>) => {
     const upstreamUrl = new URL(url);
@@ -269,51 +263,17 @@ async function requestRoutingFeature(url: URL, exclusions: RoutingExclusion[]): 
     }
     const messages = feature.properties.messages || [];
     const nodeTagsIndex = messages[0]?.map(String).indexOf('NodeTags') ?? -1;
-    if (parseMessages(feature.properties).some(message => precomputedLtsFromWayTags(message.wayTags) === 4.5)
-      || (nodeTagsIndex >= 0 && messages.slice(1).some(row => tagValue(String(row[nodeTagsIndex]), 'ausbug_lts_crossing') === '4.5'))) {
+    if (enforceLts45 && (parseMessages(feature.properties).some(message => precomputedLtsFromWayTags(message.wayTags) === 4.5)
+      || (nodeTagsIndex >= 0 && messages.slice(1).some(row => tagValue(String(row[nodeTagsIndex]), 'ausbug_lts_crossing') === '4.5')))) {
       throw new Error('The routing graph returned an excluded LTS 4.5 link. No route can be shown.');
     }
     return feature;
   }, exclusions, waypoints);
 }
 
-async function requestComparisonRoute(
-  points: Array<[number, number]>,
-  allowGravel: boolean,
-  exclusions: RoutingExclusion[],
-): Promise<ComparisonResult> {
-  try {
-    const upstreamUrl = new URL(COMPARISON_BROUTER_ROUTE_URL);
-    upstreamUrl.searchParams.set(
-      'lonlats',
-      points.map(([longitude, latitude]) => `${longitude},${latitude}`).join('|'),
-    );
-    upstreamUrl.searchParams.set('profile', COMPARISON_PROFILE);
-    upstreamUrl.searchParams.set('alternativeidx', '0');
-    upstreamUrl.searchParams.set('format', 'geojson');
-    if (!allowGravel) upstreamUrl.searchParams.set('profile:avoid_unpaved', '1');
-
-    const feature = await requestRoutingFeature(upstreamUrl, exclusions);
-
-    return {
-      route: feature.geometry,
-      summary: {
-        distance_m: asNumber(feature.properties['track-length']),
-        time_ms: asNumber(feature.properties['total-time']) * 1000,
-      },
-    };
-  } catch (error) {
-    return {
-      error: error instanceof Error && error.name === 'AbortError'
-        ? 'The AusBUG Bike Paths comparison timed out.'
-        : error instanceof Error ? error.message : 'The AusBUG Bike Paths comparison failed.',
-    };
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as { points?: unknown; allow_gravel?: unknown; dataset?: unknown };
+    const body = await request.json() as { points?: unknown; allow_gravel?: unknown; dataset?: unknown; profile?: unknown };
     if (!Array.isArray(body.points) || body.points.length < 2 || body.points.length > 26 || !body.points.every(isCoordinate)) {
       return NextResponse.json(
         { error: 'Provide between two and 26 valid [longitude, latitude] points.' },
@@ -321,18 +281,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const profile = parseRoutingProfile(body.profile);
+    if (!profile) return NextResponse.json({ error: 'Choose Low Stress, Bike Paths, Bike Lanes or Roads.' }, { status: 400 });
     const points = body.points as Array<[number, number]>;
     const allowGravel = body.allow_gravel !== false;
     const dataset: RoutableDataset = body.dataset === undefined
       ? 'victoria'
       : isRoutableDataset(body.dataset) ? body.dataset : 'victoria';
     if (body.dataset !== undefined && !isRoutableDataset(body.dataset)) {
-      return NextResponse.json({ error: 'Low-stress routing is not enabled for that dataset.' }, { status: 400 });
+      return NextResponse.json({ error: 'Routing is not enabled for that dataset.' }, { status: 400 });
     }
     // Use current published exclusions immediately; graph rebuilds incorporate
     // the same decisions later. Do not silently ignore a failed registry read.
-    const exclusions = routingExclusions(dataset, await publishedCommunityApprovals(dataset));
-    const comparisonPromise = requestComparisonRoute(points, allowGravel, exclusions);
+    const exclusions = profile === 'cyalts'
+      ? routingExclusions(dataset, await publishedCommunityApprovals(dataset)) : [];
     const releasePromise = currentLtsRelease();
 
     const upstreamUrl = new URL(ROUTER_URLS[dataset]);
@@ -340,16 +302,16 @@ export async function POST(request: NextRequest) {
       'lonlats',
       points.map(([longitude, latitude]) => `${longitude},${latitude}`).join('|'),
     );
-    upstreamUrl.searchParams.set('profile', 'cyalts');
+    upstreamUrl.searchParams.set('profile', profile);
     upstreamUrl.searchParams.set('alternativeidx', '0');
     upstreamUrl.searchParams.set('format', 'geojson');
     if (!allowGravel) {
       upstreamUrl.searchParams.set('profile:avoid_unpaved', '1');
     }
 
-    const feature = await requestRoutingFeature(upstreamUrl, exclusions);
+    const feature = await requestRoutingFeature(upstreamUrl, exclusions, profile === 'cyalts');
 
-    const [comparison, release] = await Promise.all([comparisonPromise, releasePromise]);
+    const release = await releasePromise;
     const publishedVersion = release?.datasets[dataset].metadata.classifier_version;
 
     return NextResponse.json({
@@ -357,17 +319,10 @@ export async function POST(request: NextRequest) {
         ? publishedVersion : ROUTING_CLASSIFIER_VERSION,
       dataset,
       engine: 'BRouter',
-      profile: 'cyalts',
+      profile,
       route: feature.geometry,
       instructions: [],
-      comparison: comparison.route && comparison.summary ? {
-        label: 'AusBUG Bike Paths',
-        profile: COMPARISON_PROFILE,
-        route: comparison.route,
-        summary: comparison.summary,
-      } : null,
-      comparison_error: comparison.error,
-      ...buildStressOutput(feature),
+      ...buildStressOutput(feature, profile),
     });
   } catch (error) {
     const message = error instanceof Error && error.name === 'AbortError'

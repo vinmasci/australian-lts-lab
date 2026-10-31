@@ -26,7 +26,7 @@ export function hasPlaceholder(wayTags: string, number: number): boolean {
 
 
 /** Same walking classification as iOS; a pedestrian link has no cycling LTS. */
-export function routeSectionRating(wayTags: string, costPerKm: number): { lts: number | null; requiresWalking: boolean } {
+export function routeSectionRating(wayTags: string, costPerKm: number, usesLtsCosts = true): { lts: number | null; requiresWalking: boolean } {
   const tags = Object.fromEntries([...wayTags.matchAll(/(?:^|[ ,])([^= ,]+)=([^ ,]+)/g)]
     .map(match => [match[1], match[2]]));
   const bicycle = tags.bicycle ?? '';
@@ -38,5 +38,5 @@ export function routeSectionRating(wayTags: string, costPerKm: number): { lts: n
   // Keep a forbidden 4.5 visible as such if an upstream response is ever inspected.
   // Walking must never downgrade an exclusion into an ordinary pedestrian connection.
   if (precomputed === 4.5) return { lts: 4.5, requiresWalking: false };
-  return { lts: walking ? null : precomputed ?? ltsFromCost(costPerKm), requiresWalking: walking };
+  return { lts: walking ? null : precomputed ?? (usesLtsCosts ? ltsFromCost(costPerKm) : null), requiresWalking: walking };
 }
