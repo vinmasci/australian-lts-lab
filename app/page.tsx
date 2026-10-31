@@ -4,8 +4,9 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Route as RouteIcon, Search, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
+import { RoutePlanner } from '@/app/components/RoutePlanner';
 import { DismountReport } from '@/app/components/DismountReport';
 import { PathCorrection } from '@/app/components/PathCorrection';
 import { canCorrectPath } from '@/lib/path-corrections';
@@ -582,6 +583,9 @@ export default function LtsLabPage() {
   const [contributionExpanded, setContributionExpanded] = useState(false);
   const [mapPanelExpanded, setMapPanelExpanded] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [routePanelOpen, setRoutePanelOpen] = useState(false);
+  const routeModeRef = useRef(false);
+  routeModeRef.current = routePanelOpen;
   const [placeQuery, setPlaceQuery] = useState('');
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
   const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
@@ -961,13 +965,14 @@ export default function LtsLabPage() {
         const interactiveLayers = ['lts-crossings', 'lts-dismount', 'lts-act-access-only-trails', 'lts-unverified-trails', 'lts-mtb-trails', 'lts-unsealed', 'lts-segments-low-confidence', 'lts-segments'];
         const availableInteractiveLayers = () => interactiveLayers.filter((layerId) => Boolean(map.getLayer(layerId)));
         map.on('mousemove', (event) => {
+          if (routeModeRef.current) { map.getCanvas().style.cursor = 'crosshair'; return; }
           const layers = availableInteractiveLayers();
           map.getCanvas().style.cursor = layers.length > 0 && map.queryRenderedFeatures(event.point, { layers }).length > 0
             ? 'pointer'
             : '';
         });
         map.on('click', (event: MapMouseEvent) => {
-          if (selectionSavingRef.current) return;
+          if (selectionSavingRef.current || routeModeRef.current) return;
           const layers = availableInteractiveLayers();
           const extending = event.originalEvent.shiftKey || multiSelectRef.current;
           // Endpoint circles sit above roads. In multi-select, ignore these
@@ -1009,7 +1014,7 @@ export default function LtsLabPage() {
           setSelectedVoteSegment(selectionRef.current[0]?.segment ?? null);
           if (feature) {
             setMapPanelExpanded(false);
-            setSearchExpanded(false);
+            setSearchExpanded(false); setRoutePanelOpen(false);
             if (!extending) setContributionExpanded(false);
           }
           setSelectedDismountSegment(feature ? dismountReportSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
@@ -1275,7 +1280,7 @@ export default function LtsLabPage() {
     }
     setPlaceResults([]);
     setPlaceSearchError(null);
-    setSearchExpanded(false);
+    setSearchExpanded(false); setRoutePanelOpen(false);
   };
 
   const findCurrentLocation = () => {
@@ -1313,7 +1318,7 @@ export default function LtsLabPage() {
     );
   };
 
-  const sidebarOpen = mapPanelExpanded || Boolean(selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)));
+  const sidebarOpen = routePanelOpen || mapPanelExpanded || Boolean(selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)));
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -1332,7 +1337,7 @@ export default function LtsLabPage() {
   }, [sidebarOpen, selectedStreetViewPoint]);
 
   return (
-    <main className={`lts-app ${sidebarOpen ? 'lts-sidebar-open' : ''} relative h-[100dvh] overflow-hidden bg-slate-950 text-white`} onPointerDownCapture={(event) => { startupInteractionRef.current = true; if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) moreMenuRef.current.open = false; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
+    <main className={`lts-app ${sidebarOpen ? 'lts-sidebar-open' : ''} ${routePanelOpen ? 'lts-routing-open' : ''} relative h-[100dvh] overflow-hidden bg-slate-950 text-white`} onPointerDownCapture={(event) => { startupInteractionRef.current = true; if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) moreMenuRef.current.open = false; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
       <div ref={mapContainerRef} className="lts-map-canvas" />
       {saveNotice && (
         <div className="lts-surface absolute left-3 right-3 top-24 z-30 mx-auto flex max-w-lg items-start gap-3 rounded-xl border border-emerald-600 bg-white p-4 text-slate-900 shadow-xl">
@@ -1378,7 +1383,7 @@ export default function LtsLabPage() {
             setDatasetKey(event.target.value as DatasetKey);
             setShowActAccessOnlyTrails(false);
             setMapPanelExpanded(false);
-            setSearchExpanded(false);
+            setSearchExpanded(false); setRoutePanelOpen(false);
             setSelected(null);
             selectionRef.current = [];
             setVoteSelection([]);
@@ -1403,7 +1408,7 @@ export default function LtsLabPage() {
           if (!Object.prototype.hasOwnProperty.call(DATASETS, dataset)) return;
           setShowAbout(false);
           setMapPanelExpanded(false);
-          setSearchExpanded(false);
+          setSearchExpanded(false); setRoutePanelOpen(false);
           setSelected(null);
           multiSelectRef.current = false;
           setMultiSelect(false);
@@ -1425,11 +1430,14 @@ export default function LtsLabPage() {
       </header>
 
       <nav className="lts-surface lts-action-pill" aria-label="Map actions">
-        <button type="button" disabled={selectionSaving} aria-expanded={searchExpanded} onClick={() => { clearRoadSelection(); setSearchExpanded(!searchExpanded); setMapPanelExpanded(false); }}><Search className="h-4 w-4" /><span>Search</span></button>
-        <button type="button" disabled={selectionSaving} aria-expanded={mapPanelExpanded} onClick={() => { clearRoadSelection(); setMapPanelExpanded(!mapPanelExpanded); setSearchExpanded(false); }}><Layers3 className="h-4 w-4" /><span>Map display</span></button>
+        <button type="button" disabled={selectionSaving} aria-expanded={searchExpanded} onClick={() => { clearRoadSelection(); setSearchExpanded(!searchExpanded); setRoutePanelOpen(false); setMapPanelExpanded(false); }}><Search className="h-4 w-4" /><span>Search</span></button>
+        <button type="button" disabled={selectionSaving} aria-expanded={mapPanelExpanded} onClick={() => { clearRoadSelection(); setMapPanelExpanded(!mapPanelExpanded); setSearchExpanded(false); setRoutePanelOpen(false); }}><Layers3 className="h-4 w-4" /><span>Map display</span></button>
+        <button type="button" disabled={selectionSaving} aria-expanded={routePanelOpen} onClick={() => { clearRoadSelection(); setRoutePanelOpen(!routePanelOpen); setMapPanelExpanded(false); setSearchExpanded(false); }}><RouteIcon className="h-4 w-4" /><span>Plan route</span></button>
       </nav>
 
-      {!mapPanelExpanded && !selected && !searchExpanded && <button type="button" className="lts-surface lts-compact-legend" aria-label="Show stress colours and map layers" onClick={() => { setMapPanelExpanded(true); }}>
+      <RoutePlanner map={mapLoading ? null : mapRef.current} dataset={datasetKey} open={routePanelOpen} onClose={() => { setRoutePanelOpen(false); document.querySelector<HTMLButtonElement>('[aria-label="Map actions"] button:last-child')?.focus(); }} />
+
+      {!routePanelOpen && !mapPanelExpanded && !selected && !searchExpanded && <button type="button" className="lts-surface lts-compact-legend" aria-label="Show stress colours and map layers" onClick={() => { setMapPanelExpanded(true); }}>
         <span>Traffic stress</span><span className="lts-legend-scale" aria-hidden="true">{LTS_LEVELS.map(level => <i key={level} style={{ backgroundColor: LTS_COLOURS[level] }} />)}</span><span>Low → High</span><ChevronUp className="h-3.5 w-3.5" />
       </button>}
 
@@ -1441,7 +1449,7 @@ export default function LtsLabPage() {
             <label htmlFor="map-place-search" className="sr-only">Search for an Australian place or address</label>
             <input id="map-place-search" type="search" value={placeQuery} onChange={event => { setPlaceQuery(event.target.value); setPlaceResults([]); setPlaceSearchError(null); setPlaceSearchLoading(false); }} placeholder="Search a suburb, road or place…" autoComplete="off" autoFocus className="min-w-0 flex-1 rounded-lg px-3 py-2.5 text-sm outline-none" />
             <button type="submit" disabled={placeSearchLoading || placeQuery.trim().length < 2} className="lts-search-submit" aria-label="Search places">{placeSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</button>
-            <button type="button" onClick={() => { setSearchExpanded(false); setPlaceResults([]); setPlaceSearchError(null); setLocationError(null); }} className="lts-search-close" aria-label="Close place search"><X className="h-4 w-4" /></button>
+            <button type="button" onClick={() => { setSearchExpanded(false); setRoutePanelOpen(false); setPlaceResults([]); setPlaceSearchError(null); setLocationError(null); }} className="lts-search-close" aria-label="Close place search"><X className="h-4 w-4" /></button>
           </div>
           {placeResults.length > 0 && <>
             <div className="lts-search-results" role="listbox" aria-label="Place search results">
