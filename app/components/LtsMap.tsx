@@ -1,0 +1,1960 @@
+'use client';
+
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import * as maplibregl from 'maplibre-gl';
+import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Route as RouteIcon, Search, X } from 'lucide-react';
+import { Protocol } from 'pmtiles';
+import { RoutePlanner } from '@/app/components/RoutePlanner';
+import { DismountReport } from '@/app/components/DismountReport';
+import { PathCorrection } from '@/app/components/PathCorrection';
+import { canCorrectPath } from '@/lib/path-corrections';
+import { SegmentVote } from '@/app/components/SegmentVote';
+import { MAX_SELECTED_SEGMENTS, toggleSegment } from '@/lib/lts-multi-select';
+import { CommunityActivity } from '@/app/components/CommunityActivity';
+import { ltsAppPath } from '@/lib/client-path';
+import dynamic from 'next/dynamic';
+import { WORKSHOP_CROSSING_STYLES, workshopMapViewUrl } from '@/lib/workshop-sections';
+const WorkshopSections = dynamic(()=>import('@/app/components/WorkshopSections').then(module=>module.WorkshopSections),{ssr:false});
+import type { DismountReportSegment } from '@/lib/dismount-reporting';
+import { googleStreetViewUrl } from '@/lib/google-maps';
+import { isLtsVoteLevel, LTS_VOTE_COLOURS, type VoteSegment } from '@/lib/lts-voting';
+import { assessBikeAccess, orderedOsmTags, type OsmFeatureDetails } from '@/lib/osm-tags';
+import type { LtsRelease } from '@/lib/lts-release';
+
+
+const DATASET_VERSION = 'au-lts-v0.5-council-traffic';
+interface PlaceSearchResult {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  bounds: [number, number, number, number] | null;
+}
+
+
+function placeSearchUrl(query: string, map: maplibregl.Map | null): string {
+  const params = new URLSearchParams({ q: query });
+  if (map) {
+    const centre = map.getCenter();
+    params.set('lat', centre.lat.toFixed(5));
+    params.set('lon', centre.lng.toFixed(5));
+    params.set('zoom', String(Math.round(map.getZoom())));
+  }
+  return ltsAppPath(`/api/geocode?${params}`);
+}
+
+const DATASETS = {
+  victoria: {
+    label: 'Victoria',
+    title: 'AusBUG LTS Map · Victoria',
+    dataUrl: process.env.NEXT_PUBLIC_VICTORIA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/victoria-lts-5a1325e7.pmtiles',
+    metadataUrl: `/data/lts/victoria-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [144.9631, -37.8136] as [number, number],
+    zoom: 12,
+  },
+  nsw: {
+    label: 'New South Wales',
+    title: 'AusBUG LTS Map · NSW',
+    dataUrl: process.env.NEXT_PUBLIC_NSW_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/nsw-lts-d4fdc970.pmtiles',
+    metadataUrl: `/data/lts/nsw-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [151.2093, -33.8688] as [number, number],
+    zoom: 12,
+  },
+  queensland: {
+    label: 'Queensland',
+    title: 'AusBUG LTS Map · Queensland',
+    dataUrl: process.env.NEXT_PUBLIC_QUEENSLAND_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/queensland-lts-c0dd9f26.pmtiles',
+    metadataUrl: `/data/lts/queensland-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [153.03, -27.47] as [number, number],
+    zoom: 12,
+  },
+  western_australia: {
+    label: 'Western Australia',
+    title: 'AusBUG LTS Map · Western Australia',
+    dataUrl: process.env.NEXT_PUBLIC_WA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/western-australia-lts-64573cc9.pmtiles',
+    metadataUrl: `/data/lts/western-australia-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [115.86, -31.95] as [number, number],
+    zoom: 12,
+  },
+  south_australia: {
+    label: 'South Australia',
+    title: 'AusBUG LTS Map · South Australia',
+    dataUrl: process.env.NEXT_PUBLIC_SA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/south-australia-lts-d579551c.pmtiles',
+    metadataUrl: `/data/lts/south-australia-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [138.60, -34.93] as [number, number],
+    zoom: 12,
+  },
+  act: {
+    label: 'Australian Capital Territory',
+    title: 'AusBUG LTS Map · ACT',
+    dataUrl: process.env.NEXT_PUBLIC_ACT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/act-lts-166671dc.pmtiles',
+    metadataUrl: `/data/lts/act-lts-metadata.json?v=${DATASET_VERSION}-166671dc`,
+    center: [149.13, -35.28] as [number, number],
+    zoom: 12,
+  },
+  tasmania: {
+    label: 'Tasmania',
+    title: 'AusBUG LTS Map · Tasmania',
+    dataUrl: process.env.NEXT_PUBLIC_TASMANIA_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/tasmania-lts-ee99da23.pmtiles',
+    metadataUrl: `/data/lts/tasmania-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [147.33, -42.88] as [number, number],
+    zoom: 12,
+  },
+  northern_territory: {
+    label: 'Northern Territory',
+    title: 'AusBUG LTS Map · Northern Territory',
+    dataUrl: process.env.NEXT_PUBLIC_NT_PMTILES_URL || 'https://storage.googleapis.com/cyaroutes.firebasestorage.app/public/lts/northern-territory-lts-e6f8e235.pmtiles',
+    metadataUrl: `/data/lts/northern-territory-lts-metadata.json?v=${DATASET_VERSION}`,
+    center: [130.85, -12.46] as [number, number],
+    zoom: 12,
+  },
+} as const;
+type DatasetKey = keyof typeof DATASETS;
+
+interface SourceLink { label: string; href: string }
+interface StateSourceCopy {
+  trafficTitle: string;
+  trafficDescription: string;
+  trafficLinks: SourceLink[];
+  roadDescription: string;
+  roadLinks: SourceLink[];
+  methodology: string[];
+  trafficLimitation: string;
+  speedLimitation: string;
+}
+const STATE_SOURCE_COPY: Record<DatasetKey, StateSourceCopy> = {
+  victoria: {
+    trafficTitle: 'Victorian traffic-volume evidence',
+    trafficDescription: 'The historical directional AADT network is supplemented by 2026 TIRTL and telemetry sensor averages, SCATS signal-loop observations, City of Casey surveys, and City of Melbourne’s 2014–17 classified counts. Fresh direct counts take precedence; the older Melbourne counts only fill gaps.',
+    trafficLinks: [
+      { label: 'AADT', href: 'https://discover.data.vic.gov.au/dataset/historical-annual-average-daily-traffic-volume' },
+      { label: 'TIRTL', href: 'https://opendata.transport.vic.gov.au/dataset/tirtl-traffic-counts' },
+      { label: 'Telemetry', href: 'https://discover.data.vic.gov.au/dataset/telemetry-traffic-counts-and-classification' },
+      { label: 'SCATS', href: 'https://opendata.transport.vic.gov.au/dataset/traffic-signal-volume-data' },
+      { label: 'Casey surveys', href: 'https://discover.data.vic.gov.au/en_AU/dataset/traffic-volume-survey' },
+      { label: 'Melbourne counts', href: 'https://discover.data.vic.gov.au/dataset/traffic-count-vehicle-classification-2014-2017' },
+    ],
+    roadDescription: 'DTP normal-operation speed zones fill missing OSM speeds. DTP bicycle infrastructure fills missing directional lane, buffer and protection details. City of Melbourne parking zones fill otherwise unknown kerbside parking. Explicit OSM tags always win.',
+    roadLinks: [
+      { label: 'Speed zones', href: 'https://discover.data.vic.gov.au/en_AU/dataset/speed-zones' },
+      { label: 'Bike infrastructure', href: 'https://opendata.transport.vic.gov.au/dataset/bicycle-infrastructure-network' },
+      { label: 'Parking zones', href: 'https://discover.data.vic.gov.au/dataset/parking-zones-linked-to-street-segments' },
+    ],
+    methodology: [
+      'Direct TIRTL, telemetry and recent council observations outrank historical AADT. SCATS is useful where no better count matches, but its public export does not identify road approaches: the Lab conservatively estimates one direction from the intersection total, labels it low confidence, and permits it to raise a road by only one LTS level.',
+      'Where OSM is missing a speed, the classifier uses DTP’s June 2026 normal-operation speed zone for that direction. School, shopping and other conditional limits are excluded because this all-day map cannot yet know when they apply. Official bicycle and parking layers similarly fill only missing details.',
+    ],
+    trafficLimitation: 'The historical AADT layer mainly covers Victoria’s declared road network. Current sensors and council surveys improve coverage, but local-road traffic evidence remains much stronger in Melbourne and Casey than elsewhere in Victoria.',
+    speedLimitation: 'Only normal-operation speed zones are used. Time-dependent school, shopping and variable limits are not applied until the router can evaluate their active times.',
+  },
+  nsw: {
+    trafficTitle: 'NSW traffic-volume evidence',
+    trafficDescription: 'Published Transport for NSW all-day, all-vehicle station counts are matched conservatively by road identity, projected distance and travel direction. Every accepted count is pinned to one audited OSM way; ambiguous and rejected observations do not enter the map. Dates vary by station and remain visible when a road is inspected.',
+    trafficLinks: [{ label: 'TfNSW traffic counts', href: 'https://data.nsw.gov.au/data/en/dataset/2-nsw-roads-traffic-volume-counts-api' }],
+    roadDescription: 'TfNSW fixed, all-day speed-zone lines fill only missing OSM speeds when the geometry strongly covers the same road. Conditional, school and variable zones are excluded; conflicting or one-way-ambiguous matches are quarantined. Explicit OSM speeds always win. Cycling treatments, lane detail, buffers and parking currently come from OSM.',
+    roadLinks: [{ label: 'TfNSW speed zones', href: 'https://data.nsw.gov.au/data/en/dataset/2-speed-zones' }],
+    methodology: [
+      'The NSW importer keeps the latest published all-day/all-vehicle observation for each exact station direction, but the latest available year varies substantially by station. Counts are never copied along a corridor: the audit accepts one OSM way or rejects the observation.',
+      'Where OSM is missing a speed, the classifier may use a strongly coincident TfNSW fixed all-day speed zone. Conditional and variable limits are excluded, explicit OSM speed tags are protected, and competing strong matches are left unresolved.',
+    ],
+    trafficLimitation: 'TfNSW traffic-count coverage is sparse and uneven. Many stations’ latest published all-day observation is historical; the observation year is retained and shown rather than presented as current traffic.',
+    speedLimitation: 'Only fixed all-day speed zones are used. Time-dependent school and variable limits are not applied until the router can evaluate their active times.',
+  },
+  queensland: {
+    trafficTitle: 'Queensland traffic-volume evidence',
+    trafficDescription: 'Queensland TMR’s 2025 traffic census is supplemented by published City of Gold Coast and Logan road counts and Brisbane key-corridor weekday volumes. Every accepted observation retains its source, year, method and direction where supplied; future-dated, incomplete and ambiguous records are rejected rather than guessed.',
+    trafficLinks: [
+      { label: 'TMR traffic census', href: 'https://www.data.qld.gov.au/dataset/traffic-census-for-the-queensland-state-declared-road-network' },
+      { label: 'TMR road-location data', href: 'https://www.data.qld.gov.au/dataset/road-location-and-traffic-data' },
+      { label: 'Gold Coast traffic counts', href: 'https://services.arcgis.com/3vStCH7NDoBOZ5zn/arcgis/rest/services/Traffic_Count/FeatureServer/0' },
+      { label: 'Logan traffic counts', href: 'https://services5.arcgis.com/ZUCWDRj8F77Xo351/arcgis/rest/services/Logan_City_Council_Traffic_Counts/FeatureServer/0' },
+      { label: 'Brisbane key corridors', href: 'https://data.brisbane.qld.gov.au/explore/dataset/traffic-management-key-corridor-monthly-performance-report/' },
+    ],
+    roadDescription: 'Queensland’s public point-in-time speed-sign surveys are historical observations, not a current statewide speed-zone line layer, so this build does not use them to overwrite or fill OSM speeds. Cycling treatments, lane details, buffers and parking currently come from OSM.',
+    roadLinks: [{ label: 'Historical speed-sign survey (not used)', href: 'https://www.data.qld.gov.au/dataset/speed-limits-for-state-and-local-roads' }],
+    methodology: [
+      'The Queensland importer uses 2025 TMR AADT for each published representative segment. Combined counts are applied to undivided carriageways; directional counts are kept on the matching divided carriageway. Geometry is split at genuine carriageway transitions rather than interpolated across gaps.',
+      'Gold Coast and Logan observations are reduced to the latest valid count at each published site. Brisbane publishes corridor descriptions rather than road geometry, so only corridors that resolve unambiguously along the named OSM road graph and agree with the published corridor length are included; unresolved corridors are quarantined.',
+      'Queensland’s historical speed-sign survey is not treated as a current speed-zone network. Where OSM has no explicit speed, the shared road-class fallback is used and marked as inferred.',
+    ],
+    trafficLimitation: 'TMR provides statewide declared-road coverage, while the new local-road evidence is concentrated in Brisbane, Gold Coast and Logan. Roads elsewhere without a matched count continue to use OSM road class, speed, lanes and cycling-facility evidence.',
+    speedLimitation: 'Queensland’s historical point-in-time speed-sign survey is not used as if it were a current speed-zone layer. Missing OSM speeds use clearly labelled classifier fallbacks.',
+  },
+  western_australia: {
+    trafficTitle: 'Western Australian traffic-volume evidence',
+    trafficDescription: 'Main Roads WA Traffic Digest observations are supplemented by City of Perth road counts. Metropolitan records use the published Monday–Friday volume and regional records use Monday–Sunday volume; permanent-counter records take precedence over sample counts. Source year, method, direction and confidence remain attached to inspected roads.',
+    trafficLinks: [
+      { label: 'Main Roads WA Traffic Digest', href: 'https://catalogue.data.wa.gov.au/dataset/mrwa-traffic-digest' },
+      { label: 'City of Perth traffic counts', href: 'https://services7.arcgis.com/v8XBa2naYNQGOjlG/arcgis/rest/services/TRN_RD_TRAFFICCOUNT_TVW_PV/FeatureServer/0' },
+    ],
+    roadDescription: 'Main Roads WA Legal Speed Limit lines fill a missing OSM speed only where the public record contains one explicit numeric all-day value and strongly matches the same road. Ambiguous “50 built-up / 110 outside” records are rejected rather than guessed. Cycling treatments and parking come from OSM.',
+    roadLinks: [{ label: 'Main Roads WA legal speed limits', href: 'https://catalogue.data.wa.gov.au/dataset/mrwa-legal-speed-limits' }],
+    methodology: [
+      'Traffic Digest records preserve their metropolitan or regional averaging period and permanent or sample-count methodology. Geometry, road identity and direction must support a conservative OSM match before volume can raise LTS.',
+      'City of Perth rows are deduplicated by site and survey period. Complementary directions are combined for a two-way centreline; a lone directional observation remains directional instead of being silently treated as a whole-road total.',
+      'Only an explicit all-day numeric legal speed can fill a missing OSM value. Ambiguous default records, weak geometry matches and conflicting strong matches remain unresolved and use the labelled classifier fallback.',
+    ],
+    trafficLimitation: 'Traffic Digest coverage is strongest on the Main Roads network; City of Perth improves central-city local-road coverage but does not represent every metropolitan council. Unmatched local roads continue to use OSM and transparent road-class inference.',
+    speedLimitation: 'Many WA legal-speed records describe a context-dependent default rather than one explicit value. Those rows are deliberately excluded instead of assigning a potentially wrong speed.',
+  },
+  south_australia: {
+    trafficTitle: 'South Australian traffic-volume evidence',
+    trafficDescription: 'The Department for Infrastructure and Transport’s current Traffic Volumes layer supplies published AADT estimates. Valid records are matched conservatively by road geometry and identity, with source year, method and confidence retained for inspection.',
+    trafficLinks: [{ label: 'DIT Traffic Volumes', href: 'https://data.sa.gov.au/data/dataset/traffic-volumes' }],
+    roadDescription: 'This build has no separate current statewide speed-line supplement. Explicit OSM speed, lane, cycling-facility and parking tags are used where present; otherwise the shared classifier’s labelled road-class fallbacks apply.',
+    roadLinks: [],
+    methodology: [
+      'The published DIT traffic-volume estimate is accepted only when it can be associated with the same OSM road geometry. Invalid or ambiguous records are rejected rather than spread along a corridor.',
+      'No external speed layer overwrites OSM. A missing speed remains visibly inferred from road class, using the same fallback rules as every other state.',
+    ],
+    trafficLimitation: 'DIT volume coverage is concentrated on monitored roads. Local streets without a match continue to use OSM road class, speed, lanes and cycling-facility evidence.',
+    speedLimitation: 'No current reusable statewide speed-zone line layer is included, so missing OSM speeds use clearly labelled classifier fallbacks.',
+  },
+  act: {
+    trafficTitle: 'ACT traffic-volume evidence',
+    trafficDescription: 'No maintained, reusable territory-wide geospatial AADT feed was suitable for a conservative road-level join. The ACT map therefore uses OSM and transparent road-class inference rather than presenting tabular summaries as exact street counts.',
+    trafficLinks: [],
+    roadDescription: 'The public ACT speed-zone layer located during this audit was dated November 2020, so it is not used as if it represented current legal speeds. Explicit OSM details remain authoritative and missing values use labelled fallbacks. ACT rules permit cycling on ordinary paths unless signed otherwise, but legal access is not treated as evidence that a footpath is purpose-built or comfortable cycling infrastructure.',
+    roadLinks: [{ label: 'ACT active-travel path guidance', href: 'https://www.cityservices.act.gov.au/__data/assets/pdf_file/0010/1382383/Municipal-Infrastructure-Standards-05-Active-Travel-Facilities-Design.pdf' }],
+    methodology: [
+      'ACT routing uses the same classifier and penalties as the other live states, but no official traffic volume is attached unless a reusable observation can be spatially audited to the road.',
+      'The stale public speed snapshot is deliberately omitted. This avoids creating false precision from a layer that may not reflect subsequent speed-zone changes.',
+      'An ordinary ACT path or forestry track may remain available to routing where OSM does not prohibit bicycles, but receives the unconfirmed-path penalty. Because bicycle=yes often restates territory-wide legal access, that tag alone does not prove a purpose-built cycling facility in the ACT. These access-only links are hidden by default; designated cycleways, shared paths and bicycle-route links remain visible.',
+    ],
+    trafficLimitation: 'No official territory-wide road-level AADT supplement is included. Results rely more heavily on OSM road class, explicit speed, lanes and cycling facilities.',
+    speedLimitation: 'The located ACT speed dataset is historical and is not used to fill current speeds; missing OSM values use clearly labelled fallbacks.',
+  },
+  tasmania: {
+    trafficTitle: 'Tasmanian traffic-volume evidence',
+    trafficDescription: 'The national Harmonised Traffic Counts calendar-year layer is grouped by station, road and year, with directional or lane totals combined and normalised by observation coverage. The latest available annual record for each station is matched conservatively to OSM and keeps its year visible.',
+    trafficLinks: [{ label: 'Harmonised Traffic Counts', href: 'https://catalogue.data.infrastructure.gov.au/dataset/harmonised-traffic-counts' }],
+    roadDescription: 'State Growth Speed Limits lines fill missing OSM speeds only when the published directions resolve to one safe all-day value. Conflicting directional values that cannot be expressed safely on the OSM way are rejected.',
+    roadLinks: [{ label: 'State Growth speed limits', href: 'https://data.stategrowth.tas.gov.au/ags/rest/services/PUBLIC/SPEEDLIMITS/FeatureServer' }],
+    methodology: [
+      'Annual traffic observations are grouped at the station before matching, so separate lanes or directions are not mistaken for independent whole-road AADT values. The latest available station year is retained rather than labelled current.',
+      'A State Growth speed match must be geometrically strong and directionally unambiguous. Explicit OSM speeds win, while unresolved official records leave the classifier fallback visible.',
+    ],
+    trafficLimitation: 'Harmonised count stations are sparse outside monitored corridors and their latest year varies. Unmatched roads continue to use OSM and transparent inference.',
+    speedLimitation: 'Directional speed records that cannot be represented safely on the matching OSM way are excluded rather than collapsed into one potentially wrong value.',
+  },
+  northern_territory: {
+    trafficTitle: 'Northern Territory traffic-volume evidence',
+    trafficDescription: 'The current public Annual Traffic Report is distributed as workbooks and maps without a reusable territory-wide geospatial station join. This build does not invent coordinates or copy summary values onto roads, so the current map uses OSM and transparent inference.',
+    trafficLinks: [{ label: 'NT Annual Traffic Report 2023', href: 'https://data.nt.gov.au/dataset/annual-traffic-report-2023' }],
+    roadDescription: 'No suitable current territory-wide speed-line source was found for audited gap filling. Explicit OSM speed, lane, cycling-facility and parking tags are used where available; missing values use the common labelled fallbacks.',
+    roadLinks: [],
+    methodology: [
+      'NT routing uses the same directional LTS classifier, crossing penalties and trail rules as the other live states. The absence of a matched count does not block routing, but it leaves traffic confidence lower.',
+      'Workbook summaries will only be added after station locations can be joined reproducibly and audited. Until then, omitting them is more accurate than presenting a territory total as road-level evidence.',
+    ],
+    trafficLimitation: 'No official territory-wide road-level AADT supplement is included. Results rely more heavily on OSM road class, explicit speed, lanes and cycling facilities.',
+    speedLimitation: 'No current reusable territory-wide speed-zone line layer is included, so missing OSM speeds use clearly labelled classifier fallbacks.',
+  },
+};
+const MAPBOX_PUBLIC_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+const SATELLITE_SOURCE_ID = 'mapbox-satellite';
+const SATELLITE_LAYER_ID = 'mapbox-satellite-layer';
+const BASEMAP_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+  sources: {
+    openmaptiles: {
+      type: 'vector',
+      url: 'https://tiles.openfreemap.org/planet',
+      attribution: 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap',
+    },
+  },
+  layers: [
+    { id: 'background', type: 'background', paint: { 'background-color': '#f5f2ed' } },
+    { id: 'landcover', type: 'fill', source: 'openmaptiles', 'source-layer': 'landcover', paint: { 'fill-color': '#e8f2df', 'fill-opacity': 0.65 } },
+    { id: 'landuse', type: 'fill', source: 'openmaptiles', 'source-layer': 'landuse', paint: { 'fill-color': '#ece8df', 'fill-opacity': 0.55 } },
+    { id: 'water', type: 'fill', source: 'openmaptiles', 'source-layer': 'water', paint: { 'fill-color': '#b9def0' } },
+    { id: 'boundaries', type: 'line', source: 'openmaptiles', 'source-layer': 'boundary', paint: { 'line-color': '#a8a29e', 'line-width': 0.7, 'line-dasharray': [3, 2] } },
+    { id: 'roads', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation', paint: { 'line-color': '#d6d3d1', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.4, 12, 1.2, 17, 5] } },
+    { id: 'buildings', type: 'fill', source: 'openmaptiles', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': '#ded9d3', 'fill-outline-color': '#cbc5bd' } },
+    {
+      id: 'road-labels',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'transportation_name',
+      minzoom: 12,
+      layout: {
+        'symbol-placement': 'line',
+        'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+        'text-font': ['Noto Sans Regular'],
+        'text-size': 11,
+      },
+      paint: { 'text-color': '#57534e', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'place-labels',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      layout: {
+        'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 12, 15],
+      },
+      paint: { 'text-color': '#44403c', 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 },
+    },
+  ],
+};
+const LTS_COLOURS: Record<number, string> = {
+  1: '#16a34a',
+  1.5: '#06b6d4',
+  2: '#2563eb',
+  3: '#f59e0b',
+  4: '#dc2626',
+  4.5: '#7f1d1d',
+};
+const LTS_LABELS: Record<number, string> = {
+  1: 'Very low stress',
+  1.5: 'Quiet trafficable road',
+  2: 'Low stress',
+  3: 'Higher stress',
+  4: 'High stress',
+  4.5: 'Avoid cycling',
+};
+const LTS_LEVELS = [1, 1.5, 2, 3, 4, 4.5] as const;
+
+function syncSatelliteOverlay(map: maplibregl.Map, enabled: boolean, opacity: number) {
+  if (!enabled || !MAPBOX_PUBLIC_TOKEN) {
+    if (map.getLayer(SATELLITE_LAYER_ID)) map.removeLayer(SATELLITE_LAYER_ID);
+    if (map.getSource(SATELLITE_SOURCE_ID)) map.removeSource(SATELLITE_SOURCE_ID);
+    return;
+  }
+
+  if (!map.getSource(SATELLITE_SOURCE_ID)) {
+    map.addSource(SATELLITE_SOURCE_ID, {
+      type: 'raster',
+      url: `https://api.mapbox.com/v4/mapbox.satellite.json?secure&access_token=${MAPBOX_PUBLIC_TOKEN}`,
+      tileSize: 256,
+    });
+  }
+  if (!map.getLayer(SATELLITE_LAYER_ID)) {
+    map.addLayer({
+      id: SATELLITE_LAYER_ID,
+      type: 'raster',
+      source: SATELLITE_SOURCE_ID,
+      paint: {
+        'raster-opacity': opacity,
+        'raster-fade-duration': 180,
+      },
+    }, map.getLayer('road-labels') ? 'road-labels' : undefined);
+  } else {
+    map.setPaintProperty(SATELLITE_LAYER_ID, 'raster-opacity', opacity);
+  }
+}
+
+interface LtsMetadata {
+  classifier_version: string;
+  generated_at: string;
+  source_pbf_modified_at: string;
+  segments: number;
+  dismount_segments?: number;
+  dismount_distance_km?: number;
+  crossings: number;
+  segment_counts: Record<string, number>;
+  segment_distance_km: Record<string, number>;
+  crossing_counts: Record<string, number>;
+  confidence_counts: Record<string, number>;
+  implicit_footway_cycling?: boolean;
+  traffic_volume?: {
+    available_directional_records: number;
+    matched_segments: number;
+    matched_distance_km: number;
+    uplifted_segments: number;
+    methodology_counts: Record<string, number>;
+    source_counts: Record<string, number>;
+    volume_band_counts: Record<string, number>;
+  };
+  supplemental_roads?: {
+    available_records: Record<string, number>;
+    official_speed_segments?: number;
+    official_speed_directions?: number;
+    bicycle_infrastructure_segments?: number;
+    parking_segments?: number;
+    matched_distance_km: Record<string, number>;
+  };
+  nsw_speed_zones?: {
+    available_records?: number;
+    source_audit: {
+      source_features: number;
+      accepted_records: number;
+      rejected: Record<string, number>;
+    };
+    status_counts: Record<string, number>;
+    reason_counts: Record<string, number>;
+    matched_distance_km: number;
+  };
+  surface?: {
+    counts: Record<string, number>;
+    distance_km: Record<string, number>;
+  };
+  mtb?: {
+    route_relations: number;
+    route_member_ways: number;
+    counts: Record<string, number>;
+    distance_km: Record<string, number>;
+  };
+  trails?: {
+    bicycle_route_relations: number;
+    bicycle_route_member_ways: number;
+    hiking_route_relations: number;
+    hiking_route_member_ways: number;
+    counts: Record<string, number>;
+    distance_km: Record<string, number>;
+  };
+}
+
+type FeatureProperties = Record<string, string | number | boolean | null | undefined>;
+type Coordinate = [number, number];
+
+function emptyFeatureCollection(): GeoJSON.FeatureCollection {
+  return { type: 'FeatureCollection', features: [] };
+}
+
+function unverifiedTrailFilter(hideAccessOnlyTrails = false): maplibregl.FilterSpecification {
+  const base: maplibregl.FilterSpecification = [
+    'all',
+    ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]],
+  ];
+  return hideAccessOnlyTrails
+    ? ['all', base, ['!=', ['get', 'is_access_only_trail'], true]]
+    : base;
+}
+
+const ACT_ACCESS_ONLY_TRAIL_FILTER: maplibregl.FilterSpecification = [
+  '==', ['get', 'is_access_only_trail'], true,
+];
+
+function simplifyBaseMap(map: maplibregl.Map) {
+  for (const layer of map.getStyle()?.layers || []) {
+    try {
+      if (layer.type === 'line' && /road|street|motorway|trunk|primary|secondary|tertiary/.test(layer.id)) {
+        map.setPaintProperty(layer.id, 'line-opacity', 0.22);
+      }
+      if (layer.type === 'symbol' && /road-number|shield|route-label/.test(layer.id)) {
+        map.setLayoutProperty(layer.id, 'visibility', 'none');
+      }
+    } catch {
+      // Basemap styles differ slightly between releases.
+    }
+  }
+}
+
+function selectedGeoJson(feature?: MapGeoJSONFeature): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: feature ? [{
+      type: 'Feature',
+      properties: {},
+      geometry: feature.geometry,
+    } as GeoJSON.Feature] : [],
+  };
+}
+
+function geometryFingerprint(geometry: GeoJSON.Geometry): string {
+  const source = JSON.stringify(geometry);
+  let value = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    value ^= source.charCodeAt(index);
+    value = Math.imul(value, 16777619);
+  }
+  return (value >>> 0).toString(36);
+}
+
+function voteSegmentFromFeature(feature: Pick<MapGeoJSONFeature, 'properties' | 'geometry' | 'id'>, dataset: DatasetKey, metadata?: LtsMetadata | null): VoteSegment | null {
+  const properties = feature.properties as FeatureProperties;
+  const currentLts = Number(properties.lts);
+  if (!isLtsVoteLevel(currentLts)) return null;
+  const featureKind = String(properties.feature_kind || 'segment');
+  if (featureKind !== 'segment' && featureKind !== 'crossing') return null;
+  const osmId = properties.osm_id ? String(properties.osm_id) : undefined;
+  const sourceId = String(properties.segment_id || osmId || feature.id || geometryFingerprint(feature.geometry as GeoJSON.Geometry));
+  const direction = properties.lts_direction || properties.direction;
+  const segmentId = `${featureKind}:${sourceId}${direction ? `:${String(direction)}` : ''}`
+    .replace(/[^a-zA-Z0-9:._-]/g, '_')
+    .slice(0, 160);
+  const maxspeed = Number(properties.maxspeed);
+  const trafficAadt = Number(properties.traffic_aadt);
+  return {
+    dataset,
+    segmentId,
+    name: String(properties.name || 'Unnamed road/path').slice(0, 160),
+    featureKind,
+    currentLts,
+    highway: String(properties.highway || ''),
+    trailRouting: String(properties.trail_routing || ''),
+    isMtb: propertyIsTrue(properties.is_mtb),
+    geometry: JSON.parse(JSON.stringify(feature.geometry)) as GeoJSON.Geometry,
+    osmId,
+    direction: direction ? String(direction).slice(0, 30) : undefined,
+    maxspeed: Number.isFinite(maxspeed) ? maxspeed : undefined,
+    trafficAadt: Number.isFinite(trafficAadt) ? trafficAadt : undefined,
+    datasetVersion: metadata ? `${metadata.source_pbf_modified_at}:${metadata.classifier_version}`.slice(0, 160) : undefined,
+    classifierVersion: metadata?.classifier_version,
+    osmSnapshotDate: metadata?.source_pbf_modified_at,
+  };
+}
+
+function dismountReportSegmentFromFeature(
+  feature: MapGeoJSONFeature,
+  dataset: DatasetKey,
+  metadata?: LtsMetadata | null,
+): DismountReportSegment | null {
+  const properties = feature.properties as FeatureProperties;
+  if (String(properties.feature_kind || '') !== 'dismount') return null;
+  const osmId = properties.osm_id ? String(properties.osm_id) : undefined;
+  const sourceId = String(properties.segment_id || osmId || feature.id || geometryFingerprint(feature.geometry as GeoJSON.Geometry));
+  return {
+    dataset,
+    segmentId: `dismount:${sourceId}`.replace(/[^a-zA-Z0-9:._-]/g, '_').slice(0, 160),
+    name: String(properties.name || 'Unnamed road/path').slice(0, 160),
+    featureKind: 'dismount',
+    geometry: JSON.parse(JSON.stringify(feature.geometry)) as GeoJSON.Geometry,
+    osmId,
+    datasetVersion: metadata ? `${metadata.source_pbf_modified_at}:${metadata.classifier_version}`.slice(0, 160) : undefined,
+    classifierVersion: metadata?.classifier_version,
+    osmSnapshotDate: metadata?.source_pbf_modified_at,
+  };
+}
+
+function osmUrl(properties: FeatureProperties): string | null {
+  const raw = String(properties.osm_id || '');
+  const match = raw.match(/^([wnr])(\d+)$/);
+  if (!match) return null;
+  const type = match[1] === 'w' ? 'way' : match[1] === 'n' ? 'node' : 'relation';
+  return `https://www.openstreetmap.org/${type}/${match[2]}`;
+}
+
+function propertyIsTrue(value: FeatureProperties[string]): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true';
+}
+
+function trafficFreshness(value: FeatureProperties[string]): { label: string; className: string } | null {
+  const year = Number(value);
+  if (!Number.isInteger(year) || year < 1900) return null;
+  const age = Math.max(0, new Date().getFullYear() - year);
+  if (age <= 2) return { label: 'Recent count', className: 'border-emerald-300/30 bg-emerald-300/15 text-emerald-200' };
+  if (age <= 5) return { label: `${age} years old`, className: 'border-amber-300/30 bg-amber-300/15 text-amber-200' };
+  return { label: `Historical · ${age} years old`, className: 'border-rose-300/30 bg-rose-300/15 text-rose-200' };
+}
+
+export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const [workshopMap,setWorkshopMap]=useState<maplibregl.Map|null>(null);
+  const [showWorkshopCrossings,setShowWorkshopCrossings]=useState(true);
+  const workshopCrossingsRef=useRef(workshopMode);
+  useEffect(()=>{workshopCrossingsRef.current=workshopMode&&showWorkshopCrossings;},[workshopMode,showWorkshopCrossings]);
+  const searchMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const locationMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const placeSearchRequestIdRef = useRef(0);
+  const satelliteEnabledRef = useRef(false);
+  const satelliteOpacityRef = useRef(0.55);
+  const metadataRef = useRef<LtsMetadata | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapLoading, setMapLoading] = useState(true);
+  const [metadata, setMetadata] = useState<LtsMetadata | null>(null);
+  const hasRuralUnsealedRule = metadata?.classifier_version.includes('rural-unsealed') ?? false;
+  const [selected, setSelected] = useState<FeatureProperties | null>(null);
+  const [selectedVoteSegment, setSelectedVoteSegment] = useState<VoteSegment | null>(null);
+  const selectionRef = useRef<{ segment: VoteSegment; feature: MapGeoJSONFeature }[]>([]);
+  const [voteSelection, setVoteSelection] = useState<VoteSegment[]>([]);
+  const selectionSavingRef = useRef(false);
+  const [selectionSaving, setSelectionSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const multiSelectRef = useRef(false);
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [selectedDismountSegment, setSelectedDismountSegment] = useState<DismountReportSegment | null>(null);
+  const [selectedStreetViewPoint, setSelectedStreetViewPoint] = useState<Coordinate | null>(null);
+  const [osmFeatureDetails, setOsmFeatureDetails] = useState<OsmFeatureDetails | null>(null);
+  const [osmFeatureError, setOsmFeatureError] = useState<{ osmId: string; message: string } | null>(null);
+  const [visibleLts, setVisibleLts] = useState<Set<number>>(new Set([1, 2, 3, 4, 4.5]));
+  const [showCrossings, setShowCrossings] = useState(true);
+  const [showLowConfidence, setShowLowConfidence] = useState(true);
+  const [showMtbTrails, setShowMtbTrails] = useState(true);
+  const [showDismountLinks, setShowDismountLinks] = useState(false);
+  const [showUnverifiedTrails, setShowUnverifiedTrails] = useState(true);
+  const [showActAccessOnlyTrails, setShowActAccessOnlyTrails] = useState(false);
+  const [satelliteEnabled, setSatelliteEnabled] = useState(false);
+  const [satelliteOpacity, setSatelliteOpacity] = useState(0.55);
+  const [showAbout, setShowAbout] = useState(false);
+  const aboutDialogRef = useRef<HTMLDivElement>(null);
+  const aboutCloseRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDetailsElement>(null);
+  const [contributionExpanded, setContributionExpanded] = useState(false);
+  const [mapPanelExpanded, setMapPanelExpanded] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [routePanelOpen, setRoutePanelOpen] = useState(false);
+  const routeModeRef = useRef(false);
+  useEffect(()=>{routeModeRef.current=routePanelOpen;},[routePanelOpen]);
+  const [placeQuery, setPlaceQuery] = useState('');
+  const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
+  const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
+  const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [datasetKey, setDatasetKey] = useState<DatasetKey>('victoria');
+  const startupInteractionRef = useRef(workshopMode);
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    if(!workshopMode&&(params.get('workshop')==='1'||params.has('section'))){
+      const target=new URL(workshopMapViewUrl(window.location.href,true));params.delete('workshop');target.search=params.toString();window.location.replace(target.href);
+    }
+  },[workshopMode]);
+  const startupViewRef = useRef<{ dataset: DatasetKey; center: [number, number]; zoom?: number } | null>(null);
+  const [publishedRelease, setPublishedRelease] = useState<LtsRelease | null>(null);
+  const releaseDataset = publishedRelease?.datasets[datasetKey];
+  const activeDataset = releaseDataset ? {
+    ...DATASETS[datasetKey], dataUrl: releaseDataset.archive_url, metadataUrl: releaseDataset.metadata_url,
+  } : DATASETS[datasetKey];
+
+  useEffect(() => {
+    const abort = new AbortController();
+    fetch(ltsAppPath('/api/lts-release'), { cache: 'no-store', signal: abort.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(setPublishedRelease)
+      .catch(error => { if (!abort.signal.aborted) console.error('[LTS release]', error); });
+    return () => abort.abort();
+  }, []);
+  const stateSourceCopy = STATE_SOURCE_COPY[datasetKey];
+  useEffect(() => {
+    metadataRef.current = metadata;
+  }, [metadata]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 4000);
+    // Contact our own map host directly: the ausbug.app proxy otherwise locates
+    // the proxy server instead of the visitor. No GPS permission or third-party lookup.
+    const url = process.env.NODE_ENV === 'production'
+      ? 'https://australian-lts-lab.vercel.app/api/start-location'
+      : '/api/start-location';
+    fetch(url, { signal: controller.signal, cache: 'no-store', credentials: 'omit' })
+      .then(response => response.ok ? response.json() : null)
+      .then((hint: { dataset?: string; center?: [number, number] | null } | null) => {
+        if (controller.signal.aborted || startupInteractionRef.current || !hint?.dataset
+          || !Object.prototype.hasOwnProperty.call(DATASETS, hint.dataset)) return;
+        const dataset = hint.dataset as DatasetKey;
+        const center = hint.center && hint.center.length === 2 && hint.center.every(Number.isFinite)
+          ? hint.center : DATASETS[dataset].center;
+        startupViewRef.current = { dataset, center };
+        if (dataset === 'victoria') {
+          mapRef.current?.jumpTo({ center, zoom: 12 });
+          startupViewRef.current = null;
+        } else {
+          setMapLoading(true);
+          setDatasetKey(dataset);
+        }
+      })
+      .catch(() => { /* Keep the city fallback; location must never block the map. */ })
+      .finally(() => window.clearTimeout(timeout));
+    return () => { controller.abort(); window.clearTimeout(timeout); };
+  }, []);
+
+  const refreshApprovedOverlay = useCallback(async () => {
+    const params = new URLSearchParams({ dataset: datasetKey, approved: '1' });
+    const response = await fetch(ltsAppPath(`/api/lts-votes?${params}`), { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Published segments returned ${response.status}`);
+    const approved = await response.json() as GeoJSON.FeatureCollection;
+    (mapRef.current?.getSource('lts-approved') as maplibregl.GeoJSONSource | undefined)?.setData(approved);
+  }, [datasetKey]);
+
+  useEffect(() => {
+    const abort = new AbortController();
+    fetch(ltsAppPath(activeDataset.metadataUrl), { cache: 'no-store', signal: abort.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Metadata returned ${response.status}`);
+        return response.json();
+      })
+      .then(setMetadata)
+      .catch((error) => { if (!abort.signal.aborted) setMapError(`LTS metadata is unavailable: ${error.message}`); });
+    return () => abort.abort();
+  }, [activeDataset.metadataUrl]);
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+    const protocol = new Protocol();
+    addProtocol('pmtiles', protocol.tile);
+
+    const map = new maplibregl.Map({
+        container: mapContainerRef.current,
+        style: BASEMAP_STYLE,
+        boxZoom: false,
+        center: startupViewRef.current?.dataset === datasetKey ? startupViewRef.current.center : activeDataset.center,
+        zoom: startupViewRef.current?.dataset === datasetKey ? (startupViewRef.current.zoom ?? activeDataset.zoom) : activeDataset.zoom,
+      });
+      mapRef.current = map;
+      const resizeObserver = new ResizeObserver(() => map.resize());
+      resizeObserver.observe(mapContainerRef.current);
+      startupViewRef.current = null;
+      map.addControl(new maplibregl.NavigationControl({ showZoom: window.innerWidth >= 768 }), 'top-right');
+
+      map.on('error', (event) => {
+        const message = event.error?.message || '';
+        console.error('[Australian LTS map]', message, event.error);
+        if (message.includes(activeDataset.dataUrl) || message.includes('pmtile')) {
+          setMapLoading(false);
+          setMapError(`The LTS tile archive could not be loaded: ${message}`);
+        }
+      });
+
+      map.on('load', () => {
+        simplifyBaseMap(map);
+        map.addSource('lts-network', {
+          type: 'vector',
+          url: `pmtiles://${ltsAppPath(activeDataset.dataUrl)}`,
+        });
+        map.addSource('lts-approved', { type: 'geojson', data: emptyFeatureCollection() });
+        map.addSource('lts-selected', { type: 'geojson', data: selectedGeoJson() });
+
+        const colourExpression: maplibregl.ExpressionSpecification = [
+          'case',
+          ['==', ['get', 'lts'], 1], LTS_COLOURS[1],
+          ['==', ['get', 'lts'], 1.5], LTS_COLOURS[1.5],
+          ['==', ['get', 'lts'], 2], LTS_COLOURS[2],
+          ['==', ['get', 'lts'], 3], LTS_COLOURS[3],
+          ['==', ['get', 'lts'], 4], LTS_COLOURS[4],
+          ['==', ['get', 'lts'], 4.5], LTS_COLOURS[4.5],
+          '#6b7280',
+        ];
+        const approvedColourExpression: maplibregl.ExpressionSpecification = [
+          'case',
+          ['==', ['get', 'path_type'], 'walking'], '#6b7280',
+          ['==', ['get', 'path_type'], 'mtb'], '#8b5cf6',
+          ['all', ['!', ['has', 'path_type']], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]], '#ec4899',
+          ['==', ['get', 'lts'], 1], LTS_VOTE_COLOURS[1],
+          ['==', ['get', 'lts'], 1.5], LTS_VOTE_COLOURS[1.5],
+          ['==', ['get', 'lts'], 2], LTS_VOTE_COLOURS[2],
+          ['==', ['get', 'lts'], 3], LTS_VOTE_COLOURS[3],
+          ['==', ['get', 'lts'], 4], LTS_VOTE_COLOURS[4],
+          ['==', ['get', 'lts'], 4.5], LTS_VOTE_COLOURS[4.5],
+          '#6b7280',
+        ];
+
+        map.addLayer({
+          id: 'lts-segments',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['all', ['==', ['get', 'feature_kind'], 'segment'], ['!=', ['get', 'is_unsealed'], true], ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]], ['!=', ['get', 'confidence'], 'low']],
+          minzoom: 7,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': colourExpression,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 12, 1.5, 15, 3.5, 18, 7],
+            'line-opacity': 0.45,
+          },
+        });
+        map.addLayer({
+          id: 'lts-segments-low-confidence',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['all', ['==', ['get', 'feature_kind'], 'segment'], ['!=', ['get', 'is_unsealed'], true], ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]], ['==', ['get', 'confidence'], 'low']],
+          minzoom: 8,
+          layout: { 'line-cap': 'butt', 'line-join': 'round' },
+          paint: {
+            'line-color': colourExpression,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 13, 1.8, 16, 4],
+            'line-opacity': 0.35,
+            'line-dasharray': [2, 1.5],
+          },
+        });
+        map.addLayer({
+          id: 'lts-unsealed-casing',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['all', ['==', ['get', 'feature_kind'], 'segment'], ['==', ['get', 'is_unsealed'], true], ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]]],
+          minzoom: 7,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.8, 12, 3.5, 15, 7, 18, 12],
+            'line-opacity': 0.45,
+          },
+        });
+        map.addLayer({
+          id: 'lts-unsealed',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['all', ['==', ['get', 'feature_kind'], 'segment'], ['==', ['get', 'is_unsealed'], true], ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]]],
+          minzoom: 7,
+          layout: { 'line-cap': 'butt', 'line-join': 'round' },
+          paint: {
+            'line-color': colourExpression,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 12, 1.7, 15, 3.8, 18, 7],
+            'line-opacity': ['case', ['==', ['get', 'confidence'], 'low'], 0.35, 0.45],
+            'line-dasharray': [2, 1.5],
+          },
+        });
+        map.addLayer({
+          id: 'lts-mtb-trails-casing',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['==', ['get', 'is_mtb'], true],
+          minzoom: 9,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.8, 12, 3.6, 15, 6.4, 18, 10.2],
+            'line-opacity': 0.45,
+          },
+        });
+        map.addLayer({
+          id: 'lts-mtb-trails',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['==', ['get', 'is_mtb'], true],
+          minzoom: 9,
+          layout: { 'line-cap': 'butt', 'line-join': 'round' },
+          paint: {
+            'line-color': '#a855f7',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 12, 1.7, 15, 3.2, 18, 5.5],
+            'line-opacity': 0.45,
+            'line-dasharray': [1.1, 1.25],
+          },
+        });
+        map.addLayer({
+          id: 'lts-unverified-trails-casing',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: unverifiedTrailFilter(datasetKey === 'act'),
+          minzoom: 11,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.2, 14, 5, 18, 10],
+            'line-opacity': 0.45,
+          },
+        });
+        map.addLayer({
+          id: 'lts-unverified-trails',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: unverifiedTrailFilter(datasetKey === 'act'),
+          minzoom: 11,
+          layout: { 'line-cap': 'butt', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ec4899',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 14, 2.4, 18, 5.5],
+            'line-opacity': 0.45,
+            'line-dasharray': [1.1, 1.25],
+          },
+        });
+        map.addLayer({
+          id: 'lts-act-access-only-trails-casing',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ACT_ACCESS_ONLY_TRAIL_FILTER,
+          minzoom: 11,
+          layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.2, 14, 5, 18, 10],
+            'line-opacity': 0.45,
+          },
+        });
+        map.addLayer({
+          id: 'lts-act-access-only-trails',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ACT_ACCESS_ONLY_TRAIL_FILTER,
+          minzoom: 11,
+          layout: { 'line-cap': 'butt', 'line-join': 'round', visibility: 'none' },
+          paint: {
+            'line-color': '#475569',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.9, 14, 2.4, 18, 5.5],
+            'line-opacity': 0.55,
+            'line-dasharray': [1.1, 1.25],
+          },
+        });
+        map.addLayer({
+          id: 'lts-dismount-casing',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['==', ['get', 'feature_kind'], 'dismount'],
+          minzoom: 10,
+          layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2.2, 14, 5.5, 18, 11],
+            'line-opacity': 0.9,
+          },
+        });
+        map.addLayer({
+          id: 'lts-dismount',
+          type: 'line',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['==', ['get', 'feature_kind'], 'dismount'],
+          minzoom: 10,
+          layout: { 'line-cap': 'butt', 'line-join': 'round', visibility: 'none' },
+          paint: {
+            'line-color': '#6b7280',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.2, 14, 3.2, 18, 7],
+            'line-opacity': 0.98,
+            'line-dasharray': [1.5, 1],
+          },
+        });
+        map.addLayer({
+          id: 'lts-crossings',
+          type: 'circle',
+          source: 'lts-network',
+          'source-layer': 'lts',
+          filter: ['==', ['get', 'feature_kind'], 'crossing'],
+          minzoom: 14,
+          layout:{visibility:workshopCrossingsRef.current?'none':'visible'},
+          paint: {
+            'circle-color': colourExpression,
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 2.5, 17, 5.5],
+            'circle-stroke-color': '#ffffff',
+            'circle-stroke-width': 1,
+            'circle-opacity': 0.95,
+          },
+        });
+        map.addLayer({
+          id: 'lts-approved-casing',
+          type: 'line',
+          source: 'lts-approved',
+          filter: ['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]],
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.4, 14, 7, 18, 13],
+            'line-opacity': 0.9,
+          },
+        });
+        map.addLayer({
+          id: 'lts-approved-line',
+          type: 'line',
+          source: 'lts-approved',
+          filter: ['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]],
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': approvedColourExpression,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.2, 14, 4.5, 18, 9],
+            'line-opacity': 0.98,
+          },
+        });
+        map.addLayer({
+          id: 'lts-approved-point',
+          type: 'circle',
+          layout:{visibility:workshopCrossingsRef.current?'none':'visible'},
+          source: 'lts-approved',
+          filter: ['==', ['geometry-type'], 'Point'],
+          paint: {
+            'circle-color': approvedColourExpression,
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 17, 7],
+            'circle-stroke-color': '#ffffff',
+            'circle-stroke-width': 2,
+          },
+        });
+        map.addLayer({
+          id: 'lts-selected-line',
+          type: 'line',
+          source: 'lts-selected',
+          paint: { 'line-color': '#111827', 'line-width': 8, 'line-opacity': 0.85 },
+        });
+        map.addLayer({
+          id: 'lts-selected-point',
+          type: 'circle',
+          source: 'lts-selected',
+          paint: { 'circle-color': '#111827', 'circle-radius': 9, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 },
+        });
+
+        const interactiveLayers = ['lts-crossings', 'lts-dismount', 'lts-act-access-only-trails', 'lts-unverified-trails', 'lts-mtb-trails', 'lts-unsealed', 'lts-segments-low-confidence', 'lts-segments'];
+        const availableInteractiveLayers = () => interactiveLayers.filter((layerId) => Boolean(map.getLayer(layerId)));
+        map.on('mousemove', (event) => {
+          if (routeModeRef.current) { map.getCanvas().style.cursor = 'crosshair'; return; }
+          const layers = [...availableInteractiveLayers(),...['workshop-crossing-icons','workshop-crossing-points','workshop-numbers','workshop-selected-number'].filter(id=>Boolean(map.getLayer(id)))];
+          map.getCanvas().style.cursor = layers.length > 0 && map.queryRenderedFeatures(event.point, { layers }).length > 0
+            ? 'pointer'
+            : '';
+        });
+        map.on('click', (event: MapMouseEvent) => {
+          if (selectionSavingRef.current || routeModeRef.current) return;
+          const labels=['workshop-numbers','workshop-selected-number'].filter(id=>Boolean(map.getLayer(id)));
+          if(labels.length&&map.queryRenderedFeatures(event.point,{layers:labels}).length)return;
+          const crossingLayers=['workshop-crossing-icons','workshop-crossing-points'].filter(id=>Boolean(map.getLayer(id)));
+          if(workshopCrossingsRef.current&&crossingLayers.length&&map.queryRenderedFeatures(event.point,{layers:crossingLayers}).length)return;
+          const layers = availableInteractiveLayers();
+          const extending = event.originalEvent.shiftKey || multiSelectRef.current;
+          // Endpoint circles sit above roads. In multi-select, ignore these
+          // non-votable hits and use a small forgiving road hit area instead.
+          const exactHits = layers.length > 0 ? map.queryRenderedFeatures(event.point, { layers }) : [];
+          const nearbyHits = layers.length > 0 ? map.queryRenderedFeatures([
+            [event.point.x - 7, event.point.y - 7],
+            [event.point.x + 7, event.point.y + 7],
+          ], { layers }) : [];
+          const candidates = [...exactHits, ...nearbyHits];
+          let feature = extending
+            ? candidates.find((candidate) => voteSegmentFromFeature(candidate, datasetKey, metadataRef.current) !== null)
+            : exactHits[0] ?? nearbyHits[0];
+          let segment = feature ? voteSegmentFromFeature(feature, datasetKey, metadataRef.current) : null;
+          if (feature && segment) {
+            // Vector tiles clip the same OSM way into multiple features. Gather
+            // every loaded fragment, not just the one under the pointer.
+            const parts = map.querySourceFeatures('lts-network', { sourceLayer: 'lts' })
+              .filter((part) => voteSegmentFromFeature(part, datasetKey, metadataRef.current)?.segmentId === segment!.segmentId);
+            const lines = parts.flatMap((part) => part.geometry.type === 'LineString' ? [part.geometry.coordinates]
+              : part.geometry.type === 'MultiLineString' ? part.geometry.coordinates : []);
+            if (lines.length) {
+              const unique = [...new Map(lines.map((line) => [JSON.stringify(line), line])).values()];
+              feature = { ...feature, geometry: { type: 'MultiLineString', coordinates: unique } } as MapGeoJSONFeature;
+              segment = { ...segment, geometry: feature.geometry };
+            }
+          }
+          if (extending) {
+            if (!feature || !segment) return;
+            selectionRef.current = toggleSegment(selectionRef.current, { segment, feature });
+            feature = selectionRef.current[0]?.feature;
+          } else {
+            selectionRef.current = feature && segment ? [{ segment, feature }] : [];
+          }
+          setVoteSelection(selectionRef.current.map((entry) => entry.segment));
+          const publishedPath = feature && map.queryRenderedFeatures(event.point, { layers: ['lts-approved-line'] })
+            .find(part => part.properties?.segment_id === segment?.segmentId && part.properties?.path_type);
+          setSelected(feature ? { ...feature.properties, ...(publishedPath ? { reviewed_path_type: publishedPath.properties.path_type } : {}) } as FeatureProperties : null);
+          setSelectedVoteSegment(selectionRef.current[0]?.segment ?? null);
+          if (feature) {
+            setMapPanelExpanded(false);
+            setSearchExpanded(false); setRoutePanelOpen(false);
+            if (!extending) setContributionExpanded(false);
+          }
+          setSelectedDismountSegment(feature ? dismountReportSegmentFromFeature(feature, datasetKey, metadataRef.current) : null);
+          setSelectedStreetViewPoint(feature ? [event.lngLat.lng, event.lngLat.lat] : null);
+          (map.getSource('lts-selected') as maplibregl.GeoJSONSource)
+            .setData(selectionRef.current.length ? {
+              type: 'FeatureCollection',
+              features: selectionRef.current.flatMap((entry) => selectedGeoJson(entry.feature).features),
+            } : selectedGeoJson(feature));
+        });
+        const approvedParams = new URLSearchParams({ dataset: datasetKey, approved: '1' });
+        fetch(ltsAppPath(`/api/lts-votes?${approvedParams}`), { cache: 'no-store' })
+          .then((response) => {
+            if (!response.ok) throw new Error(`Approved segments returned ${response.status}`);
+            return response.json();
+          })
+          .then((approved: GeoJSON.FeatureCollection) => {
+            if (mapRef.current !== map) return;
+            (map.getSource('lts-approved') as maplibregl.GeoJSONSource | undefined)?.setData(approved);
+          })
+          .catch((error) => console.warn('[LTS approved overlay]', error));
+        syncSatelliteOverlay(map, satelliteEnabledRef.current, satelliteOpacityRef.current);
+        setWorkshopMap(map);
+        setMapLoading(false);
+    });
+
+    return () => {
+      resizeObserver.disconnect();
+      searchMarkerRef.current?.remove();
+      searchMarkerRef.current = null;
+      locationMarkerRef.current?.remove();
+      locationMarkerRef.current = null;
+      mapRef.current?.remove();
+      mapRef.current = null;
+      removeProtocol('pmtiles');
+    };
+  }, [activeDataset.center, activeDataset.dataUrl, activeDataset.zoom, datasetKey]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map?.getLayer('lts-segments')) return;
+    const levels = [...visibleLts];
+    const baseFilter: maplibregl.FilterSpecification = [
+      'all',
+      ['==', ['get', 'feature_kind'], 'segment'],
+      ['in', ['get', 'lts'], ['literal', levels]],
+    ];
+    map.setFilter('lts-segments-low-confidence', [
+      ...baseFilter,
+      ['!=', ['get', 'is_unsealed'], true],
+      ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]],
+      ['==', ['get', 'confidence'], 'low'],
+    ] as maplibregl.FilterSpecification);
+    map.setFilter('lts-segments', [
+      ...baseFilter,
+      ['!=', ['get', 'is_unsealed'], true],
+      ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]],
+      ['!=', ['get', 'confidence'], 'low'],
+    ] as maplibregl.FilterSpecification);
+    const unsealedFilter: maplibregl.FilterSpecification = [
+      ...baseFilter,
+      ['==', ['get', 'is_unsealed'], true],
+      ['!', ['all', ['in', ['get', 'highway'], ['literal', ['cycleway', 'path', 'footway', 'pedestrian', 'track', 'bridleway']]], ['any', ['==', ['get', 'is_mtb'], true], ['in', ['get', 'trail_routing'], ['literal', ['caution', 'avoid']]]]]],
+      ...(showLowConfidence ? [] : [['!=', ['get', 'confidence'], 'low']]),
+    ] as maplibregl.FilterSpecification;
+    map.setFilter('lts-unsealed-casing', unsealedFilter);
+    map.setFilter('lts-unsealed', unsealedFilter);
+    map.setLayoutProperty('lts-segments-low-confidence', 'visibility', showLowConfidence ? 'visible' : 'none');
+    map.setFilter('lts-crossings', [
+      'all',
+      ['==', ['get', 'feature_kind'], 'crossing'],
+      ['in', ['get', 'lts'], ['literal', levels]],
+    ]);
+    const workshopSymbols=workshopMode&&showWorkshopCrossings&&datasetKey==='victoria';
+    map.setLayoutProperty('lts-crossings', 'visibility', showCrossings&&!workshopSymbols ? 'visible' : 'none');
+    map.setLayoutProperty('lts-approved-point','visibility',workshopSymbols?'none':'visible');
+    map.setLayoutProperty('lts-mtb-trails-casing', 'visibility', showMtbTrails ? 'visible' : 'none');
+    map.setLayoutProperty('lts-mtb-trails', 'visibility', showMtbTrails ? 'visible' : 'none');
+    const trailFilter = unverifiedTrailFilter(datasetKey === 'act');
+    map.setFilter('lts-unverified-trails-casing', trailFilter);
+    map.setFilter('lts-unverified-trails', trailFilter);
+    map.setLayoutProperty('lts-unverified-trails-casing', 'visibility', showUnverifiedTrails ? 'visible' : 'none');
+    map.setLayoutProperty('lts-unverified-trails', 'visibility', showUnverifiedTrails ? 'visible' : 'none');
+    const showActAccessOnly = datasetKey === 'act' && showActAccessOnlyTrails;
+    map.setLayoutProperty('lts-act-access-only-trails-casing', 'visibility', showActAccessOnly ? 'visible' : 'none');
+    map.setLayoutProperty('lts-act-access-only-trails', 'visibility', showActAccessOnly ? 'visible' : 'none');
+    map.setLayoutProperty('lts-dismount-casing', 'visibility', showDismountLinks ? 'visible' : 'none');
+    map.setLayoutProperty('lts-dismount', 'visibility', showDismountLinks ? 'visible' : 'none');
+  }, [datasetKey, workshopMap, workshopMode, showWorkshopCrossings, showActAccessOnlyTrails, showCrossings, showDismountLinks, showLowConfidence, showMtbTrails, showUnverifiedTrails, visibleLts]);
+
+  useEffect(() => {
+    satelliteEnabledRef.current = satelliteEnabled;
+    satelliteOpacityRef.current = satelliteOpacity;
+    const map = mapRef.current;
+    if (!map?.getLayer('road-labels')) return;
+    syncSatelliteOverlay(map, satelliteEnabled, satelliteOpacity);
+  }, [satelliteEnabled, satelliteOpacity]);
+
+  useEffect(() => {
+    if (!showAbout) return undefined;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    aboutCloseRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowAbout(false);
+      }
+      if (event.key === 'Tab') {
+        const controls = Array.from(aboutDialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), summary, a[href], input:not([disabled]), select:not([disabled]), [tabindex="0"]',
+        ) || []).filter((element) => {
+          const collapsed = element.closest('details:not([open])');
+          return element.getClientRects().length > 0
+            && (!collapsed || element === collapsed.querySelector(':scope > summary'));
+        });
+        if (!controls?.length) return;
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      previousFocus?.focus();
+    };
+  }, [showAbout]);
+
+  useEffect(() => {
+    const query = placeQuery.trim();
+    const requestId = ++placeSearchRequestIdRef.current;
+    if (query.length < 3) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setPlaceSearchLoading(true);
+      setPlaceSearchError(null);
+      setLocationError(null);
+      try {
+        const response = await fetch(placeSearchUrl(query, mapRef.current), { signal: controller.signal });
+        const result = await response.json() as { results?: PlaceSearchResult[]; error?: string };
+        if (!response.ok) throw new Error(result.error || 'Place search failed.');
+        if (requestId !== placeSearchRequestIdRef.current) return;
+        const results = result.results || [];
+        setPlaceResults(results);
+        setPlaceSearchError(results.length ? null : 'No Australian places matched that search.');
+      } catch (error) {
+        if (controller.signal.aborted || requestId !== placeSearchRequestIdRef.current) return;
+        setPlaceResults([]);
+        setPlaceSearchError(error instanceof Error ? error.message : 'Place search failed.');
+      } finally {
+        if (requestId === placeSearchRequestIdRef.current) setPlaceSearchLoading(false);
+      }
+    }, 350);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [placeQuery]);
+
+  const selectedOsmId = selected?.osm_id ? String(selected.osm_id) : null;
+
+  useEffect(() => {
+    if (!selectedOsmId) return;
+
+    const controller = new AbortController();
+    fetch(ltsAppPath(`/api/osm-feature?osmId=${encodeURIComponent(selectedOsmId)}`), {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const body = await response.json() as OsmFeatureDetails & { error?: string };
+        if (!response.ok) throw new Error(body.error || `OSM lookup returned ${response.status}`);
+        return body;
+      })
+      .then((details) => {
+        setOsmFeatureDetails(details);
+        setOsmFeatureError(null);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setOsmFeatureError({
+          osmId: selectedOsmId,
+          message: error instanceof Error ? error.message : 'Could not load OSM tags.',
+        });
+      });
+
+    return () => controller.abort();
+  }, [selectedOsmId]);
+
+  const selectedLtsValue = selected ? Number(selected.lts) : Number.NaN;
+  const selectedLts = Number.isFinite(selectedLtsValue) ? selectedLtsValue : null;
+  const selectedIsDismount = selected?.feature_kind === 'dismount';
+  const selectedOsmUrl = selected ? osmUrl(selected) : null;
+  const selectedTrafficFreshness = selected ? trafficFreshness(selected.traffic_year) : null;
+  const selectedOsmFeatureDetails = osmFeatureDetails?.osmId === selectedOsmId ? osmFeatureDetails : null;
+  const selectedOsmFeatureError = osmFeatureError?.osmId === selectedOsmId ? osmFeatureError.message : null;
+  const osmFeatureLoading = Boolean(selectedOsmId && !selectedOsmFeatureDetails && !selectedOsmFeatureError);
+  const selectedBikeAccess = selected && selectedOsmFeatureDetails
+    ? assessBikeAccess(selectedOsmFeatureDetails.tags, String(selected.highway || ''))
+    : null;
+  const clearRoadSelection = () => {
+    if (selectionSavingRef.current) return;
+    multiSelectRef.current = false;
+    setMultiSelect(false);
+    setContributionExpanded(false);
+    setSelected(null);
+    selectionRef.current = [];
+    setVoteSelection([]);
+    setSelectedVoteSegment(null);
+    setSelectedDismountSegment(null);
+    setSelectedStreetViewPoint(null);
+    (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
+  };
+
+  const searchPlaces = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = placeQuery.trim();
+    if (query.length < 2) {
+      setPlaceSearchError('Enter at least two characters.');
+      setPlaceResults([]);
+      return;
+    }
+    const requestId = ++placeSearchRequestIdRef.current;
+    setPlaceSearchLoading(true);
+    setPlaceSearchError(null);
+    setLocationError(null);
+    try {
+      const response = await fetch(placeSearchUrl(query, mapRef.current));
+      const result = await response.json() as { results?: PlaceSearchResult[]; error?: string };
+      if (!response.ok) throw new Error(result.error || 'Place search failed.');
+      if (requestId !== placeSearchRequestIdRef.current) return;
+      const results = result.results || [];
+      setPlaceResults(results);
+      if (!results.length) setPlaceSearchError('No Australian places matched that search.');
+    } catch (error) {
+      if (requestId !== placeSearchRequestIdRef.current) return;
+      setPlaceResults([]);
+      setPlaceSearchError(error instanceof Error ? error.message : 'Place search failed.');
+    } finally {
+      if (requestId === placeSearchRequestIdRef.current) setPlaceSearchLoading(false);
+    }
+  };
+
+  const showPlace = (place: PlaceSearchResult) => {
+    const map = mapRef.current;
+    if (!map) return;
+    searchMarkerRef.current?.remove();
+    searchMarkerRef.current = new maplibregl.Marker({ color: '#ec4899' })
+      .setLngLat([place.longitude, place.latitude])
+      .addTo(map);
+    if (place.bounds) {
+      map.fitBounds(
+        [[place.bounds[0], place.bounds[1]], [place.bounds[2], place.bounds[3]]],
+        { padding: 80, maxZoom: 16, duration: 900 },
+      );
+    } else {
+      map.flyTo({ center: [place.longitude, place.latitude], zoom: 16, duration: 900 });
+    }
+    setPlaceResults([]);
+    setPlaceSearchError(null);
+    setSearchExpanded(false); setRoutePanelOpen(false);
+  };
+
+  const findCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('This browser does not provide location access.');
+      return;
+    }
+    setLocating(true);
+    setLocationError(null);
+    setPlaceSearchError(null);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const map = mapRef.current;
+        if (map) {
+          locationMarkerRef.current?.remove();
+          locationMarkerRef.current = new maplibregl.Marker({ color: '#22c55e' })
+            .setLngLat([coords.longitude, coords.latitude])
+            .addTo(map);
+          map.flyTo({ center: [coords.longitude, coords.latitude], zoom: 16, duration: 900 });
+        }
+        setPlaceResults([]);
+        setLocating(false);
+      },
+      (error) => {
+        const messages: Record<number, string> = {
+          1: 'Location permission was not granted.',
+          2: 'Your current location is unavailable.',
+          3: 'Finding your location timed out.',
+        };
+        setLocationError(messages[error.code] || 'Your current location could not be found.');
+        setSearchExpanded(true);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 30_000 },
+    );
+  };
+
+  const sidebarOpen = routePanelOpen || mapPanelExpanded || Boolean(selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)));
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.resize();
+      if (sidebarOpen && selectedStreetViewPoint && !multiSelectRef.current) {
+        const point = map.project(selectedStreetViewPoint);
+        const canvas = map.getCanvas();
+        if (point.x < 32 || point.x > canvas.clientWidth - 32 || point.y < 32 || point.y > canvas.clientHeight - 32) {
+          map.easeTo({ center: selectedStreetViewPoint, duration: 200 });
+        }
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [sidebarOpen, selectedStreetViewPoint]);
+
+  return (
+    <main className={`lts-app ${sidebarOpen ? 'lts-sidebar-open' : ''} ${routePanelOpen ? 'lts-routing-open' : ''} relative h-[100dvh] overflow-hidden bg-slate-950 text-white`} onPointerDownCapture={(event) => { startupInteractionRef.current = true; if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) moreMenuRef.current.open = false; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
+      <div ref={mapContainerRef} className="lts-map-canvas" />
+      {workshopMode&&datasetKey==='victoria'&&!mapLoading&&<WorkshopSections map={workshopMap} enabled ready={!mapLoading} crossings={showWorkshopCrossings} routeMode={routePanelOpen} saving={selectionSaving} controlsOpen={sidebarOpen} onAreaChange={clearRoadSelection} />}
+      {saveNotice && (
+        <div className="lts-surface absolute left-3 right-3 top-24 z-30 mx-auto flex max-w-lg items-start gap-3 rounded-xl border border-emerald-600 bg-white p-4 text-slate-900 shadow-xl">
+          <p role="status" aria-live="polite" className="flex-1 text-sm font-semibold">{saveNotice}</p>
+          <button type="button" aria-label="Dismiss save confirmation" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border" onClick={() => setSaveNotice(null)}><X className="h-4 w-4" /></button>
+        </div>
+      )}
+      {mapLoading && (
+        <div className="lts-loading pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/45">
+          <div className="lts-loading-panel flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/90 px-5 py-4 text-sm font-semibold text-slate-100 shadow-2xl">
+            <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
+            Loading the map…
+          </div>
+        </div>
+      )}
+      {satelliteEnabled && MAPBOX_PUBLIC_TOKEN && (
+        <div className="absolute right-14 top-28 z-[9] rounded-lg bg-slate-950/75 px-2 py-1.5 shadow-lg backdrop-blur-sm md:right-3 md:top-20">
+          <a href="https://www.mapbox.com/about/maps" target="_blank" rel="noreferrer" className="mapbox-attribution-logo" aria-label="Mapbox" />
+          <div className="mt-1 flex max-w-[210px] flex-wrap gap-x-1.5 text-[8px] leading-tight text-white/80">
+            <a href="https://www.mapbox.com/about/maps" target="_blank" rel="noreferrer" className="hover:text-white">© Mapbox</a>
+            <a href="https://www.openstreetmap.org/copyright/" target="_blank" rel="noreferrer" className="hover:text-white">© OpenStreetMap</a>
+            <a href="https://www.mapbox.com/contribute/" target="_blank" rel="noreferrer" className="font-semibold hover:text-white">Improve this map</a>
+            <a href="https://www.maxar.com/" target="_blank" rel="noreferrer" className="hover:text-white">© Maxar</a>
+          </div>
+        </div>
+      )}
+
+      <header className="lts-surface mobile-map-header lts-open-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 shadow-2xl md:left-4 md:right-4 md:flex-nowrap md:gap-3 md:px-4">
+        <div className="shrink-0"><img src={process.env.NODE_ENV === 'production' ? 'https://australian-lts-lab.vercel.app/ausbug-logo-transparent.png' : '/ausbug-logo-transparent.png'} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
+        <div className="lts-brand-copy min-w-0 flex-1">
+          <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>{workshopMode?'Workshop map':'Traffic stress map'}</h1>
+        </div>
+        {workshopMode&&<>
+        <select aria-label="Map view" className="workshop-map-view" disabled={selectionSaving} value={workshopMode?'workshop':'standard'} onChange={event=>{window.location.href=workshopMapViewUrl(window.location.href,event.target.value==='workshop');}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option></select>
+        </>}
+        <select
+          hidden={workshopMode}
+          value={datasetKey}
+          onChange={(event) => {
+            if (selectionSavingRef.current) return;
+            multiSelectRef.current = false;
+            setMultiSelect(false);
+            setMapLoading(true);
+            setMetadata(null);
+            metadataRef.current = null;
+            setMapError(null);
+            setDatasetKey(event.target.value as DatasetKey);
+            setShowActAccessOnlyTrails(false);
+            setMapPanelExpanded(false);
+            setSearchExpanded(false); setRoutePanelOpen(false);
+            setSelected(null);
+            selectionRef.current = [];
+            setVoteSelection([]);
+            setSelectedVoteSegment(null);
+            setSelectedDismountSegment(null);
+            setSelectedStreetViewPoint(null);
+            setPlaceResults([]);
+            setPlaceSearchError(null);
+            setLocationError(null);
+          }}
+          aria-label="LTS dataset"
+          className="lts-region rounded-lg border border-white/10 bg-slate-900 px-2.5 py-2 text-xs font-semibold text-slate-100 md:ml-auto"
+        >
+          {Object.entries(DATASETS).map(([key, dataset]) => <option key={key} value={key}>{dataset.label}</option>)}
+        </select>
+        <details ref={moreMenuRef} className="lts-more" onKeyDown={(event) => { if (event.key === 'Escape' && !(event.target as HTMLElement).closest('dialog')) { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+          <summary>More <ChevronDown className="h-3.5 w-3.5" /></summary>
+          <div className="lts-more-menu">
+            {!workshopMode&&<label className="workshop-map-menu-label">Map view<select aria-label="Map view" className="workshop-map-view" disabled={selectionSaving} value="standard" onChange={event=>{window.location.href=workshopMapViewUrl(window.location.href,event.target.value==='workshop');}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option></select></label>}
+        <button type="button" onClick={() => { if (moreMenuRef.current) { moreMenuRef.current.open = false; moreMenuRef.current.querySelector('summary')?.focus(); } setShowAbout(true); }} aria-haspopup="dialog"><Info className="h-4 w-4" /> Map guide &amp; scoring</button>
+        <CommunityActivity labelled onShowRoad={(dataset, center) => {
+          if (selectionSavingRef.current) return;
+          if (!Object.prototype.hasOwnProperty.call(DATASETS, dataset)) return;
+          setShowAbout(false);
+          setMapPanelExpanded(false);
+          setSearchExpanded(false); setRoutePanelOpen(false);
+          setSelected(null);
+          multiSelectRef.current = false;
+          setMultiSelect(false);
+          selectionRef.current = [];
+          setVoteSelection([]);
+          setSelectedVoteSegment(null);
+          setSelectedDismountSegment(null);
+          setSelectedStreetViewPoint(null);
+          if (dataset === datasetKey) {
+            mapRef.current?.flyTo({ center, zoom: 16 });
+          } else {
+            startupViewRef.current = { dataset: dataset as DatasetKey, center, zoom: 16 };
+            setMapLoading(true);
+            setDatasetKey(dataset as DatasetKey);
+          }
+        }} />
+          </div>
+        </details>
+      </header>
+
+      <nav className="lts-surface lts-action-pill" aria-label="Map actions">
+        <button type="button" disabled={selectionSaving} aria-expanded={searchExpanded} onClick={() => { clearRoadSelection(); setSearchExpanded(!searchExpanded); setRoutePanelOpen(false); setMapPanelExpanded(false); }}><Search className="h-4 w-4" /><span>Search</span></button>
+        <button type="button" disabled={selectionSaving} aria-expanded={mapPanelExpanded} onClick={() => { clearRoadSelection(); setMapPanelExpanded(!mapPanelExpanded); setSearchExpanded(false); setRoutePanelOpen(false); }}><Layers3 className="h-4 w-4" /><span>Map display</span></button>
+        {!workshopMode&&<>
+        <button type="button" disabled={selectionSaving} aria-expanded={routePanelOpen} onClick={() => { clearRoadSelection(); setRoutePanelOpen(!routePanelOpen); setMapPanelExpanded(false); setSearchExpanded(false); }}><RouteIcon className="h-4 w-4" /><span>Plan route</span></button>
+        </>}
+      </nav>
+
+      {!workshopMode&&<RoutePlanner map={mapLoading ? null : workshopMap} dataset={datasetKey} open={routePanelOpen} onClose={() => { setRoutePanelOpen(false); document.querySelector<HTMLButtonElement>('[aria-label="Map actions"] button:last-child')?.focus(); }} />}
+
+      {!workshopMode && !routePanelOpen && !mapPanelExpanded && !selected && !searchExpanded && <button type="button" className="lts-surface lts-compact-legend" aria-label="Show stress colours and map layers" onClick={() => { setMapPanelExpanded(true); }}>
+        <span>Traffic stress</span><span className="lts-legend-scale" aria-hidden="true">{LTS_LEVELS.map(level => <i key={level} style={{ backgroundColor: LTS_COLOURS[level] }} />)}</span><span>Low → High</span><ChevronUp className="h-3.5 w-3.5" />
+      </button>}
+
+      <button type="button" className="lts-surface lts-locate" onClick={findCurrentLocation} disabled={locating} aria-label="Find my location">{locating ? <Loader2 className="h-5 w-5 animate-spin" /> : <LocateFixed className="h-5 w-5" />}</button>
+
+      {searchExpanded && <section className="lts-surface lts-search" aria-label="Find a place on the map">
+        <form onSubmit={searchPlaces} aria-busy={placeSearchLoading}>
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="map-place-search" className="sr-only">Search for an Australian place or address</label>
+            <input id="map-place-search" type="search" value={placeQuery} onChange={event => { setPlaceQuery(event.target.value); setPlaceResults([]); setPlaceSearchError(null); setPlaceSearchLoading(false); }} placeholder="Search a suburb, road or place…" autoComplete="off" autoFocus className="min-w-0 flex-1 rounded-lg px-3 py-2.5 text-sm outline-none" />
+            <button type="submit" disabled={placeSearchLoading || placeQuery.trim().length < 2} className="lts-search-submit" aria-label="Search places">{placeSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</button>
+            <button type="button" onClick={() => { setSearchExpanded(false); setRoutePanelOpen(false); setPlaceResults([]); setPlaceSearchError(null); setLocationError(null); }} className="lts-search-close" aria-label="Close place search"><X className="h-4 w-4" /></button>
+          </div>
+          {placeResults.length > 0 && <>
+            <div className="lts-search-results" role="listbox" aria-label="Place search results">
+              {placeResults.map(place => <button key={place.id} type="button" onClick={() => showPlace(place)} role="option" aria-selected="false"><MapPin className="h-4 w-4" /><span>{place.name}</span></button>)}
+            </div>
+            <p className="lts-search-attribution">Search © OpenStreetMap contributors</p>
+          </>}
+          {(placeSearchError || locationError) && <p className="lts-search-error" role="status">{placeSearchError || locationError}</p>}
+        </form>
+      </section>}
+
+      {mapPanelExpanded && <aside className="lts-surface lts-tool-panel lts-panel-open" aria-label="Map display">
+        <div className="lts-panel-heading"><h2>Map display</h2><button type="button" onClick={() => setMapPanelExpanded(false)} aria-label="Close map display"><X className="h-4 w-4" /></button></div>
+        <div id="map-controls" className="lts-panel-body">
+              <div className="lts-layer-heading"><span>Traffic stress</span><button type="button" onClick={() => setShowAbout(true)}>Colour guide <Info className="h-3.5 w-3.5" /></button></div>
+              <div className="lts-stress-options">
+                {[1, 2, 3, 4, 4.5].map(level => <label key={level}>
+                  <input type="checkbox" checked={visibleLts.has(level)} onChange={() => setVisibleLts(previous => { const next = new Set(previous); if (next.has(level)) next.delete(level); else next.add(level); return next; })} />
+                  <span className="lts-level-key" style={{ backgroundColor: LTS_COLOURS[level] }}>{level}</span>
+                  <span>{LTS_LABELS[level]}</span>
+                </label>)}
+                <p className="lts-community-key"><span style={{ backgroundColor: LTS_VOTE_COLOURS[1.5] }} />1.5 · Quiet trafficable road</p>
+              </div>
+              {workshopMode?<><label className="lts-option-row"><span>Workshop crossing signs &amp; refuges</span><input type="checkbox" checked={showWorkshopCrossings} onChange={event=>{setShowWorkshopCrossings(event.target.checked);setShowCrossings(false);}} /></label><p className="lts-muted-note">Small dots when zoomed out; signs appear as you zoom into street detail.</p><div className="workshop-crossing-legend" aria-label="Workshop crossing legend">{Object.entries(WORKSHOP_CROSSING_STYLES).map(([kind,style])=><div key={kind}><span className="workshop-legend-sign" role="img" aria-label={style.title} style={{backgroundImage:`url(${ltsAppPath('/data/workshop/'+style.image)})`}} /><span className="workshop-legend-dot" style={{backgroundColor:style.color}} /><span>{style.title}</span></div>)}</div></>:<label className="lts-option-row"><span>Crossing points</span><input type="checkbox" checked={showCrossings} onChange={event=>setShowCrossings(event.target.checked)} /></label>}
+              <label className="lts-option-row"><span>Satellite imagery</span><input type="checkbox" checked={satelliteEnabled} disabled={!MAPBOX_PUBLIC_TOKEN} onChange={event => setSatelliteEnabled(event.target.checked)} /></label>
+              {satelliteEnabled && MAPBOX_PUBLIC_TOKEN && <div className="lts-opacity-control">
+                <label htmlFor="satellite-opacity">Image opacity <span>{Math.round(satelliteOpacity * 100)}%</span></label>
+                <input id="satellite-opacity" type="range" min={0} max={1} step={0.05} value={satelliteOpacity} onChange={event => setSatelliteOpacity(Number(event.target.value))} />
+              </div>}
+              {!MAPBOX_PUBLIC_TOKEN && <p className="lts-muted-note">Satellite imagery is unavailable in this preview.</p>}
+              <details className="lts-disclosure"><summary>More map layers</summary><div className="lts-extra-layers">
+        <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
+          <input type="checkbox" checked={showLowConfidence} onChange={(event) => setShowLowConfidence(event.target.checked)} className="h-4 w-4" />
+          <span className="w-8 shrink-0 rounded-full border-t-[6px] border-dashed border-green-500" /> Inferred / low-confidence roads
+        </label>
+        <label className="flex cursor-pointer items-center gap-3 px-2 py-1.5 text-sm">
+          <input type="checkbox" checked={showDismountLinks} onChange={(event) => setShowDismountLinks(event.target.checked)} className="h-4 w-4" />
+          <span className="relative h-1.5 w-8 shrink-0 rounded-full bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-slate-500" /></span>
+          <span>Dismount / walk-bike links (optional)</span>
+        </label>
+        <div className="grid grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm text-slate-200">
+          <span className="h-4 w-4" aria-hidden="true" />
+          <span className="relative h-1.5 w-8 rounded-full bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-blue-500" /></span>
+          <span>Known unsealed (LTS-coloured dashes)</span>
+        </div>
+        <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
+          <input type="checkbox" checked={showMtbTrails} onChange={(event) => setShowMtbTrails(event.target.checked)} className="h-4 w-4" />
+          <span className="w-8 rounded-full border-t-[6px] border-dashed border-purple-500" />
+          <span>OSM-tagged MTB trail</span>
+        </label>
+        <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
+          <input type="checkbox" checked={showUnverifiedTrails} onChange={(event) => setShowUnverifiedTrails(event.target.checked)} className="h-4 w-4" />
+          <span className="w-8 rounded-full border-t-[6px] border-dashed border-pink-500" />
+          <span>Cycling suitability not confirmed</span>
+        </label>
+        {datasetKey === 'act' && (
+          <label className="grid cursor-pointer grid-cols-[1rem_2rem_minmax(0,1fr)] items-center gap-3 px-2 py-1.5 text-sm">
+            <input
+              type="checkbox"
+              checked={showActAccessOnlyTrails}
+              onChange={(event) => setShowActAccessOnlyTrails(event.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="relative h-1.5 w-8 rounded-full bg-white"><span className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-slate-600" /></span>
+            <span>Ordinary ACT paths &amp; forestry tracks</span>
+          </label>
+        )}
+              </div></details>
+              <details className="lts-disclosure"><summary>Data coverage &amp; freshness</summary>
+        {metadata && (
+          <div className="mt-3 text-[11px] leading-relaxed text-slate-500">
+            <p>{metadata.segments.toLocaleString()} LTS segments · {(metadata.dismount_segments || 0).toLocaleString()} walk-bike links · {metadata.crossings.toLocaleString()} crossings · OSM snapshot {new Date(metadata.source_pbf_modified_at).toLocaleDateString('en-AU')}</p>
+            {metadata.traffic_volume && (
+              <p className="mt-1 text-sky-300/75">
+                Traffic volume matched to {metadata.traffic_volume.matched_segments.toLocaleString()} segments ({metadata.traffic_volume.matched_distance_km.toLocaleString()} km) · {metadata.traffic_volume.uplifted_segments.toLocaleString()} raised
+              </p>
+            )}
+          </div>
+        )}
+              </details>
+          {mapError && <p className="lts-map-error" role="alert">{mapError}</p>}
+        </div>
+      </aside>}
+
+      {selected && (selectedLts || selectedIsDismount || propertyIsTrue(selected.is_mtb)) && (
+        <aside key={selectedVoteSegment?.segmentId || selectedOsmId || String(selected.name)} className="lts-surface lts-road-panel" aria-label="Selected road">
+          <div className="lts-road-heading">
+          <button
+            onClick={() => {
+              if (selectionSavingRef.current) return;
+              multiSelectRef.current = false;
+              setMultiSelect(false);
+              setSelected(null);
+              selectionRef.current = [];
+              setVoteSelection([]);
+              setSelectedVoteSegment(null);
+              setSelectedDismountSegment(null);
+              setSelectedStreetViewPoint(null);
+              const source = mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined;
+              source?.setData(selectedGeoJson());
+            }}
+            className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
+            aria-label="Close details"
+            disabled={selectionSaving}
+          ><X className="h-5 w-5" /></button>
+          <div className="mb-4 flex items-center gap-3 pr-8">
+            <span className={`lts-road-badge flex h-12 w-12 items-center justify-center rounded-xl font-black text-white ${selectedIsDismount ? 'text-xs' : 'text-lg'}`} style={{ background: selectedLts ? LTS_COLOURS[selectedLts] : selectedIsDismount ? '#6b7280' : '#a855f7' }}>{selectedLts ? `L${selectedLts}` : selectedIsDismount ? 'WALK' : 'MTB'}</span>
+            <div>
+              <h2 className="font-bold">{String(selected.name || (selected.feature_kind === 'crossing' ? 'Crossing' : 'Unnamed road/path'))}</h2>
+              <p className="text-sm" style={{ color: selectedLts ? LTS_COLOURS[selectedLts] : selectedIsDismount ? '#cbd5e1' : '#c084fc' }}>{selectedLts ? LTS_LABELS[selectedLts] : selectedIsDismount ? 'Dismount / walk bike' : 'MTB trail shown for context'}</p>
+            </div>
+          </div>
+          </div>
+          <div className="lts-road-body">
+          <p className="lts-road-summary">{String(selected.reason || 'Select the details below to explore this score.')}</p>
+          <dl className="lts-road-facts">
+            {selected.surface && <div><dt>Surface</dt><dd>{String(selected.surface).replaceAll('_', ' ')}</dd></div>}
+            {selected.maxspeed && <div><dt>Speed{selected.speed_inferred ? ' · inferred' : ''}</dt><dd>{String(selected.maxspeed)} km/h</dd></div>}
+            {selected.distance_km && <div><dt>Length</dt><dd>{(Number(selected.distance_km) * 1000).toFixed(0)} m</dd></div>}
+          </dl>
+          {selectedBikeAccess && <p className={`lts-access-summary ${selectedBikeAccess.kind === 'prohibited' ? 'lts-access-restricted' : ''}`}><span>Mapped bike access</span><strong>{selectedBikeAccess.label}</strong></p>}
+          {selectedStreetViewPoint && (
+            <a
+              href={googleStreetViewUrl(selectedStreetViewPoint)}
+              target="_blank"
+              rel="noreferrer"
+              className="lts-street-view"
+            >
+              <MapPin className="h-4 w-4" />
+              Street View
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
+          {(selectedVoteSegment || selectedDismountSegment) && <details className="lts-disclosure lts-contribution" open={contributionExpanded} onToggle={event => setContributionExpanded(event.currentTarget.open)}>
+            <summary>Rate or correct this {selected.feature_kind === 'crossing' ? 'crossing' : 'road'}</summary>
+            <div className="lts-contribution-body">
+          {selectedVoteSegment && <>
+            <div className="lts-selection">
+              <div className="lts-selection-toolbar">
+                <strong role="status">{voteSelection.length} {voteSelection.length === 1 ? 'segment' : 'segments'} selected</strong>
+                <button type="button" disabled={selectionSaving} aria-pressed={multiSelect} className="lts-selection-toggle" onClick={() => { multiSelectRef.current = !multiSelect; setMultiSelect(!multiSelect); }}>{multiSelect ? 'Done selecting' : 'Select more'}</button>
+              </div>
+              {multiSelect && <p className="lts-selection-note">Tap segments to add or remove them, then choose Done selecting.</p>}
+              {voteSelection.length >= MAX_SELECTED_SEGMENTS && <p className="lts-selection-note">Limit of {MAX_SELECTED_SEGMENTS} reached. Save this selection before adding more.</p>}
+              {voteSelection.length > 1 && <p className="lts-selection-note">Your rating and explanation will apply to all {voteSelection.length} segments.</p>}
+              <details className="lts-selection-help"><summary>Selection tips{voteSelection.length > 1 ? ' & selected roads' : ''}</summary><p>Hold Shift and click roads to add or remove segments (up to {MAX_SELECTED_SEGMENTS}). Parts of the same OSM way are selected together. Click without Shift to start again.</p>{voteSelection.length > 1 && <p>{[...new Set(voteSelection.map((item) => item.name))].join(' · ')}</p>}</details>
+            </div>
+            <SegmentVote segment={selectedVoteSegment} segments={voteSelection} onSavingChange={(saving) => { selectionSavingRef.current = saving; setSelectionSaving(saving); if (saving) setSaveNotice(null); }} onPublished={refreshApprovedOverlay} onSaved={(count, mapRefreshed) => {
+              multiSelectRef.current = false;
+              setMultiSelect(false);
+              selectionRef.current = [];
+              setVoteSelection([]);
+              setSelected(null);
+              setSelectedVoteSegment(null);
+              setSelectedDismountSegment(null);
+              setSelectedStreetViewPoint(null);
+              (mapRef.current?.getSource('lts-selected') as maplibregl.GeoJSONSource | undefined)?.setData(selectedGeoJson());
+              setSaveNotice(`Saved for ${count} ${count === 1 ? 'segment' : 'segments'}. ${mapRefreshed ? 'Map updated.' : 'Reload to see the updated map.'}`);
+            }} />
+          </>}
+          {selected.reviewed_path_type && <p className="mt-3 rounded-lg border border-pink-300/20 p-3 text-xs text-pink-200">Saved path type: {String(selected.reviewed_path_type) === 'cycling' ? 'Suitable for cycling' : String(selected.reviewed_path_type) === 'walking' ? 'Walking only / dismount' : 'MTB trail'}. Routing updates with the next community graph refresh.</p>}
+          {selectedVoteSegment && voteSelection.length === 1 && canCorrectPath(selectedVoteSegment) && <PathCorrection key={`${selectedVoteSegment.dataset}:${selectedVoteSegment.segmentId}`} segment={selectedVoteSegment} onPublished={refreshApprovedOverlay} onSavingChange={saving => { selectionSavingRef.current = saving; setSelectionSaving(saving); }} />}
+          {selectedDismountSegment && <DismountReport segment={selectedDismountSegment} />}
+            </div>
+          </details>}
+          <details className="lts-disclosure lts-road-data"><summary>Road details &amp; sources</summary>
+          {selectedOsmId && (
+            <section className="lts-source-section" aria-labelledby="osm-access-heading">
+              <div className="lts-source-heading">
+                <h3 id="osm-access-heading">OpenStreetMap access</h3>
+                {selectedOsmFeatureDetails?.updatedAt && <time dateTime={selectedOsmFeatureDetails.updatedAt}>Updated {new Date(selectedOsmFeatureDetails.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</time>}
+              </div>
+              {osmFeatureLoading && <p className="lts-source-note">Loading OpenStreetMap tags…</p>}
+              {selectedOsmFeatureError && <p className="lts-source-error" role="alert">{selectedOsmFeatureError}</p>}
+              {selectedBikeAccess && (
+                <div className={`lts-source-access ${selectedBikeAccess.kind === 'prohibited' ? 'lts-source-access-restricted' : ''}`}>
+                  <p className="lts-source-access-label">{selectedBikeAccess.label}</p>
+                  <p>{selectedBikeAccess.detail}</p>
+                </div>
+              )}
+              <p className="lts-source-note">Live OSM tags may be newer than the map’s source data.</p>
+              {selectedOsmFeatureDetails && (
+                <details className="lts-source-tags">
+                  <summary>View {Object.keys(selectedOsmFeatureDetails.tags).length} OSM tags</summary>
+                  {Object.keys(selectedOsmFeatureDetails.tags).length > 0 ? (
+                    <dl className="lts-tag-table">
+                      {orderedOsmTags(selectedOsmFeatureDetails.tags).map(([key, value]) => (
+                        <div key={key}><dt><code>{key}</code></dt><dd><code>{value}</code></dd></div>
+                      ))}
+                    </dl>
+                  ) : <p className="lts-source-note">No tags are recorded for this feature.</p>}
+                </details>
+              )}
+            </section>
+          )}
+          {selected.traffic_aadt && (
+            <section className="lts-source-section lts-traffic-source">
+              <div className="lts-source-heading">
+                <h3>Traffic counts</h3>
+                {selected.traffic_year && <span className="rounded-full border border-sky-300/30 bg-sky-300/15 px-2 py-0.5 text-[10px] font-bold text-sky-100">{String(selected.traffic_year)} count</span>}
+                {selectedTrafficFreshness && <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${selectedTrafficFreshness.className}`}>{selectedTrafficFreshness.label}</span>}
+              </div>
+              <p className="mt-1 text-sm font-semibold text-white">Approximately {Number(selected.traffic_aadt).toLocaleString()} vehicles/day</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                {String(selected.traffic_period || selected.traffic_year)} {String(selected.traffic_source || 'DTP historical AADT')} · {String(selected.traffic_methodology).toLowerCase()}
+                {selected.traffic_heavy_pct !== undefined && selected.traffic_heavy_pct !== null ? ` · ${Number(selected.traffic_heavy_pct).toFixed(1)}% heavy vehicles` : ''}
+                {selected.traffic_match_confidence ? ` · ${String(selected.traffic_match_confidence)} match confidence` : ''}
+              </p>
+              {Boolean(selected.traffic_raised_lts) && <p className="mt-1 text-xs font-semibold text-amber-300">Traffic volume raised this road’s stress score.</p>}
+            </section>
+          )}
+          <details className="lts-source-technical"><summary>Classification &amp; source data</summary>
+          <dl className="lts-source-facts">
+            <div><dt className="text-xs text-slate-500">Feature</dt><dd className="mt-0.5 capitalize">{String(selected.feature_kind)}</dd></div>
+            <div><dt className="text-xs text-slate-500">Confidence</dt><dd className="mt-0.5 capitalize">{String(selected.confidence)}</dd></div>
+            {selected.highway && <div><dt className="text-xs text-slate-500">OSM highway</dt><dd className="mt-0.5">{String(selected.highway)}</dd></div>}
+            {selected.surface && <div><dt className="text-xs text-slate-500">Surface</dt><dd className="mt-0.5 capitalize">{String(selected.surface).replaceAll('_', ' ')}</dd></div>}
+            {selected.surface_class && <div><dt className="text-xs text-slate-500">Surface evidence</dt><dd className="mt-0.5 capitalize">{String(selected.surface_class)}</dd></div>}
+            {propertyIsTrue(selected.is_mtb) && <div><dt className="text-xs text-slate-500">MTB routing</dt><dd className="mt-0.5 capitalize">{String(selected.mtb_routing).replaceAll('_', ' ')}</dd></div>}
+            {selected.mtb_scale && <div><dt className="text-xs text-slate-500">MTB scale</dt><dd className="mt-0.5">{String(selected.mtb_scale)}</dd></div>}
+            {selected.mtb_scale_imba && <div><dt className="text-xs text-slate-500">IMBA scale</dt><dd className="mt-0.5">{String(selected.mtb_scale_imba)}</dd></div>}
+            {selected.mtb_type && <div><dt className="text-xs text-slate-500">MTB type</dt><dd className="mt-0.5 capitalize">{String(selected.mtb_type)}</dd></div>}
+            {selected.trail_routing && selected.trail_routing !== 'normal' && <div><dt className="text-xs text-slate-500">Trail routing</dt><dd className="mt-0.5 capitalize">{String(selected.trail_routing)}</dd></div>}
+            {propertyIsTrue(selected.is_bicycle_route) && <div><dt className="text-xs text-slate-500">Bicycle route</dt><dd className="mt-0.5">OSM relation member</dd></div>}
+            {propertyIsTrue(selected.is_hiking_route) && <div><dt className="text-xs text-slate-500">Walking route</dt><dd className="mt-0.5">OSM hiking/foot relation member</dd></div>}
+            {selected.maxspeed && <div><dt className="text-xs text-slate-500">Speed used</dt><dd className="mt-0.5">{String(selected.maxspeed)} km/h{selected.speed_inferred ? ' (inferred)' : ''}</dd></div>}
+            {selected.lanes_each_direction && <div><dt className="text-xs text-slate-500">Lanes/direction</dt><dd className="mt-0.5">{String(selected.lanes_each_direction)}{selected.lanes_inferred ? ' (inferred)' : ''}</dd></div>}
+            {selected.bike_infra_forward && <div><dt className="text-xs text-slate-500">Forward facility</dt><dd className="mt-0.5">{String(selected.bike_infra_forward).replaceAll('_', ' ')}</dd></div>}
+            {selected.lts_backward && <div><dt className="text-xs text-slate-500">Directional LTS</dt><dd className="mt-0.5">Forward {String(selected.lts_forward)} · Back {String(selected.lts_backward)}</dd></div>}
+            {selected.distance_km && <div><dt className="text-xs text-slate-500">Segment length</dt><dd className="mt-0.5">{(Number(selected.distance_km) * 1000).toFixed(0)} m</dd></div>}
+            {selected.traffic_directional_aadt && <div><dt className="text-xs text-slate-500">Measured direction</dt><dd className="mt-0.5">{Number(selected.traffic_directional_aadt).toLocaleString()}/day</dd></div>}
+            {selected.traffic_volume_basis === 'two_way' && selected.traffic_source_aadt && <div><dt className="text-xs text-slate-500">Source road total</dt><dd className="mt-0.5">{Number(selected.traffic_source_aadt).toLocaleString()}/day (two-way)</dd></div>}
+            {selected.traffic_source_road && <div><dt className="text-xs text-slate-500">Traffic road match</dt><dd className="mt-0.5">{String(selected.traffic_source_road)}</dd></div>}
+            {selected.speed_source && <div><dt className="text-xs text-slate-500">Speed source</dt><dd className="mt-0.5">{String(selected.speed_source)}{selected.speed_period ? ` · ${String(selected.speed_period)}` : ''}{selected.speed_zone_type ? ` · ${String(selected.speed_zone_type)}` : ''}</dd></div>}
+            {selected.speed_match_max_offset_m !== undefined && <div><dt className="text-xs text-slate-500">Speed match</dt><dd className="mt-0.5">{Number(selected.speed_match_max_offset_m).toFixed(1)} m max offset · {String(selected.speed_match_confidence)} confidence</dd></div>}
+            {selected.bicycle_infrastructure_source && <div><dt className="text-xs text-slate-500">Bike data source</dt><dd className="mt-0.5">{String(selected.bicycle_infrastructure_source)}</dd></div>}
+            {selected.parking_source && <div><dt className="text-xs text-slate-500">Parking source</dt><dd className="mt-0.5">{String(selected.parking_source)}</dd></div>}
+          </dl>
+          {propertyIsTrue(selected.is_mtb) && selected.mtb_reason && (
+            <p className="mt-4 rounded-lg border border-purple-400/20 bg-purple-400/10 p-3 text-xs leading-relaxed text-purple-100">{String(selected.mtb_reason)}</p>
+          )}
+          {selected.trail_routing && selected.trail_routing !== 'normal' && selected.trail_reason && (
+            <p className="mt-3 rounded-lg border border-pink-400/20 bg-pink-400/10 p-3 text-xs leading-relaxed text-pink-100">{String(selected.trail_reason)}</p>
+          )}
+          </details>
+          {selectedOsmUrl && <a href={selectedOsmUrl} target="_blank" rel="noreferrer" className="lts-source-link">Open in OpenStreetMap <ExternalLink className="h-4 w-4" /></a>}
+          </details>
+          </div>
+        </aside>
+      )}
+
+      {showAbout && (
+        <div
+          id="lts-about-dialog"
+          ref={aboutDialogRef}
+          className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-0 backdrop-blur-sm sm:p-3 md:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lts-about-title"
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target) setShowAbout(false);
+          }}
+        >
+          <section className="lts-surface lts-guide relative h-full max-h-full w-full max-w-4xl overflow-y-auto border border-white/10 bg-slate-950 shadow-2xl sm:h-auto sm:rounded-2xl">
+            <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur sm:px-5 sm:py-4 md:px-7">
+              <div className="hidden rounded-xl bg-emerald-400/15 p-2.5 text-emerald-300 sm:block"><Info className="h-5 w-5" /></div>
+              <div className="pr-10">
+                <h2 id="lts-about-title" className="text-lg font-bold sm:text-xl">Map guide</h2>
+                <p className="mt-1 text-sm text-slate-400">Understand the colours. Explore more when you need it.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAbout(false)}
+                ref={aboutCloseRef}
+                className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white sm:right-4 sm:top-4"
+                aria-label="Close about panel"
+              ><X className="h-5 w-5" /></button>
+            </div>
+
+            <div className="lts-about-content space-y-6 px-4 py-5 text-base leading-relaxed text-slate-300 sm:px-5 sm:py-6 md:px-7 md:py-7">
+              <section>
+                <h3 className="text-lg font-bold text-white">Traffic stress colours</h3>
+                <p className="mt-2">
+                  LTS means Level of Traffic Stress. Lower scores mean less interaction with motor traffic. Select a road to inspect its score or contribute local knowledge.
+                </p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {LTS_LEVELS.map((level) => (
+                    <div key={level} className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
+                      <span className="lts-score-badge" style={{ background: LTS_COLOURS[level], color: level === 2 || level >= 4 ? '#fff' : '#10202b' }}>L{level}</span>
+                      <div><p className="font-semibold text-white">{LTS_LABELS[level]}</p><p className="text-sm text-slate-400">{level === 1 ? 'Very little interaction with motor traffic' : level === 1.5 ? 'Community-identified quieter road, informed by local knowledge' : level === 2 ? 'Lower-stress conditions for many adults' : level === 3 ? 'More traffic interaction; confident riders' : level === 4 ? 'High-speed, high-volume or otherwise stressful conditions' : 'Hostile link or crossing: excluded from Stress Free routes, even for a few metres'}</p></div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <p className="lts-guide-caution">Traffic stress does not establish legal access, surface quality or current conditions. Check signs and the conditions on your ride.</p>
+              <details className="about-detail"><summary>Contribute local knowledge</summary>
+                <p>Select a road or crossing, expand “Rate or correct”, and sign in with your AusBUG account. Choose a rating and explain what you observed. Your display name and explanation are public; your email stays private.</p>
+                <p className="mt-2">We’re connecting quiet streets, bike paths and better crossings into everyday cycling corridors. Local knowledge helps reveal the missing links. This is a community mapping project, not an officially designated network.</p>
+                <button type="button" onClick={() => { setShowAbout(false); setSearchExpanded(true); setMapPanelExpanded(false); }} className="lts-guide-action">Find a road to rate</button>
+              </details>
+
+              <details className="about-detail">
+                <summary>Data sources and map symbols</summary>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p className="font-semibold text-white">OpenStreetMap road network</p>
+                    <p className="mt-1 text-xs text-slate-400">Road and path geometry, bicycle access, directional cycleways, separation, painted lanes, buffers, parking, speed limits, lane counts, explicit surfaces, MTB difficulty and route tags, one-way rules, roundabouts and crossings.</p>
+                    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">OpenStreetMap attribution <ExternalLink className="h-3 w-3" /></a>
+                  </div>
+                  <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-4">
+                    <p className="font-semibold text-white">{stateSourceCopy.trafficTitle}</p>
+                    <p className="mt-1 text-xs text-slate-300">{stateSourceCopy.trafficDescription}</p>
+                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
+                      {stateSourceCopy.trafficLinks.map((link) => <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-sky-300 hover:text-sky-200">{link.label} <ExternalLink className="h-3 w-3" /></a>)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                    <p className="font-semibold text-white">Official road details</p>
+                    <p className="mt-1 text-xs text-slate-300">{stateSourceCopy.roadDescription}</p>
+                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
+                      {stateSourceCopy.roadLinks.map((link) => <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">{link.label} <ExternalLink className="h-3 w-3" /></a>)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p className="font-semibold text-white">Map delivery</p>
+                    <p className="mt-1 text-xs text-slate-400">The classified network is packaged with Tippecanoe into PMTiles and rendered with MapLibre over a simplified OpenFreeMap base map. An optional Mapbox Satellite overlay can be faded from transparent to opaque; it changes only the background imagery, never the classification or routing. White-backed LTS-coloured dashes indicate an explicitly tagged unsealed surface. Grey dashes identify <code>bicycle=dismount</code> walk-bike links and deliberately carry no LTS score. Short white-backed purple dashes identify OSM-tagged MTB trails. Short white-backed cyan dashes identify paths and tracks whose ordinary bicycle access or suitability is not confirmed; cyan takes visual precedence when both meanings apply. Off-road paths and tracks are already LTS 1 because traffic stress is separate from trail access and difficulty, so they do not repeat a green LTS foreground. Where an MTB relation follows an ordinary road, the road&apos;s normal LTS colour remains visible beneath the purple dashes.</p>
+                  </div>
+                </div>
+              </details>
+
+              <details className="about-detail">
+                <summary>How a road receives its score</summary>
+                <p className="mt-3">The same rules apply across Australia. Start here, then expand a section for the detail.</p>
+                <ol className="about-score-steps">
+                  <li><strong>Check access.</strong><span>Check whether cycling is permitted. Dismount links are grey and have no LTS score.</span></li>
+                  <li><strong>Assess each direction.</strong><span>Use speed, lanes and cycling facilities to set the base score.</span></li>
+                  <li><strong>Apply community adjustments.</strong><span>LTS 4 roads use the average of the base score and approved vote, rounded up. LTS 2 → 1.5 stays a direct adjustment. An LTS 4.5 result is an explicit routing exclusion and is never averaged down.</span></li>
+                  <li><strong>Display the result.</strong><span>The map shows the worse of the two scored travel directions.</span></li>
+                </ol>
+                <details className="about-subdetail"><summary>Access, directions and evidence</summary>
+                <div className="mt-3 space-y-2 text-slate-300">
+                  <p>Every state and territory uses the same classifier and the exact rules below. What differs is which official datasets can fill gaps in OSM—not the meaning of an LTS level.</p>
+                  <p>Each OSM way is assessed separately for the forward and backward cycling directions using Australian left-hand traffic. The map displays the more stressful permitted direction.</p>
+                  <p>Direction matters because the two sides of a road can have different painted or protected cycle lanes, buffers, lane counts and speed tags. For Australian left-hand traffic, forward travel uses the left-side cycling treatment and backward travel uses the right-side treatment. Parking is currently a road-level door-zone flag rather than a fully directional input; its exact effect is stated below.</p>
+                  <p>The background line deliberately shows the worse of the two permitted travel directions. Expand a road’s details to inspect its forward and backward scores.</p>
+                  <p>Before scoring, road/path class and access tags decide whether a way belongs in the cycling network: prohibited/private access and bicycle=no/private/use_sidepath are excluded. Dismount links are excluded from LTS scoring but can remain as grey walk-bike routing connections. Footways without explicit bicycle permission are normally excluded; in the ACT, where cycling on ordinary paths is legally permitted unless signed otherwise, they remain cautious routing links but are hidden from the map by default. An ACT footway, path or forestry track tagged only bicycle=yes is treated as legal access rather than proof of a designated cycling facility; highway=cycleway, bicycle=designated or official bicycle-route evidence keeps a link visible. One-way tags decide which travel directions are scored.</p>
+                  <p>For an included direction, the segment score can be changed by only these inputs: road/path class; directional or general speed limit; directional or total motor-traffic lane count; roundabout status; cycling-facility type and side; whether a painted lane has a mapped buffer; mapped kerbside parking beside a painted lane; and matched all-vehicle daily motor traffic.{hasRuralUnsealedRule ? ' On a narrow class of high-speed minor roads, explicit unsealed surface, traffic evidence where available, and heavy-vehicle evidence also affect a provisional one-band adjustment.' : ''} Each rule is deterministic and is applied in the order shown below.</p>
+                  <p>Traffic records are matched to OSM geometry using road name or route reference, projected distance, local direction and line overlap. Directional counts are doubled for a two-way OSM centreline to approximate conventional two-way daily traffic.</p>
+                  {stateSourceCopy.methodology.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                  <p>Surface, trail suitability and MTB evidence are generally separate from traffic stress.{hasRuralUnsealedRule ? ' The exception is a provisional LTS 4 to 3 adjustment for qualifying minor unsealed roads; it does not imply that gravel itself makes a road safe.' : ''} A road is called unsealed only when OSM has an explicit value such as gravel, dirt, ground or compacted; a missing surface is not guessed. Generic <code>path</code>, <code>track</code> and <code>bridleway</code> links need explicit bicycle access or bicycle-route evidence before they are treated as verified cycling links. Every explicit MTB tag or MTB route membership remains visible, even when routing rules exclude it.</p>
+                </div>
+                </details>
+                <details className="about-subdetail"><summary>Base scores by road and cycling facility</summary>
+                <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-white/10 text-slate-300"><tr><th className="px-3 py-2">Facility or road context</th><th className="px-3 py-2">Exact base LTS rule</th></tr></thead>
+                    <tbody className="divide-y divide-white/10 align-top">
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Traffic-free path or protected lane</td><td className="px-3 py-2">LTS 1. This includes mapped cycleways/paths and on-road cycling treatments tagged as track, protected, separate or separated.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Dismount / walk-bike link</td><td className="px-3 py-2">No LTS score. A way tagged <code>bicycle=dismount</code> can be shown grey using the optional layer and may remain routable with a strong penalty, but is not represented as permission to ride.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Slow local street</td><td className="px-3 py-2">A living street, or a local road at 30 km/h or less: LTS 1 with one lane per direction; LTS 2 with more. Roundabouts do not receive this shortcut.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Buffered painted lane</td><td className="px-3 py-2">LTS 2 at no more than 50 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Unbuffered painted lane</td><td className="px-3 py-2">LTS 2 at no more than 40 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4. Any mapped adjacent kerbside parking then adds one LTS level, capped at LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Shoulder</td><td className="px-3 py-2">LTS 2 at no more than 60 km/h and one lane per direction; LTS 3 at no more than 80 km/h; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Local mixed traffic</td><td className="px-3 py-2">LTS 2 at no more than 50 km/h and one lane per direction; LTS 3 at no more than 60 km/h and two lanes; otherwise LTS 4.</td></tr>
+                      {hasRuralUnsealedRule && <tr><td className="px-3 py-2 font-semibold text-slate-200">Minor unsealed road</td><td className="px-3 py-2">An unclassified road at 70 km/h or more with one lane per direction and an explicit ordinary unsealed surface may move from LTS 4 to provisional LTS 3. Without a matched count, this has low confidence and traffic volume is marked unverified. A reliable matched count above 1,500 vehicles/day keeps LTS 4. Roundabouts, designated heavy-vehicle routes and roads with a known heavy-vehicle share of at least 5% also keep their original score. This rule never moves a road below LTS 3.</td></tr>}
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Tertiary/collector mixed traffic</td><td className="px-3 py-2">LTS 2 at no more than 40 km/h and one lane per direction; LTS 3 at no more than 60 km/h and one lane; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Secondary, primary or trunk mixed traffic</td><td className="px-3 py-2">LTS 3 only when no more than 40 km/h with one lane per direction; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Unprotected roundabout</td><td className="px-3 py-2">Never below LTS 3. It is LTS 3 only at no more than 50 km/h with one circulating lane; otherwise LTS 4.</td></tr>
+                      <tr><td className="px-3 py-2 font-semibold text-slate-200">Sharrows</td><td className="px-3 py-2">Do not reduce stress by themselves. The ordinary mixed-traffic road-class, speed and lane rule still applies.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                </details>
+                <details className="about-subdetail"><summary>Missing speed and lane data</summary>
+                <div className="mt-4 rounded-xl border border-slate-400/20 bg-slate-400/10 p-4 text-xs text-slate-200">
+                  <h4 className="font-semibold text-white">When speed or lane data is missing</h4>
+                  <p className="mt-2">The classifier marks the result as inferred and uses these explicit fallbacks: 20 km/h for living streets; 30 for service roads; 50 for residential, unclassified and generic roads; 60 for tertiary and secondary roads; 70 for primary roads; and 80 for trunk roads. Missing lanes default to two lanes per direction on primary/trunk roads and one on every other road. These are classification assumptions—not claims about the legal conditions on a particular street.</p>
+                </div>
+                </details>
+                <details className="about-subdetail"><summary>Traffic volume and community safeguards</summary>
+                <p className="mt-2">A floor is a minimum, not the final score. Speed, lanes or facilities can still make a quiet road score higher.</p>
+                <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-white/10 text-slate-300"><tr><th className="px-3 py-2">Approximate daily motor traffic</th><th className="px-3 py-2">Mixed-traffic floor</th></tr></thead>
+                    <tbody className="divide-y divide-white/10">
+                      <tr><td className="px-3 py-2">Up to 2,000</td><td className="px-3 py-2"><span className="lts-score-badge lts-score-badge-small" style={{ background: LTS_COLOURS[1] }}>L1</span></td></tr>
+                      <tr><td className="px-3 py-2">2,001–6,000</td><td className="px-3 py-2"><span className="lts-score-badge lts-score-badge-small" style={{ background: LTS_COLOURS[2], color: '#fff' }}>L2</span></td></tr>
+                      <tr><td className="px-3 py-2">6,001–14,000</td><td className="px-3 py-2"><span className="lts-score-badge lts-score-badge-small" style={{ background: LTS_COLOURS[3] }}>L3</span></td></tr>
+                      <tr><td className="px-3 py-2">Above 14,000</td><td className="px-3 py-2"><span className="lts-score-badge lts-score-badge-small" style={{ background: LTS_COLOURS[4], color: '#fff' }}>L4</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-3 text-xs text-slate-400">Traffic volume is applied after the base rule. It may only raise a segment with no cycling facility, sharrows or a shoulder. It does not directly lower a score and currently does not alter a path, protected lane, buffered lane or painted lane.{hasRuralUnsealedRule ? ' The provisional minor-unsealed-road exception is checked separately after this step; unknown volume gives low confidence, while a matched count above 1,500 vehicles/day prevents the adjustment.' : ''} A low-confidence SCATS estimate may raise a segment by no more than one level.</p>
+                <p className="mt-2 text-xs text-slate-400">Community-adjusted LTS 4 roads use (4 + approved vote) ÷ 2, rounded up, at every speed. Votes of 1, 1.5 or 2 give LTS 3; votes of 3 or 4 retain LTS 4. LTS 2 roads voted to 1.5 still become 1.5 directly. AusBUG&apos;s additional 4.5 class is a routing exclusion and is never averaged down. Speed limits and access restrictions are unchanged. Community adjustments are not independently verified safety assessments.</p>
+                </details>
+                <details className="about-subdetail"><summary>Crossings and what LTS does not measure</summary>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-xs text-sky-50">
+                    <h4 className="font-semibold text-white">Crossing scores</h4>
+                    <p className="mt-2">Crossings are point scores; they do not change the adjoining road&apos;s segment LTS. Signals are LTS 1 and refuge islands LTS 2. An uncontrolled crossing is at least LTS 2 and otherwise inherits the crossed road&apos;s LTS. A marked crossing is at least LTS 2 and is capped at LTS 3. When the crossed road is unknown, an uncontrolled crossing is LTS 3 and another marked crossing is LTS 2.</p>
+                  </div>
+                  <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-50">
+                    <h4 className="font-semibold text-white">Recorded or used elsewhere—but not in segment LTS</h4>
+                    <p className="mt-2">{hasRuralUnsealedRule ? 'Explicit unsealed surface and a known heavy-vehicle share can affect the provisional minor-road exception. Other surface and gravel evidence, MTB difficulty, hiking evidence and elevation affect display, eligibility or routing penalties rather than traffic stress.' : 'Heavy-vehicle percentage is retained for inspection but does not yet change LTS. Surface, gravel, MTB difficulty, hiking evidence and elevation affect display, eligibility or routing penalties—not the traffic-stress score.'} Bicycle volumes, crash history, rider popularity, road width and time-of-day conditions are not currently inputs. Apart from roundabouts and explicit crossing tags, intersection form is not yet modelled.</p>
+                  </div>
+                </div>
+              </details>
+
+              </details>
+              <details className="about-detail"><summary>How ratings affect Stress Free routes</summary>
+                <p>LTS 4 carries a strong routing penalty but remains available for a short connection. Published LTS 4.5 decisions exclude a link or crossing, regardless of length. A road rating does not change legal access or automatically change a separate crossing’s rating.</p>
+                <p className="mt-2">Published ratings enter direct app routing through the community graph refresh.</p>
+              </details>
+
+              <details className="about-detail">
+                <summary>Current {activeDataset.label} coverage</summary>
+                {metadata ? (
+                  <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <div className="rounded-xl bg-white/5 p-3"><p className="text-xl font-bold text-white">{metadata.segments.toLocaleString()}</p><p className="text-xs text-slate-400">road/path segments</p></div>
+                    <div className="rounded-xl bg-white/5 p-3"><p className="text-xl font-bold text-white">{metadata.crossings.toLocaleString()}</p><p className="text-xs text-slate-400">crossing points</p></div>
+                    <div className="rounded-xl bg-white/5 p-3"><p className="text-xl font-bold text-white">{metadata.traffic_volume?.matched_segments.toLocaleString() || '—'}</p><p className="text-xs text-slate-400">traffic-matched segments</p></div>
+                    <div className="rounded-xl bg-white/5 p-3"><p className="text-xl font-bold text-white">{metadata.traffic_volume?.uplifted_segments.toLocaleString() || '—'}</p><p className="text-xs text-slate-400">scores raised by volume</p></div>
+                  </div>
+                ) : <p className="mt-2 text-slate-400">Coverage metadata is loading.</p>}
+                {metadata?.traffic_volume && (
+                  <p className="mt-3 text-xs text-slate-400">
+                    {metadata.traffic_volume.available_directional_records.toLocaleString()} traffic observations in this build · {metadata.traffic_volume.matched_distance_km.toLocaleString()} matched kilometres · {Object.entries(metadata.traffic_volume.source_counts || {}).map(([source, count]) => `${source.replace('DTP ', '')}: ${count.toLocaleString()}`).join(' · ')}
+                  </p>
+                )}
+                {metadata?.nsw_speed_zones && (metadata.nsw_speed_zones.available_records || 0) > 0 && (
+                  <p className="mt-2 text-xs text-slate-400">
+                    {(metadata.nsw_speed_zones.status_counts.matched || 0).toLocaleString()} segments received official speed evidence across {metadata.nsw_speed_zones.matched_distance_km.toLocaleString()} km · {(metadata.nsw_speed_zones.status_counts.ambiguous || 0).toLocaleString()} ambiguous matches quarantined
+                  </p>
+                )}
+                {metadata?.supplemental_roads && (
+                  <p className="mt-2 text-xs text-slate-400">
+                    {(metadata.supplemental_roads.official_speed_segments || 0).toLocaleString()} segments received official speed evidence · {(metadata.supplemental_roads.bicycle_infrastructure_segments || 0).toLocaleString()} received missing bicycle-infrastructure details · {(metadata.supplemental_roads.parking_segments || 0).toLocaleString()} received parking evidence
+                  </p>
+                )}
+                {metadata?.surface && metadata?.mtb && (
+                  <p className="mt-2 text-xs text-slate-400">
+                    {(metadata.surface.distance_km.unsealed || 0).toLocaleString()} known-unsealed kilometres · {((metadata.mtb.counts.shown_routable || 0) + (metadata.mtb.counts.shown_not_routable || 0)).toLocaleString()} MTB-tagged ways shown · {metadata.mtb.route_relations.toLocaleString()} MTB route relations
+                  </p>
+                )}
+                {metadata?.trails && (
+                  <p className="mt-2 text-xs text-slate-400">
+                    {(metadata.trails.counts.routing_caution || 0).toLocaleString()} unverified paths/tracks remain connected with a penalty · {(metadata.trails.counts.routing_avoid || 0).toLocaleString()} hiking-difficulty ways excluded · {metadata.trails.bicycle_route_relations.toLocaleString()} bicycle route relations · {metadata.trails.hiking_route_relations.toLocaleString()} hiking/foot route relations
+                  </p>
+                )}
+              </details>
+
+              <details className="about-detail">
+                <summary>Important limitations</summary>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-300">
+                  <li>This is a diagnostic model, not a guarantee that a road is safe or presently open.</li>
+                  <li>{stateSourceCopy.trafficLimitation}</li>
+                  <li>Every matched traffic value retains its source, count period, methodology and confidence. Unmatched roads continue to use OSM-based inference.</li>
+                  <li>{stateSourceCopy.speedLimitation}</li>
+                  {datasetKey === 'victoria' && <li>The DTP bicycle layer is itself OSM-linked and may lag recent edits; it fills missing fields but never overwrites an explicit current OSM value.</li>}
+                  <li>Surface, trail and MTB styling reflects OSM tags, which can be incomplete or wrong. Unknown surface stays unknown; unverified trails receive a warning/penalty; visual context is not a claim that a trail is suitable, legal, open or safe.</li>
+                  <li>Crossings influence the experimental router through point penalties; the values still need rider testing and calibration.</li>
+                  <li>Temporary works, congestion at a particular time, driver behaviour, sight distance and pavement condition may not be represented.</li>
+                </ul>
+              </details>
+
+              <footer className="flex flex-wrap gap-x-5 gap-y-1 border-t border-white/10 pt-4 text-xs text-slate-500">
+                <span>Map classifier: {metadata?.classifier_version || 'loading'}</span>
+                {metadata?.source_pbf_modified_at && <span>OSM snapshot: {new Date(metadata.source_pbf_modified_at).toLocaleDateString('en-AU')}</span>}
+                {metadata?.generated_at && <span>Built: {new Date(metadata.generated_at).toLocaleString('en-AU')}</span>}
+              </footer>
+            </div>
+          </section>
+        </div>
+      )}
+    </main>
+  );
+}

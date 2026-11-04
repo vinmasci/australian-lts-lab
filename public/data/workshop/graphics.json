@@ -1,0 +1,22 @@
+{
+  "generator": "Built-in image_gen tool",
+  "approved_asset_copies": {
+    "pedestrian.png": {
+      "source": "outputs/pedestrian-traffic-signal-red-and-green.png",
+      "sha256": "070e96c25ace5dfac3573f034ef2ad8135be8638414f1db0cda0914158cc1264"
+    },
+    "wombat.png": {
+      "source": "outputs/wombat-raised-crossing-sign-v2.png",
+      "sha256": "e52a8fb7748bdfcdb99ffb0039db306824975f3b38a9623239c07a5d68d2e25e"
+    },
+    "zebra.png": {
+      "source": "outputs/zebra-crossing-sign.png",
+      "sha256": "d6a74093cd4379243ffd6a6a74db305a9c5e6e737b84acbff41675b771c07954"
+    },
+    "refuge.png": {
+      "source": "outputs/traffic-island-sign.png",
+      "sha256": "64e656894b1bd7375539dd7f54d2dce2f655b3263958b97983d1101749dd25f8"
+    }
+  },
+  "signal_note": "Static map symbol; red and green are illustrative, not live signal status."
+}

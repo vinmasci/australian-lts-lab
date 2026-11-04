@@ -132,3 +132,9 @@ Generated map archives are derivative datasets with their own source and attribu
 ## Licence
 
 Application code is licensed under Apache-2.0. That licence does not relicense source data, generated map archives, basemap content or third-party services.
+
+## Workshop map
+
+The separate `/ltsmap/workshop` page provides LGA and permanent island selection, assignment CSV exports and individually mapped crossing symbols. The standard map remains the default and keeps the current routing profiles and road editor. Use More → Map view on the standard map to open the workshop. Public workshop links use `https://australian-lts-lab.vercel.app/ltsmap/workshop`; standard map links use `https://ausbug.app/ltsmap` without requiring a host-site redeployment.
+
+Coverage is metropolitan Melbourne and the Ballarat pilot with adjoining whole islands, not all Victoria. Small and narrow enclosures are excluded. Source metadata, coverage, marker deduplication and generated graphic provenance are recorded under `public/data/workshop/`. Crossing dots appear from zoom 10 and are replaced by signs at zoom 14.5, with no overlapping original LTS dots or clustering. The standard map does not fetch workshop geometry.
