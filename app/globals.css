@@ -476,3 +476,33 @@ select {
 .lts-route-profile p { grid-column: 1 / -1; margin: 0; color: var(--lts-muted); font-size: 14px; line-height: 1.5; }
 .lts-key-unrated { height: 5px; background: #5d696c; border-radius: 2px; }
 .lts-route-option { display: flex; gap: 12px; align-items: center; cursor: pointer; }
+
+/* Flat workshop controls leave the existing road-rating editor available. */
+.workshop-strip { position:absolute;z-index:15;left:12px;bottom:32px;width:min(470px,calc(100vw - 24px));background:#faf9f7;color:#303234;border:1px solid #deded7;padding:10px 12px;font-size:12px;box-shadow:0 2px 8px #19232e12; }
+.workshop-strip-heading {display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:10px;}
+.workshop-strip-heading strong {font-size:14px;}
+.workshop-strip-heading button {background:transparent;border:0;font-size:20px;cursor:pointer;padding:0 5px;}
+.workshop-strip form {display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.workshop-strip input {width:85px;background:#fff;border:1px solid #cdd1cd;color:#26352e;padding:6px;min-height:34px;}
+.workshop-strip form button {border:1px solid #cdd1cd;background:#faf9f7;padding:6px 9px;min-height:34px;cursor:pointer;}
+.workshop-strip button:disabled {opacity:.5;cursor:default;}
+.workshop-strip a {text-decoration:underline;text-underline-offset:2px;}
+.workshop-crossing-legend {display:grid;gap:5px;padding:8px;font-size:12px;}
+.workshop-crossing-legend > div {display:flex;align-items:center;gap:9px;}
+.workshop-legend-sign {display:inline-block;width:30px;height:32px;flex-shrink:0;background-position:center;background-size:contain;background-repeat:no-repeat;}
+.workshop-legend-dot {display:inline-block;width:8px;height:8px;flex-shrink:0;border:1px solid #fff;border-radius:50%;}
+.workshop-strip p {margin-top:6px;line-height:1.5;}
+.workshop-hint {font-size:11px;color:#6b726d;}
+.workshop-detail {border-top:1px solid #deded7;padding-top:6px;}
+@media(max-width:767px){.workshop-strip{bottom:94px;max-height:32vh;overflow:auto;}}
+.workshop-area-steps{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px;align-items:center;}
+.workshop-area-steps select{width:100%;min-width:0;background:#fff;color:#26352e;border:1px solid #cdd1cd;padding:7px;min-height:36px;}
+.workshop-area-steps select:disabled{color:#8b928d;background:#f0f1ed;}
+.workshop-footer-actions{display:flex;gap:8px;margin-top:8px;}
+.workshop-footer-actions button{border:1px solid #cdd1cd;background:#faf9f7;padding:6px 9px;min-height:34px;cursor:pointer;}
+
+.workshop-map-view{min-height:36px;padding:6px 8px;background:#fff;color:var(--lts-ink);border:1px solid var(--lts-line);font-size:12px;max-width:155px;margin-left:auto;}
+@media(max-width:767px){.workshop-map-view{max-width:130px;min-height:32px;font-size:11px;}}
+
+.workshop-map-menu-label{display:grid;gap:5px;padding:10px;font-size:12px;}
+.lts-more-menu .workshop-map-view{width:100%;max-width:none;margin:0;}

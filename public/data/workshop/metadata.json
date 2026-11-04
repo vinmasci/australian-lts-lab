@@ -1,0 +1,24 @@
+{
+  "source_release": "20261031T035226Z",
+  "snapshot": "2026-10-30T21:24:51Z",
+  "section_count": 5732,
+  "metro_sections": 3778,
+  "minimum_area_m2": 10000,
+  "interior_inset_m": 20,
+  "minimum_interior_area_m2": 400,
+  "display_simplification_degrees": 1.8e-05,
+  "crossing_points": 31399,
+  "crossings_clustered": false,
+  "duplicate_crossing_markers_merged": 1614,
+  "crossing_marker_priority": [
+    "pedestrian",
+    "rail",
+    "wombat",
+    "zebra",
+    "refuge"
+  ],
+  "crossing_marker_rule": "One symbol per source OSM feature or coincident coordinate (7 decimal places); additional refuge evidence is retained on the existing symbol.",
+  "lga_count": 53,
+  "crossing_scope_distance_m": 100,
+  "lga_filter_rule": "Keep whole islands with positive area in the selected LGA. Crossings use LGA membership and a 100 m proximity to the selected islands."
+}
