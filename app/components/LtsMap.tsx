@@ -1396,7 +1396,7 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
           <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>{workshopMode?'Workshop map':'Traffic stress map'}</h1>
         </div>
         {workshopMode&&<>
-        <select aria-label="Map view" className="workshop-map-view" disabled={selectionSaving} value={workshopMode?'workshop':'standard'} onChange={event=>{window.location.href=workshopMapViewUrl(window.location.href,event.target.value==='workshop');}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option></select>
+        <select aria-label="Map view" className="workshop-map-view" disabled={selectionSaving} value={workshopMode?'workshop':'standard'} onChange={event=>{const target=new URL(workshopMapViewUrl(window.location.href,event.target.value!=='standard'));if(event.target.value==='google'){target.pathname='/ltsmap/workshop/google';const current=new URLSearchParams(window.location.search);for(const field of ['lga','section']){const value=current.get(field);if(value)target.searchParams.set(field,value);}}window.location.href=target.href;}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option><option value="google">Google Maps trial</option></select>
         </>}
         <select
           hidden={workshopMode}

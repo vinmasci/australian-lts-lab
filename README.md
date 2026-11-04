@@ -140,3 +140,12 @@ The separate `/ltsmap/workshop` page provides LGA and permanent island selection
 Coverage is metropolitan Melbourne and the Ballarat pilot with adjoining whole islands, not all Victoria. Small and narrow enclosures are excluded. Source metadata, coverage, marker deduplication and generated graphic provenance are recorded under `public/data/workshop/`. Crossing dots appear from zoom 10 and are replaced by signs at zoom 14.5, with no overlapping original LTS dots or clustering. The standard map does not fetch workshop geometry.
 
 The workshop has a yellow Street View figure beside the map zoom controls. Drag it onto a street, or activate it and choose a map point. It opens the nearest available Google Street View panorama in a separate tab using Google Maps URLs; the workshop stays open. Escape cancels selection. This custom control does not display Google's blue coverage overlay or require a Google Maps API key.
+
+
+### Google Maps workshop trial
+
+Select **Google Maps trial** in the workshop Map view selector, or open `/ltsmap/workshop/google` with the same `lga` and `section` query parameters. This separate comparison uses a Google basemap and its native draggable Pegman, blue Street View coverage and in-page panorama. Close Street View or use **Back to workshop map** to return to the selected island and road editor.
+
+Set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to a Google Maps JavaScript API key on a billing-enabled project. Map loads are subject to Google's current Maps Platform pricing. No key is stored in source. Missing or rejected keys show an error with a link back to the existing workshop.
+
+The trial uses the same workshop geometry, crossing graphics and live `/api/lts-tiles/victoria` endpoint, including published community ratings. Road clicks reuse the existing contribution form and identifiers. Island labels and dropdowns select areas. Crossing signs replace dots at zoom 14.5; colliding signs are hidden individually until space becomes available, without clustering records. The standard map and existing workshop remain available for comparison.
