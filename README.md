@@ -133,16 +133,14 @@ Generated map archives are derivative datasets with their own source and attribu
 
 Application code is licensed under Apache-2.0. That licence does not relicense source data, generated map archives, basemap content or third-party services.
 
-## Workshop map
+## Council focus on the standard map
 
-The separate `/ltsmap/workshop` page provides LGA and permanent island selection, assignment CSV exports and individually mapped crossing symbols. The standard map remains the default and keeps the current routing profiles and road editor. Use More → Map view on the standard map to open the workshop. Public workshop links use `https://australian-lts-lab.vercel.app/ltsmap/workshop`; standard map links use `https://ausbug.app/ltsmap` without requiring a host-site redeployment.
+In the Victoria dataset, open **Map display → Council area (LGA)** to select one of all 79 councils. The map fits its boundary and fades the surroundings; roads inside remain available for inspection and contributions. Route planning remains independent of the council focus. **Clear area** restores the surrounding map. Focus links use `/ltsmap?lga=Glen+Eira` and accept the earlier workshop council names.
 
-Coverage is metropolitan Melbourne and the Ballarat pilot with adjoining whole islands, not all Victoria. Small and narrow enclosures are excluded. Source metadata, coverage, marker deduplication and generated graphic provenance are recorded under `public/data/workshop/`. Crossing dots appear from zoom 10 and are replaced by signs at zoom 14.5, with no overlapping original LTS dots or clustering. The standard map does not fetch workshop geometry.
+Display boundaries come from Vicmap Admin via the public VicPlan LGA layer. Source, retrieval date and display simplification are recorded under `public/data/lga/`. Council outlines are for map navigation rather than cadastral measurement.
 
-The live workshop uses Google Maps with its native Pegman, Street View coverage and in-page panoramas. Select a road and choose **Inspect in Street View**; close the panorama or choose **Back to workshop map** to return to the same road editor. The workshop's Map view selector also opens the standard LTS map or the **Classic workshop map** at `/ltsmap/workshop/classic`, retaining the chosen LGA and island when switching workshop views.
+## Hidden workshop map
 
-Old `/ltsmap/workshop/google` trial links redirect to `/ltsmap/workshop`, preserving query parameters. Newly copied island links and assignment CSVs use the live workshop URL. Classic workshop links retain their classic path.
+The workshop is temporarily hidden. Its menu entries are disabled and `/ltsmap/workshop` and `/ltsmap/workshop/classic` redirect to the normal map, retaining the selected LGA. Old Google trial links still resolve through the workshop route. The complete workshop implementation, island assignments and crossing graphics remain in source for later use. To restore the workshop routes and menus, set `NEXT_PUBLIC_LTS_WORKSHOP_ENABLED=true` and rebuild.
 
-Set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to a Google Maps JavaScript API key on a billing-enabled project. Map loads are subject to Google's current Maps Platform pricing. No key is stored in source. Missing or rejected keys show an error with a link to the classic workshop.
-
-Both workshop views use the same geometry, crossing graphics and live `/api/lts-tiles/victoria` endpoint, including published community ratings. Road clicks reuse the existing contribution form and identifiers. Island labels and dropdowns select areas. Crossing signs replace dots at zoom 14.5; colliding signs are hidden individually until space becomes available, without clustering records. The classic view's custom Street View shortcut opens Google in a separate tab.
+When enabled, the workshop uses Google Maps with native Pegman and in-page Street View; the classic MapLibre version remains at `/ltsmap/workshop/classic`. `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is supplied through deployment configuration. Map loads follow the existing Google Cloud project's billing. Coverage is metropolitan Melbourne and the Ballarat pilot with adjoining whole islands, not all Victoria.

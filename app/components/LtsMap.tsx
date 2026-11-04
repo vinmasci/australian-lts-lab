@@ -7,6 +7,9 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Route as RouteIcon, Search, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 import { RoutePlanner } from '@/app/components/RoutePlanner';
+import { LgaFocusControl, useLgaFocus } from './LgaFocus';
+import { pointInLga, type LgaFeature } from '@/lib/lga-focus';
+import { WORKSHOP_ENABLED } from '@/lib/workshop-availability';
 import { DismountReport } from '@/app/components/DismountReport';
 import { PathCorrection } from '@/app/components/PathCorrection';
 import { canCorrectPath } from '@/lib/path-corrections';
@@ -601,10 +604,14 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [datasetKey, setDatasetKey] = useState<DatasetKey>('victoria');
+  const lgaFocus=useLgaFocus(workshopMap,!workshopMode&&datasetKey==='victoria',!mapLoading);
+  const lgaFocusRef=useRef<LgaFeature|null>(null);
+  useEffect(()=>{lgaFocusRef.current=lgaFocus.selected;},[lgaFocus.selected]);
   const startupInteractionRef = useRef(workshopMode);
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
-    if(!workshopMode&&(params.get('workshop')==='1'||params.has('section'))){
+    if(params.has('lga'))startupInteractionRef.current=true;
+    if(WORKSHOP_ENABLED&&!workshopMode&&(params.get('workshop')==='1'||params.has('section'))){
       const target=new URL(workshopMapViewUrl(window.location.href,true));params.delete('workshop');target.search=params.toString();window.location.replace(target.href);
     }
   },[workshopMode]);
@@ -982,6 +989,7 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
         const availableInteractiveLayers = () => interactiveLayers.filter((layerId) => Boolean(map.getLayer(layerId)));
         map.on('mousemove', (event) => {
           if (routeModeRef.current) { map.getCanvas().style.cursor = 'crosshair'; return; }
+          if(lgaFocusRef.current&&!pointInLga([event.lngLat.lng,event.lngLat.lat],lgaFocusRef.current)){map.getCanvas().style.cursor='';return;}
           const layers = [...availableInteractiveLayers(),...['workshop-crossing-icons','workshop-crossing-points','workshop-numbers','workshop-selected-number'].filter(id=>Boolean(map.getLayer(id)))];
           map.getCanvas().style.cursor = layers.length > 0 && map.queryRenderedFeatures(event.point, { layers }).length > 0
             ? 'pointer'
@@ -989,6 +997,7 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
         });
         map.on('click', (event: MapMouseEvent) => {
           if (selectionSavingRef.current || routeModeRef.current) return;
+          if(lgaFocusRef.current&&!pointInLga([event.lngLat.lng,event.lngLat.lat],lgaFocusRef.current))return;
           const labels=['workshop-numbers','workshop-selected-number'].filter(id=>Boolean(map.getLayer(id)));
           if(labels.length&&map.queryRenderedFeatures(event.point,{layers:labels}).length)return;
           const crossingLayers=['workshop-crossing-icons','workshop-crossing-points'].filter(id=>Boolean(map.getLayer(id)));
@@ -1364,6 +1373,7 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
       <div ref={mapContainerRef} className="lts-map-canvas" />
       {workshopMode&&<StreetViewControl map={mapLoading?null:workshopMap} disabled={selectionSaving}/>}
       {workshopMode&&datasetKey==='victoria'&&!mapLoading&&<WorkshopSections map={workshopMap} enabled ready={!mapLoading} crossings={showWorkshopCrossings} routeMode={routePanelOpen} saving={selectionSaving} controlsOpen={sidebarOpen} onAreaChange={clearRoadSelection} />}
+      {!workshopMode&&lgaFocus.selected&&!sidebarOpen&&!searchExpanded&&!routePanelOpen&&<div className="lts-lga-badge"><span>{lgaFocus.selected.properties.name}</span><button type="button" disabled={selectionSaving} onClick={()=>lgaFocus.select('')}>Clear area</button></div>}
       {saveNotice && (
         <div className="lts-surface absolute left-3 right-3 top-24 z-30 mx-auto flex max-w-lg items-start gap-3 rounded-xl border border-emerald-600 bg-white p-4 text-slate-900 shadow-xl">
           <p role="status" aria-live="polite" className="flex-1 text-sm font-semibold">{saveNotice}</p>
@@ -1395,7 +1405,7 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
         <div className="lts-brand-copy min-w-0 flex-1">
           <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>{workshopMode?'Classic workshop map':'Traffic stress map'}</h1>
         </div>
-        {workshopMode&&<>
+        {WORKSHOP_ENABLED&&workshopMode&&<>
         <select aria-label="Map view" className="workshop-map-view" disabled={selectionSaving} value="classic" onChange={event=>{window.location.href=workshopViewUrl(window.location.href,event.target.value as WorkshopMapView);}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option><option value="classic">Classic workshop map</option></select>
         </>}
         <select
@@ -1431,7 +1441,7 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
         <details ref={moreMenuRef} className="lts-more" onKeyDown={(event) => { if (event.key === 'Escape' && !(event.target as HTMLElement).closest('dialog')) { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
           <summary>More <ChevronDown className="h-3.5 w-3.5" /></summary>
           <div className="lts-more-menu">
-            {!workshopMode&&<label className="workshop-map-menu-label">Map view<select aria-label="Map view" className="workshop-map-view" disabled={selectionSaving} value="standard" onChange={event=>{window.location.href=workshopMapViewUrl(window.location.href,event.target.value==='workshop');}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option></select></label>}
+            {WORKSHOP_ENABLED&&!workshopMode&&<label className="workshop-map-menu-label">Map view<select aria-label="Map view" className="workshop-map-view" disabled={selectionSaving} value="standard" onChange={event=>{window.location.href=workshopMapViewUrl(window.location.href,event.target.value==='workshop');}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option></select></label>}
         <button type="button" onClick={() => { if (moreMenuRef.current) { moreMenuRef.current.open = false; moreMenuRef.current.querySelector('summary')?.focus(); } setShowAbout(true); }} aria-haspopup="dialog"><Info className="h-4 w-4" /> Map guide &amp; scoring</button>
         <CommunityActivity labelled onShowRoad={(dataset, center) => {
           if (selectionSavingRef.current) return;
@@ -1496,6 +1506,7 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
       {mapPanelExpanded && <aside className="lts-surface lts-tool-panel lts-panel-open" aria-label="Map display">
         <div className="lts-panel-heading"><h2>Map display</h2><button type="button" onClick={() => setMapPanelExpanded(false)} aria-label="Close map display"><X className="h-4 w-4" /></button></div>
         <div id="map-controls" className="lts-panel-body">
+              {!workshopMode&&datasetKey==='victoria'&&<LgaFocusControl focus={lgaFocus} disabled={selectionSaving} onSelect={id=>{startupInteractionRef.current=true;clearRoadSelection();setMapPanelExpanded(false);lgaFocus.select(id);}} onFit={()=>{setMapPanelExpanded(false);lgaFocus.fit();}} />}
               <div className="lts-layer-heading"><span>Traffic stress</span><button type="button" onClick={() => setShowAbout(true)}>Colour guide <Info className="h-3.5 w-3.5" /></button></div>
               <div className="lts-stress-options">
                 {[1, 2, 3, 4, 4.5].map(level => <label key={level}>
