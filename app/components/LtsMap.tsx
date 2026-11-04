@@ -19,6 +19,7 @@ import { WORKSHOP_CROSSING_STYLES, workshopMapViewUrl } from '@/lib/workshop-sec
 const WorkshopSections = dynamic(()=>import('@/app/components/WorkshopSections').then(module=>module.WorkshopSections),{ssr:false});
 import type { DismountReportSegment } from '@/lib/dismount-reporting';
 import { googleStreetViewUrl } from '@/lib/google-maps';
+import { StreetViewControl } from '@/app/components/StreetViewControl';
 import { isLtsVoteLevel, LTS_VOTE_COLOURS, type VoteSegment } from '@/lib/lts-voting';
 import { assessBikeAccess, orderedOsmTags, type OsmFeatureDetails } from '@/lib/osm-tags';
 import type { LtsRelease } from '@/lib/lts-release';
@@ -1361,6 +1362,7 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
   return (
     <main className={`lts-app ${sidebarOpen ? 'lts-sidebar-open' : ''} ${routePanelOpen ? 'lts-routing-open' : ''} relative h-[100dvh] overflow-hidden bg-slate-950 text-white`} onPointerDownCapture={(event) => { startupInteractionRef.current = true; if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) moreMenuRef.current.open = false; }} onWheelCapture={() => { startupInteractionRef.current = true; }} onKeyDownCapture={() => { startupInteractionRef.current = true; }}>
       <div ref={mapContainerRef} className="lts-map-canvas" />
+      {workshopMode&&<StreetViewControl map={mapLoading?null:workshopMap} disabled={selectionSaving}/>}
       {workshopMode&&datasetKey==='victoria'&&!mapLoading&&<WorkshopSections map={workshopMap} enabled ready={!mapLoading} crossings={showWorkshopCrossings} routeMode={routePanelOpen} saving={selectionSaving} controlsOpen={sidebarOpen} onAreaChange={clearRoadSelection} />}
       {saveNotice && (
         <div className="lts-surface absolute left-3 right-3 top-24 z-30 mx-auto flex max-w-lg items-start gap-3 rounded-xl border border-emerald-600 bg-white p-4 text-slate-900 shadow-xl">
