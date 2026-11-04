@@ -149,10 +149,3 @@ Select **Google Maps trial** in the workshop Map view selector, or open `/ltsmap
 Set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to a Google Maps JavaScript API key on a billing-enabled project. Map loads are subject to Google's current Maps Platform pricing. No key is stored in source. Missing or rejected keys show an error with a link back to the existing workshop.
 
 The trial uses the same workshop geometry, crossing graphics and live `/api/lts-tiles/victoria` endpoint, including published community ratings. Road clicks reuse the existing contribution form and identifiers. Island labels and dropdowns select areas. Crossing signs replace dots at zoom 14.5; colliding signs are hidden individually until space becomes available, without clustering records. The standard map and existing workshop remain available for comparison.
-
-
-### Strategic Cycling Corridors overlay
-
-Both workshop maps show the designated Victorian Government C1/C2 Strategic Cycling Corridors as purple lines, with an **SCC corridors** toggle. This reference overlay leaves road clicks available for LTS inspection and is hidden during Google Street View. It does not change island boundaries or LTS scores. A corridor designation does not indicate that suitable infrastructure is complete.
-
-`public/data/workshop/scc.geojson` contains all 1,404 features from DTP's [Strategic Cycling Corridor layer](https://spatial.planning.vic.gov.au/gis/rest/services/transport/MapServer/3), exported in EPSG:4326. Source, retrieval time, class counts and checksum are recorded in `scc-metadata.json`. The standard LTS map does not load this workshop reference layer.

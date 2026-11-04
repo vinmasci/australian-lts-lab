@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { Map as LtsMap, MapMouseEvent, ExpressionSpecification, GeoJSONSource } from 'maplibre-gl';
 import type { Feature, MultiPolygon, Polygon } from 'geojson';
 import { ltsAppPath } from '@/lib/client-path';
-import { useWorkshopScc, WorkshopSccControl } from './WorkshopScc';
 import { WORKSHOP_CROSSING_STYLES, WORKSHOP_SIGN_ZOOM, canSelectWorkshop, normalizeWorkshopCode, workshopAssignmentCsv, workshopEdges, workshopLabels, workshopSourceUrl, workshopIslandsForLga, workshopPassagesForArea, workshopPageUrl, type WorkshopCrossing, type WorkshopCrossings, type WorkshopLga, type WorkshopLgas, type WorkshopSection, type WorkshopSections } from '@/lib/workshop-sections';
 
 const sources=['workshop-areas','workshop-edges','workshop-labels','workshop-passages','workshop-lga'];
@@ -38,8 +37,6 @@ export function WorkshopSections({map,enabled,ready,crossings,routeMode,saving,c
   const [loading,setLoading]=useState(true),[loaded,setLoaded]=useState(false),[error,setError]=useState('');
   const [lgas,setLgas]=useState<WorkshopLga[]>([]),[lgaId,setLgaId]=useState(''),[islands,setIslands]=useState<WorkshopSection[]>([]);
   const [section,setSection]=useState<WorkshopSection|null>(null),[crossing,setCrossing]=useState<WorkshopCrossing|null>(null);
-  const [showScc,setShowScc]=useState(true);
-  const sccError=useWorkshopScc(map,enabled&&ready,showScc);
   useEffect(()=>{interaction.current={routeMode,saving,crossings};areaChanged.current=onAreaChange;},[routeMode,saving,crossings,onAreaChange]);
 
   useEffect(()=>{
@@ -165,7 +162,6 @@ export function WorkshopSections({map,enabled,ready,crossings,routeMode,saving,c
     {error&&<p role="alert">{error}</p>}
     {section&&<p className="workshop-detail"><strong>{section.section_code}</strong> · {section.area_km2.toFixed(3)} km² · <a href={workshopPageUrl(window.location.href,lgaId,section.section_code)}>Island link</a></p>}
     {crossing&&crossings&&<p className="workshop-detail"><strong>{WORKSHOP_CROSSING_STYLES[crossing.kind].title}</strong>{crossing.name!==WORKSHOP_CROSSING_STYLES[crossing.kind].title&&<> · {crossing.name}</>}{crossing.has_refuge&&crossing.kind!=='refuge'&&' · Includes a refuge island'} · Bicycle: {crossing.bicycle}{source&&<> · <a href={source} target="_blank" rel="noreferrer">OSM source</a></>}</p>}
-    <WorkshopSccControl visible={showScc} onChange={setShowScc} error={sccError} />
     <div className="workshop-footer-actions"><button type="button" disabled={!loaded||!lgaId} onClick={()=>{
       if(!cache.current)return;const scoped=workshopIslandsForLga(cache.current.sections,lgaId);
       const blob=new Blob([workshopAssignmentCsv(scoped,window.location.href,lgaId)],{type:'text/csv;charset=utf-8'});

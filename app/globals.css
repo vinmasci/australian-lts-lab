@@ -550,10 +550,3 @@ select {
 .google-workshop-road-actions button{background:#f3f5f1;border:1px solid #d3dcd3;padding:9px 12px;cursor:pointer;}
 .google-workshop-road-actions a{text-decoration:underline;}
 @media(max-width:767px){.google-workshop-header{padding:0 12px;gap:10px;font-size:11px;}.google-workshop-header strong{font-size:12px;}.google-workshop-has-road .google-workshop-map{left:0;bottom:55dvh;}.google-workshop-road-panel{top:auto;height:55dvh;width:100%;border-right:0;border-top:1px solid #d8ded8;padding:18px;}.google-workshop .workshop-strip{max-height:40vh;bottom:34px;}.google-workshop-attribution{left:75px;font-size:8px;}}
-
-.workshop-scc-control{margin-top:10px;padding-top:9px;border-top:1px solid #e0e5df;font-size:12px;}
-.workshop-scc-control>label{display:flex;align-items:center;gap:7px;cursor:pointer;}
-.lts-app .workshop-scc-control input[type="checkbox"]{width:14px;height:14px;min-width:14px;min-height:14px;margin:0;padding:0;}
-.workshop-scc-swatch{display:inline-block;width:25px;height:3px;background:#8634c7;border-radius:1px;}
-.workshop-scc-control .workshop-hint{margin-top:5px;font-size:11px;}
-.workshop-scc-control a{text-decoration:underline;text-underline-offset:2px;}
