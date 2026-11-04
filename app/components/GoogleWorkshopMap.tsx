@@ -8,7 +8,7 @@ import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from
 import { ltsAppPath } from '@/lib/client-path';
 import { SegmentVote } from '@/app/components/SegmentVote';
 import { GOOGLE_LTS_COLOURS, googleWorkshopTiles, googleWorkshopVoteSegment, type GoogleWorkshopMetadata, type WorkshopTile } from '@/lib/google-workshop';
-import { normalizeWorkshopCode, WORKSHOP_CROSSING_STYLES, WORKSHOP_SIGN_ZOOM, workshopAssignmentCsv, workshopEdges, workshopIslandsForLga, workshopLabels, workshopPageUrl, workshopPassagesForArea, workshopSourceUrl, type WorkshopCrossings, type WorkshopCrossing, type WorkshopLgas, type WorkshopSections } from '@/lib/workshop-sections';
+import { normalizeWorkshopCode, WORKSHOP_CROSSING_STYLES, WORKSHOP_SIGN_ZOOM, workshopAssignmentCsv, workshopEdges, workshopIslandsForLga, workshopLabels, workshopPageUrl, workshopViewUrl, type WorkshopMapView, workshopPassagesForArea, workshopSourceUrl, type WorkshopCrossings, type WorkshopCrossing, type WorkshopLgas, type WorkshopSections } from '@/lib/workshop-sections';
 
 type Bundle={sections:WorkshopSections;crossings:WorkshopCrossings;lgas:WorkshopLgas;metadata:GoogleWorkshopMetadata|null};
 type Layers={roads:google.maps.Data;edges:google.maps.Data;lga:google.maps.Data;labels:google.maps.Data;crossings:google.maps.Data};
@@ -18,7 +18,7 @@ const empty=():FeatureCollection=>({type:'FeatureCollection',features:[]});
 const labelImage='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="24"><rect width="56" height="24" fill="white" fill-opacity="0.01"/></svg>');
 function replaceData(layer:google.maps.Data,data:FeatureCollection){layer.forEach(f=>layer.remove(f));layer.addGeoJson(data);}
 function pageUrl(lga:string,code=''){
-  const url=new URL(workshopPageUrl(window.location.href,lga,code));url.pathname='/ltsmap/workshop/google';return url.href;
+  return workshopPageUrl(window.location.href,lga,code);
 }
 function fit(map:google.maps.Map,f:Feature<Polygon|MultiPolygon>,island:boolean){
   const bounds=new google.maps.LatLngBounds();
@@ -80,7 +80,7 @@ export default function GoogleWorkshopMap(){
   const section=scoped.features.find(f=>f.properties.section_code===sectionCode)||null;
   const lga=bundle?.lgas.features.find(f=>f.properties.id===lgaId);
   const backParams=new URLSearchParams();if(lgaId)backParams.set('lga',lgaId);if(sectionCode)backParams.set('section',sectionCode);
-  const backUrl='/ltsmap/workshop'+(backParams.size?'?'+backParams.toString():'');
+  const classicUrl='/ltsmap/workshop/classic'+(backParams.size?'?'+backParams.toString():'');
 
   const chooseLga=(id:string,zoomTo=true)=>{
     if(saving)return;
@@ -100,7 +100,7 @@ export default function GoogleWorkshopMap(){
     let cancelled=false;const host=container.current;let ownedMap:google.maps.Map|null=null;const listeners:google.maps.MapsEventListener[]=[];
     if(!key)return;
     const authWindow=window as Window&{gm_authFailure?:()=>void},previous=authWindow.gm_authFailure;
-    authWindow.gm_authFailure=()=>{if(!cancelled)setError('Google Maps could not authorise this key. The current workshop map is still available using the link above.');};
+    authWindow.gm_authFailure=()=>{if(!cancelled)setError('Google Maps could not authorise this key. Open the classic workshop using the link below.');};
     (async()=>{
       try{
         setOptions({key,v:'weekly',region:'AU',authReferrerPolicy:'origin'});
@@ -208,9 +208,9 @@ export default function GoogleWorkshopMap(){
   const vote=road?googleWorkshopVoteSegment(road.feature,bundle?.metadata||null):null,p=road?.feature.properties||{};
   const source=crossing?workshopSourceUrl(crossing.osm_id):road?workshopSourceUrl(String(p.osm_id||'')):null;
   return <main className={`google-workshop lts-app ${road&&!panoOpen?'google-workshop-has-road':''}`}>
-    <header className="google-workshop-header"><strong>Workshop · Google trial</strong><a href={backUrl}>Current workshop map</a>{panoOpen&&<button type="button" onClick={()=>map?.getStreetView().setVisible(false)}>Back to workshop map</button>}</header>
+    <header className="google-workshop-header"><strong>Workshop map</strong><select aria-label="Map view" className="workshop-map-view" value="workshop" disabled={saving} onChange={event=>{window.location.href=workshopViewUrl(window.location.href,event.target.value as WorkshopMapView);}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option><option value="classic">Classic workshop map</option></select>{panoOpen&&<button type="button" onClick={()=>map?.getStreetView().setVisible(false)}>Back to workshop map</button>}</header>
     <div className="google-workshop-map" ref={container} aria-label="Google workshop map" />
-    {(!key||error)&&<div className="google-workshop-error" role="alert">{!key?'The Google Maps key is not configured for this trial.':error} <a href={backUrl}>Open the current workshop map</a></div>}
+    {(!key||error)&&<div className="google-workshop-error" role="alert">{!key?'The Google Maps key is not configured for the workshop.':error} <a href={classicUrl}>Open the classic workshop map</a></div>}
     {key&&!bundle&&!error&&<p className="google-workshop-loading" role="status">Loading the Google workshop map…</p>}
     {!panoOpen&&!road&&bundle&&<section className="workshop-strip" aria-label="Google workshop area selector">
       <div className="workshop-strip-heading"><strong>Choose a workshop area</strong></div>
@@ -219,7 +219,7 @@ export default function GoogleWorkshopMap(){
       {section&&<p className="workshop-detail"><strong>{sectionCode}</strong> · {section.properties.area_km2.toFixed(3)} km² · <a href={pageUrl(lgaId,sectionCode)}>Island link</a></p>}
       <div className="google-workshop-switches"><label><input type="checkbox" checked={showRoads} onChange={e=>setShowRoads(e.target.checked)}/> LTS roads</label><label><input type="checkbox" checked={showCrossings} onChange={e=>setShowCrossings(e.target.checked)}/> Crossing signs</label></div>
       {crossing&&<p className="workshop-detail"><strong>{WORKSHOP_CROSSING_STYLES[crossing.kind].title}</strong>{crossing.has_refuge&&crossing.kind!=='refuge'&&' · Includes a refuge island'} · Bicycle: {crossing.bicycle}{source&&<> · <a href={source} target="_blank" rel="noreferrer">OSM source</a></>}</p>}
-      <div className="workshop-footer-actions"><button type="button" disabled={!lgaId} onClick={()=>{const blob=new Blob([workshopAssignmentCsv(scoped,window.location.href,lgaId).replaceAll('/ltsmap/workshop?','/ltsmap/workshop/google?')],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(lga?.properties.name||'workshop').toLowerCase().replaceAll(' ','-')+'-island-assignments.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>LGA assignment list</button></div>
+      <div className="workshop-footer-actions"><button type="button" disabled={!lgaId} onClick={()=>{const blob=new Blob([workshopAssignmentCsv(scoped,window.location.href,lgaId)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(lga?.properties.name||'workshop').toLowerCase().replaceAll(' ','-')+'-island-assignments.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>LGA assignment list</button></div>
       <p className="workshop-hint">Drag Google’s yellow Pegman onto a blue street to inspect it here. Click a road to inspect or rate it.</p>
       {roadMessage&&<p role="status" className="workshop-hint">{roadMessage}</p>}
     </section>}
