@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <title>Railway crossing</title>
+  <path fill="#ffe600" d="M111.5 10a12 12 0 0 1 17 0L230 111.5a12 12 0 0 1 0 17L128.5 230a12 12 0 0 1-17 0L10 128.5a12 12 0 0 1 0-17Z"/>
+  <path fill="none" stroke="#151711" stroke-width="3.5" stroke-linejoin="round" d="M115.8 19.2a6 6 0 0 1 8.4 0l96.6 96.6a6 6 0 0 1 0 8.4l-96.6 96.6a6 6 0 0 1-8.4 0l-96.6-96.6a6 6 0 0 1 0-8.4Z"/>
+  <g fill="#080a06">
+    <path d="M68 62 175 123 166 139 59 78Z"/>
+    <path d="M166 62 59 123 68 139 175 78Z"/>
+    <path d="M113 78h8v110h-8Z"/>
+    <path d="M90 139h54v7H90Z"/>
+  </g>
+  <g fill="#ffe600" stroke="#080a06" stroke-width="6">
+    <circle cx="93" cy="155" r="13"/>
+    <circle cx="141" cy="155" r="13"/>
+  </g>
+</svg>

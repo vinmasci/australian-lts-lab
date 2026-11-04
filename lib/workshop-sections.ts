@@ -35,7 +35,7 @@ export type WorkshopCrossings = FeatureCollection<Point, WorkshopCrossing>;
 
 export const WORKSHOP_CROSSING_STYLES = {
   pedestrian: {title:'Pedestrian traffic lights',color:'#167144',image:'pedestrian.png'},
-  rail: {title:'Separate railway passage',color:'#7051aa',image:'rail.svg'},
+  rail: {title:'Separate railway passage',color:'#7051aa',image:'railway-crossing-sign.svg'},
   wombat: {title:'Raised zebra (wombat) crossing',color:'#bb5b1c',image:'wombat.png'},
   zebra: {title:'Zebra crossing',color:'#344052',image:'zebra.png'},
   refuge: {title:'Pedestrian refuge / traffic island',color:'#a87900',image:'refuge.png'},

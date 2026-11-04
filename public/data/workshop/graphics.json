@@ -18,5 +18,12 @@
       "sha256": "64e656894b1bd7375539dd7f54d2dce2f655b3263958b97983d1101749dd25f8"
     }
   },
-  "signal_note": "Static map symbol; red and green are illustrative, not live signal status."
+  "signal_note": "Static map symbol; red and green are illustrative, not live signal status.",
+  "vector_assets": {
+    "railway-crossing-sign.svg": {
+      "source": "User-supplied yellow railway crossing warning sign reference (4 November 2026)",
+      "method": "Clean vector redraw for map markers: yellow diamond, black crossbuck, post and two circular lights; transparent outside sign; no sign code or mounting pole.",
+      "sha256": "d90ad22e47bb2e38977c641f1bb027b3832ff0654263241504dbbc5e3f1e5f0e"
+    }
+  }
 }
