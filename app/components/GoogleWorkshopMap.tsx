@@ -7,7 +7,6 @@ import Pbf from 'pbf';
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from 'geojson';
 import { ltsAppPath } from '@/lib/client-path';
 import { SegmentVote } from '@/app/components/SegmentVote';
-import { useGoogleWorkshopScc, WorkshopSccControl } from './WorkshopScc';
 import { GOOGLE_LTS_COLOURS, googleWorkshopTiles, googleWorkshopVoteSegment, type GoogleWorkshopMetadata, type WorkshopTile } from '@/lib/google-workshop';
 import { normalizeWorkshopCode, WORKSHOP_CROSSING_STYLES, WORKSHOP_SIGN_ZOOM, workshopAssignmentCsv, workshopEdges, workshopIslandsForLga, workshopLabels, workshopPageUrl, workshopPassagesForArea, workshopSourceUrl, type WorkshopCrossings, type WorkshopCrossing, type WorkshopLgas, type WorkshopSections } from '@/lib/workshop-sections';
 
@@ -76,8 +75,6 @@ export default function GoogleWorkshopMap(){
   const [lgaId,setLgaId]=useState(''),[sectionCode,setSectionCode]=useState(''),[road,setRoad]=useState<Road|null>(null),[crossing,setCrossing]=useState<WorkshopCrossing|null>(null);
   const [zoom,setZoom]=useState(12),[viewTick,setViewTick]=useState(0),[roadRefresh,setRoadRefresh]=useState(0),[roadMessage,setRoadMessage]=useState('');
   const [showRoads,setShowRoads]=useState(true),[showCrossings,setShowCrossings]=useState(true),[panoOpen,setPanoOpen]=useState(false),[saving,setSaving]=useState(false),[saved,setSaved]=useState('');
-  const [showScc,setShowScc]=useState(true);
-  const sccError=useGoogleWorkshopScc(map,showScc,panoOpen);
   const key=process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY||'';
   const scoped=bundle&&lgaId?workshopIslandsForLga(bundle.sections,lgaId):empty() as WorkshopSections;
   const section=scoped.features.find(f=>f.properties.section_code===sectionCode)||null;
@@ -221,7 +218,6 @@ export default function GoogleWorkshopMap(){
         <label htmlFor="google-workshop-island">2 · Island</label><select id="google-workshop-island" value={sectionCode} disabled={!lgaId||saving} onChange={e=>chooseIsland(e.target.value)}><option value="">{lgaId?'Select an island…':'Choose an LGA first'}</option>{scoped.features.map(f=><option key={f.properties.id} value={f.properties.section_code}>{f.properties.section_code} · {f.properties.area_km2.toFixed(3)} km²</option>)}</select></div>
       {section&&<p className="workshop-detail"><strong>{sectionCode}</strong> · {section.properties.area_km2.toFixed(3)} km² · <a href={pageUrl(lgaId,sectionCode)}>Island link</a></p>}
       <div className="google-workshop-switches"><label><input type="checkbox" checked={showRoads} onChange={e=>setShowRoads(e.target.checked)}/> LTS roads</label><label><input type="checkbox" checked={showCrossings} onChange={e=>setShowCrossings(e.target.checked)}/> Crossing signs</label></div>
-      <WorkshopSccControl visible={showScc} onChange={setShowScc} error={sccError} />
       {crossing&&<p className="workshop-detail"><strong>{WORKSHOP_CROSSING_STYLES[crossing.kind].title}</strong>{crossing.has_refuge&&crossing.kind!=='refuge'&&' · Includes a refuge island'} · Bicycle: {crossing.bicycle}{source&&<> · <a href={source} target="_blank" rel="noreferrer">OSM source</a></>}</p>}
       <div className="workshop-footer-actions"><button type="button" disabled={!lgaId} onClick={()=>{const blob=new Blob([workshopAssignmentCsv(scoped,window.location.href,lgaId).replaceAll('/ltsmap/workshop?','/ltsmap/workshop/google?')],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(lga?.properties.name||'workshop').toLowerCase().replaceAll(' ','-')+'-island-assignments.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>LGA assignment list</button></div>
       <p className="workshop-hint">Drag Google’s yellow Pegman onto a blue street to inspect it here. Click a road to inspect or rate it.</p>
