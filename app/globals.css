@@ -506,3 +506,19 @@ select {
 
 .workshop-map-menu-label{display:grid;gap:5px;padding:10px;font-size:12px;}
 .lts-more-menu .workshop-map-view{width:100%;max-width:none;margin:0;}
+
+.workshop-street-view-control{position:absolute;z-index:11;right:12px;top:calc(var(--lts-top,64px) + 126px);color:#344238;}
+.workshop-street-view-control > button{display:flex;flex-direction:column;align-items:center;gap:2px;width:58px;padding:7px 3px 5px;background:#fff;border:1px solid #d8ded8;border-radius:6px;box-shadow:0 1px 4px #1d303314;cursor:grab;touch-action:none;user-select:none;}
+.workshop-street-view-control > button:active{cursor:grabbing;}
+.workshop-street-view-control > button[aria-pressed="true"]{background:#fff6d8;border-color:#aa7d13;}
+.workshop-street-view-control > button:focus-visible{outline:2px solid #325e45;outline-offset:3px;}
+.workshop-street-view-control > button:disabled{opacity:.45;cursor:default;}
+.workshop-street-view-control svg{display:block;width:26px;height:34px;}
+.workshop-street-view-control > button span{font-size:9px;font-weight:600;white-space:nowrap;}
+.workshop-street-view-tip{position:absolute;right:68px;top:0;width:228px;padding:9px 11px;border:1px solid #d8ded8;background:#fff;font-size:12px;line-height:1.5;box-shadow:0 1px 4px #1d303314;}
+.workshop-street-view-tip a,.workshop-street-view-tip button{display:inline-block;text-decoration:underline;text-underline-offset:2px;color:#25583e;}
+.workshop-street-view-tip button{margin-left:8px;background:none;border:0;cursor:pointer;}
+.workshop-street-view-ghost{position:fixed;pointer-events:none;z-index:1000;width:32px;height:58px;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 2px #0004);}
+.workshop-street-view-ghost svg{width:32px;height:42px;}
+.workshop-street-view-ghost i{display:block;width:12px;height:6px;border:2px solid #8a6000;border-radius:50%;margin:5px auto 0;background:#ffe38a;}
+@media(max-width:767px){.workshop-street-view-control{top:calc(var(--lts-top,98px) + 52px);right:10px;}.workshop-street-view-tip{width:min(210px,calc(100vw - 100px));}}
