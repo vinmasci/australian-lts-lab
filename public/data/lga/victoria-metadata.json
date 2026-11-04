@@ -1,0 +1,11 @@
+{
+  "publisher": "Victorian Government, Vicmap Admin via VicPlan",
+  "source": "https://plan-gis.mapshare.vic.gov.au/arcgis/rest/services/Planning/VicPlan_Other/MapServer/1",
+  "retrieved_at": "2026-11-04T10:27:15.102060+00:00",
+  "council_count": 79,
+  "coordinate_system": "EPSG:4326",
+  "display_simplification_degrees": 2e-05,
+  "sha256": "915321042517813f38b74c138723e7cb0705bac58e319290bca64fa3daee478b",
+  "scope": "79 incorporated Victorian councils. Unincorporated areas excluded.",
+  "topology_preserving_display_simplification_degrees": 3.5e-05
+}
