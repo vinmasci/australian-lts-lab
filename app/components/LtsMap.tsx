@@ -15,7 +15,7 @@ import { MAX_SELECTED_SEGMENTS, toggleSegment } from '@/lib/lts-multi-select';
 import { CommunityActivity } from '@/app/components/CommunityActivity';
 import { ltsAppPath } from '@/lib/client-path';
 import dynamic from 'next/dynamic';
-import { WORKSHOP_CROSSING_STYLES, workshopMapViewUrl } from '@/lib/workshop-sections';
+import { WORKSHOP_CROSSING_STYLES, workshopMapViewUrl, workshopViewUrl, type WorkshopMapView } from '@/lib/workshop-sections';
 const WorkshopSections = dynamic(()=>import('@/app/components/WorkshopSections').then(module=>module.WorkshopSections),{ssr:false});
 import type { DismountReportSegment } from '@/lib/dismount-reporting';
 import { googleStreetViewUrl } from '@/lib/google-maps';
@@ -1393,10 +1393,10 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
       <header className="lts-surface mobile-map-header lts-open-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 shadow-2xl md:left-4 md:right-4 md:flex-nowrap md:gap-3 md:px-4">
         <div className="shrink-0"><img src={process.env.NODE_ENV === 'production' ? 'https://australian-lts-lab.vercel.app/ausbug-logo-transparent.png' : '/ausbug-logo-transparent.png'} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
         <div className="lts-brand-copy min-w-0 flex-1">
-          <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>{workshopMode?'Workshop map':'Traffic stress map'}</h1>
+          <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>{workshopMode?'Classic workshop map':'Traffic stress map'}</h1>
         </div>
         {workshopMode&&<>
-        <select aria-label="Map view" className="workshop-map-view" disabled={selectionSaving} value={workshopMode?'workshop':'standard'} onChange={event=>{const target=new URL(workshopMapViewUrl(window.location.href,event.target.value!=='standard'));if(event.target.value==='google'){target.pathname='/ltsmap/workshop/google';const current=new URLSearchParams(window.location.search);for(const field of ['lga','section']){const value=current.get(field);if(value)target.searchParams.set(field,value);}}window.location.href=target.href;}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option><option value="google">Google Maps trial</option></select>
+        <select aria-label="Map view" className="workshop-map-view" disabled={selectionSaving} value="classic" onChange={event=>{window.location.href=workshopViewUrl(window.location.href,event.target.value as WorkshopMapView);}}><option value="standard">Standard LTS map</option><option value="workshop">Workshop map</option><option value="classic">Classic workshop map</option></select>
         </>}
         <select
           hidden={workshopMode}

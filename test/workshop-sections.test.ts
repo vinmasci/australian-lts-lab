@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { workshopMapViewUrl, canSelectWorkshop, normalizeWorkshopCode, workshopAssignmentCsv, workshopEdges, workshopLabels, workshopSourceUrl, workshopIslandsForLga, workshopPassagesForArea, type WorkshopSections, type WorkshopCrossings } from '../lib/workshop-sections';
+import { workshopMapViewUrl, workshopViewUrl, workshopPageUrl, canSelectWorkshop, normalizeWorkshopCode, workshopAssignmentCsv, workshopEdges, workshopLabels, workshopSourceUrl, workshopIslandsForLga, workshopPassagesForArea, type WorkshopSections, type WorkshopCrossings } from '../lib/workshop-sections';
 
 test('public map selector reaches the workshop without requiring a website proxy release',()=>{
   assert.equal(workshopMapViewUrl('https://ausbug.app/ltsmap',true),'https://australian-lts-lab.vercel.app/ltsmap/workshop');
@@ -85,4 +85,18 @@ test('crossing markers have no duplicate source nodes or coincident positions',(
   assert.equal(new Set(ids).size,ids.length);
   assert.ok(crossings.features.some(f=>f.properties.kind!=='refuge'&&f.properties.has_refuge));
   assert.ok(crossings.features.some(f=>f.properties.kind==='refuge'&&f.properties.councils.length&&f.properties.section_ids.length));
+});
+
+
+test('live and classic workshop links preserve council and permanent island selection',()=>{
+  const trial='https://australian-lts-lab.vercel.app/ltsmap/workshop/google?lga=City+of+Glen+Eira&section=M3018&obsolete=1';
+  const live='https://australian-lts-lab.vercel.app/ltsmap/workshop?lga=City+of+Glen+Eira&section=M3018';
+  const classic=live.replace('/workshop?','/workshop/classic?');
+  assert.equal(workshopViewUrl(trial,'workshop'),live);
+  assert.equal(workshopViewUrl(live,'classic'),classic);
+  assert.equal(workshopViewUrl(classic,'workshop'),live);
+  assert.equal(workshopViewUrl(live,'standard'),'https://ausbug.app/ltsmap');
+  assert.equal(workshopPageUrl(trial,'City of Glen Eira','M3018'),live);
+  assert.equal(workshopPageUrl(classic,'City of Glen Eira','M3049'),classic.replace('M3018','M3049'));
+  assert.match(workshopAssignmentCsv(sections,live,'City of Example'),/\/ltsmap\/workshop\?lga=City\+of\+Example&section=M3126/);
 });

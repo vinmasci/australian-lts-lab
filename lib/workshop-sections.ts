@@ -51,6 +51,16 @@ export function workshopMapViewUrl(pageUrl:string,workshop:boolean):string{
   return new URL(workshop?'/ltsmap/workshop':'/ltsmap',origin).href;
 }
 
+export type WorkshopMapView='standard'|'workshop'|'classic';
+
+/** Change map engines without losing the chosen council or permanent island label. */
+export function workshopViewUrl(pageUrl:string,view:WorkshopMapView):string{
+  const current=new URL(pageUrl),target=new URL(workshopMapViewUrl(pageUrl,view!=='standard'));
+  if(view==='classic')target.pathname+='/classic';
+  if(view!=='standard')for(const key of ['lga','section']){const value=current.searchParams.get(key);if(value)target.searchParams.set(key,value);}
+  return target.href;
+}
+
 export function workshopEdges(sections: WorkshopSections): FeatureCollection<MultiLineString, { id: string }> {
   return { type: 'FeatureCollection', features: sections.features.map(f => ({
     type: 'Feature', properties: { id: f.properties.id },
@@ -81,7 +91,7 @@ export function workshopPassagesForArea(crossings: WorkshopCrossings, lga: strin
 }
 
 export function workshopPageUrl(pageUrl: string, lga: string, code?: string): string {
-  const url=new URL(pageUrl);url.pathname='/ltsmap/workshop';url.search='';
+  const url=new URL(pageUrl);url.pathname=url.pathname==='/ltsmap/workshop/classic'?url.pathname:'/ltsmap/workshop';url.search='';
   if(lga)url.searchParams.set('lga',lga);
   if(code)url.searchParams.set('section',code);
   return url.href;
