@@ -522,3 +522,31 @@ select {
 .workshop-street-view-ghost svg{width:32px;height:42px;}
 .workshop-street-view-ghost i{display:block;width:12px;height:6px;border:2px solid #8a6000;border-radius:50%;margin:5px auto 0;background:#ffe38a;}
 @media(max-width:767px){.workshop-street-view-control{top:calc(var(--lts-top,98px) + 52px);right:10px;}.workshop-street-view-tip{width:min(210px,calc(100vw - 100px));}}
+
+/* Google workshop trial: native map and Street View with flat review controls. */
+.google-workshop{height:100dvh;position:relative;overflow:hidden;background:#f7f8f5;color:#26352e;font-family:var(--font-dm-sans),sans-serif;}
+.google-workshop-header{position:absolute;top:0;left:0;right:0;height:64px;z-index:20;display:flex;align-items:center;gap:18px;padding:0 18px;background:#fafbf8;border-bottom:1px solid #d8ded8;font-size:13px;}
+.google-workshop-header strong{font-size:15px;}
+.google-workshop-header a{margin-left:auto;}
+.google-workshop-header a,.google-workshop-header button{color:#27563d;text-decoration:underline;text-underline-offset:3px;}
+.google-workshop-map{position:absolute;top:64px;left:0;right:0;bottom:0;}
+.google-workshop-has-road .google-workshop-map{left:420px;}
+.google-workshop-error,.google-workshop-loading{position:absolute;top:80px;left:20px;z-index:21;max-width:460px;padding:12px 16px;background:#fff;border:1px solid #d8ded8;font-size:13px;color:#26352e;}
+.google-workshop-error a{text-decoration:underline;}
+.google-workshop .workshop-strip{bottom:34px;max-height:42vh;overflow:auto;}
+.google-workshop-switches{display:flex;gap:18px;margin-top:9px;font-size:12px;}
+.google-workshop-switches label{display:flex;align-items:center;gap:6px;}
+.google-workshop .google-workshop-switches input[type="checkbox"]{width:14px;height:14px;min-width:14px;min-height:14px;padding:0;margin:0;}
+.google-workshop-label{text-shadow:0 0 3px #fff,1px 1px 1px #fff,-1px -1px 1px #fff,1px -1px 1px #fff,-1px 1px 1px #fff;}
+.google-workshop-attribution{position:absolute;bottom:4px;left:115px;z-index:10;padding:1px 4px;font-size:9px;background:#ffffffe6;color:#47554b;}
+.google-workshop-road-panel{position:absolute;z-index:12;top:64px;bottom:0;left:0;width:420px;overflow:auto;padding:24px;background:#fff;border-right:1px solid #d8ded8;}
+.google-workshop-road-panel h2{font-size:21px;font-weight:650;margin:4px 32px 8px 0;}
+.google-workshop-score{font-size:13px;line-height:1.6;color:#59665c;}
+.google-workshop-road-panel dl{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px 0;margin-top:14px;border-top:1px solid #e0e5df;border-bottom:1px solid #e0e5df;font-size:13px;}
+.google-workshop-road-panel dt{font-size:11px;color:#6d786f;margin-bottom:4px;}
+.google-workshop-road-panel dd{margin:0;}
+.google-workshop-close{position:absolute;right:18px;top:18px;background:none;border:0;font-size:26px;cursor:pointer;}
+.google-workshop-road-actions{display:flex;align-items:center;gap:16px;margin:18px 0;font-size:12px;}
+.google-workshop-road-actions button{background:#f3f5f1;border:1px solid #d3dcd3;padding:9px 12px;cursor:pointer;}
+.google-workshop-road-actions a{text-decoration:underline;}
+@media(max-width:767px){.google-workshop-header{padding:0 12px;gap:10px;font-size:11px;}.google-workshop-header strong{font-size:12px;}.google-workshop-has-road .google-workshop-map{left:0;bottom:55dvh;}.google-workshop-road-panel{top:auto;height:55dvh;width:100%;border-right:0;border-top:1px solid #d8ded8;padding:18px;}.google-workshop .workshop-strip{max-height:40vh;bottom:34px;}.google-workshop-attribution{left:75px;font-size:8px;}}
