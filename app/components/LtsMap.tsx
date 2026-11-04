@@ -4,7 +4,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl';
 import { MapMouseEvent, MapGeoJSONFeature, addProtocol, removeProtocol } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Route as RouteIcon, Search, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, ExternalLink, Info, Layers3, Loader2, LocateFixed, MapPin, Route as RouteIcon, Search, X } from 'lucide-react';
 import { Protocol } from 'pmtiles';
 import { RoutePlanner } from '@/app/components/RoutePlanner';
 import { LgaFocusControl, useLgaFocus } from './LgaFocus';
@@ -1401,8 +1401,9 @@ export default function LtsMap({workshopMode=false}:{workshopMode?:boolean}) {
       )}
 
       <header className="lts-surface mobile-map-header lts-open-header absolute left-3 right-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 shadow-2xl md:left-4 md:right-4 md:flex-nowrap md:gap-3 md:px-4">
-        <div className="shrink-0"><img src={process.env.NODE_ENV === 'production' ? 'https://australian-lts-lab.vercel.app/ausbug-logo-transparent.png' : '/ausbug-logo-transparent.png'} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></div>
+        <a className="lts-home-logo shrink-0" href="https://ausbug.app/" aria-label="AusBUG home" aria-disabled={selectionSaving} onClick={event=>{if(selectionSaving)event.preventDefault();}}><img src={process.env.NODE_ENV === 'production' ? 'https://australian-lts-lab.vercel.app/ausbug-logo-transparent.png' : '/ausbug-logo-transparent.png'} alt="AusBUG" width={40} height={40} className="h-10 w-10 object-contain" /></a>
         <div className="lts-brand-copy min-w-0 flex-1">
+          <a className="lts-home-link" href="https://ausbug.app/" aria-disabled={selectionSaving} onClick={event=>{if(selectionSaving)event.preventDefault();}}><ArrowLeft size={12} aria-hidden="true" />Back to AusBUG</a>
           <h1 className="truncate text-sm font-bold md:text-base" title={activeDataset.title}>{workshopMode?'Classic workshop map':'Traffic stress map'}</h1>
         </div>
         {WORKSHOP_ENABLED&&workshopMode&&<>

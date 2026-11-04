@@ -563,3 +563,10 @@ select {
 .lts-lga-badge{position:absolute;z-index:9;left:16px;top:calc(var(--lts-top,64px) + 12px);display:flex;gap:18px;align-items:center;padding:8px 11px;border:1px solid #d5ddd5;background:#fffffff2;color:#304939;font-size:12px;}
 .lts-lga-badge>span{font-weight:650;}
 .lts-lga-badge>button{text-decoration:underline;text-underline-offset:3px;}
+
+.lts-open-header .lts-home-logo{display:block;flex-shrink:0;}
+.lts-open-header .lts-home-link{display:inline-flex;align-items:center;gap:4px;margin-bottom:3px;font-size:11px;line-height:1.2;font-weight:550;color:#526b59;text-decoration:none;white-space:nowrap;}
+.lts-open-header .lts-home-link:hover{text-decoration:underline;text-underline-offset:3px;color:#244b33;}
+.lts-home-logo:focus-visible,.lts-home-link:focus-visible{outline:2px solid #345946;outline-offset:3px;}
+.lts-home-logo[aria-disabled="true"],.lts-home-link[aria-disabled="true"]{opacity:.5;cursor:wait;}
+@media(max-width:767px){.lts-open-header .lts-brand-copy{padding-top:1px;}.lts-open-header .lts-home-link{font-size:10px;margin-bottom:2px;}}
